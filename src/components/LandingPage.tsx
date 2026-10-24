@@ -898,8 +898,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
-        © 2026 CIPA Expert · Daniel Santos · Todos os direitos reservados.
+      <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+        <img 
+          src="/logocompleto.png" 
+          alt="CIPA Expert" 
+          className="h-8 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity" 
+        />
+        <p>© 2026 CIPA Expert · Todos os direitos reservados.</p>
       </footer>
 
       {/* PURCHASE / CHECKOUT MODAL */}

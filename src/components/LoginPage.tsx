@@ -76,14 +76,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <div className="w-full max-w-[340px] bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl shadow-emerald-950/60 border border-emerald-500/30 p-5 space-y-3.5 z-10 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Top Brand Compacto */}
-        <div className="text-center space-y-1">
-          <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black shadow-md shadow-emerald-600/30 mx-auto">
-            <ShieldCheck className="w-4.5 h-4.5" />
-          </div>
-          <h2 className="text-base font-extrabold text-slate-950 tracking-tight leading-tight">
-            CIPA <span className="text-emerald-600">Expert</span>
-          </h2>
-          <p className="text-[11px] text-slate-500">
+        <div className="text-center space-y-1.5 pt-1">
+          <img 
+            src="/logocompleto.png" 
+            alt="CIPA Expert - Gestão de CIPA" 
+            className="h-12 w-auto max-w-[200px] mx-auto object-contain" 
+          />
+          <p className="text-[11px] text-slate-500 font-medium">
             Acesse a plataforma de gestão digital
           </p>
         </div>

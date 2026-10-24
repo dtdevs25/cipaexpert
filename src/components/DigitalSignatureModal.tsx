@@ -114,9 +114,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
+            <img src="/icone.png" alt="CIPA Expert" className="w-8 h-8 rounded-lg object-contain shadow-xs" />
             <div>
               <h3 className="text-sm font-bold text-slate-900 leading-tight">
                 Assinatura Digital Integrada

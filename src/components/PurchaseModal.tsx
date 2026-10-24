@@ -140,13 +140,15 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         
         {/* Header com CIPA Expert */}
         <div className="px-5 sm:px-6 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logocompleto.png" 
+              alt="CIPA Expert" 
+              className="h-8 w-auto max-w-[180px] object-contain" 
+            />
             <div>
               <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
-                Contratação de Módulos · CIPA Expert
+                Contratação de Módulos
               </h3>
               <p className="text-[11px] text-slate-500 font-mono">
                 Conformidade imediata com a NR-5 e ativação instantânea

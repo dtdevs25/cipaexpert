@@ -108,13 +108,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logocompleto.png" 
+              alt="CIPA Expert" 
+              className="h-9 w-auto max-w-[180px] object-contain" 
+            />
             <div>
               <h3 className="text-sm font-bold text-slate-900 leading-tight">
-                Autenticação de Acesso · CIPA Expert
+                Autenticação de Acesso
               </h3>
               <p className="text-[11px] text-slate-500">
                 Acesse com seu e-mail e senha corporativos

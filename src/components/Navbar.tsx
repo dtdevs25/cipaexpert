@@ -44,12 +44,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => onNavigate(currentView === 'admin' ? 'admin' : 'landing')}
             className="flex items-center gap-2.5 text-left group transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1 cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-sm shadow-emerald-600/30">
-              <ShieldCheck className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors whitespace-nowrap">
-              CIPA <span className="text-emerald-600">Expert</span>
-            </span>
+            <img 
+              src="/logocompleto.png" 
+              alt="CIPA Expert - Gestão de CIPA" 
+              className="h-10 sm:h-11 w-auto max-w-[220px] object-contain transition-transform group-hover:scale-[1.02]" 
+            />
           </button>
 
           {/* Lado Direito do Header */}
