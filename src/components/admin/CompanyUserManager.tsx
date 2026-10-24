@@ -27,6 +27,7 @@ import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
 import { DEMO_USERS } from '../../data/multiCompanyData';
 import { CNAE_DATABASE } from '../../data/cnaeData';
 import { StandardModal } from '../common/StandardModal';
+import { ApiService } from '../../services/apiService';
 
 interface CompanyUserManagerProps {
   companies: Company[];
@@ -62,6 +63,17 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
   // View / Edit / Delete states for User
   const [usersList, setUsersList] = useState<AuthUser[]>(Object.values(DEMO_USERS));
+
+  // Sincroniza com os usuários reais do PostgreSQL
+  useEffect(() => {
+    ApiService.getUsers()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setUsersList(data);
+        }
+      })
+      .catch((err) => console.log('Aviso ao sincronizar usuários do banco:', err));
+  }, []);
   const [viewingUser, setViewingUser] = useState<AuthUser | null>(null);
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<AuthUser | null>(null);
@@ -198,6 +210,17 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     onUpdateCompanies([...companies, newCompany]);
     setIsNewCompanyModalOpen(false);
 
+    // Persiste no PostgreSQL
+    ApiService.createCompany({
+      razaoSocial: newCompany.razaoSocial,
+      nomeFantasia: newCompany.nomeFantasia,
+      cnpj: newCompany.cnpj,
+      cnaePrincipalCode: newCompany.cnaeCode,
+      cnaePrincipalDesc: newCompany.cnaeDesc,
+      enderecoCompleto: newCompany.enderecoCompleto,
+      responsavelAdmin: newCompany.responsavelAdmin
+    }).catch(err => console.log('Aviso ao persistir empresa no backend:', err));
+
     setNewCnpj('');
     setNewFantasia('');
     setNewRazao('');
@@ -246,6 +269,18 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
     onUpdateCompanies(updatedCompanies);
     setIsNewFilialModalOpen(false);
+
+    // Persiste no PostgreSQL
+    ApiService.createUnit(targetCompanyIdForFilial, {
+      name: newUnit.name,
+      city: newUnit.city,
+      state: newUnit.state,
+      headcount: newUnit.headcount,
+      grauDeRisco: newUnit.grauDeRisco,
+      cnaeCode: newUnit.cnaeCode,
+      cnaeDesc: newUnit.cnaeDesc,
+      gestorName: newUnit.gestorName
+    }).catch(err => console.log('Aviso ao persistir filial no backend:', err));
 
     const targetCompName = companies.find(c => c.id === targetCompanyIdForFilial)?.nomeFantasia || 'Empresa';
     setNewFilialName('');
@@ -374,6 +409,14 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     setNewUserName('');
     setNewUserEmail('');
     setNewUserAvatarUrl('');
+
+    // Persiste no PostgreSQL
+    ApiService.createUser({
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      companyId: newUser.companyId
+    }).catch(err => console.log('Aviso ao persistir usuário no backend:', err));
 
     showFeedback('Usuário Cadastrado!', `O usuário "${newUser.name}" foi habilitado com sucesso.`);
   };

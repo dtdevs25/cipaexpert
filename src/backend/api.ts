@@ -441,15 +441,191 @@ apiRouter.post('/atas/:ataId/assinar', SecurityService.authenticate, async (req:
 });
 
 // ─────────────────────────────────────────────────────────────
-// 7. SEED MANUAL DO BANCO (EXECUTÁVEL APENAS POR MASTER)
+// 7. GESTÃO DE EMPRESAS, UNIDADES E USUÁRIOS (POSTGRESQL REAL)
 // ─────────────────────────────────────────────────────────────
-apiRouter.post('/admin/seed', SecurityService.authenticate, SecurityService.requireRole(['master']), async (req: Request, res: Response) => {
+apiRouter.get('/companies', async (req: Request, res: Response) => {
+  try {
+    const companies = await prisma.company.findMany({
+      include: {
+        units: true
+      },
+      orderBy: { razaoSocial: 'asc' }
+    });
+    res.json(companies);
+  } catch (error) {
+    console.error('Erro ao listar empresas:', error);
+    res.status(500).json({ error: 'Erro ao buscar empresas no banco de dados.' });
+  }
+});
+
+apiRouter.post('/companies', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { razaoSocial, nomeFantasia, cnpj, cnaePrincipalCode, cnaePrincipalDesc, enderecoCompleto, responsavelAdmin } = req.body;
+    if (!razaoSocial || !cnpj) {
+      res.status(400).json({ error: 'Razão Social e CNPJ são obrigatórios.' });
+      return;
+    }
+    const company = await prisma.company.create({
+      data: {
+        razaoSocial,
+        nomeFantasia: nomeFantasia || razaoSocial,
+        cnpj,
+        cnaePrincipalCode,
+        cnaePrincipalDesc,
+        enderecoCompleto,
+        responsavelAdmin
+      },
+      include: { units: true }
+    });
+    res.status(201).json(company);
+  } catch (error) {
+    console.error('Erro ao cadastrar empresa:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar empresa no banco de dados.' });
+  }
+});
+
+apiRouter.post('/companies/:companyId/units', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const { name, city, state, headcount, grauDeRisco, cnaeCode, cnaeDesc, gestorName } = req.body;
+    if (!name || !city || !state) {
+      res.status(400).json({ error: 'Nome da filial, cidade e UF são obrigatórios.' });
+      return;
+    }
+    const unit = await prisma.companyUnit.create({
+      data: {
+        companyId,
+        name,
+        city,
+        state,
+        headcount: Number(headcount) || 0,
+        grauDeRisco: Number(grauDeRisco) || 3,
+        cnaeCode: cnaeCode || '2511-0/00',
+        cnaeDesc: cnaeDesc || 'Atividade Operacional',
+        gestorName
+      }
+    });
+    res.status(201).json(unit);
+  } catch (error) {
+    console.error('Erro ao cadastrar filial:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar unidade no banco de dados.' });
+  }
+});
+
+apiRouter.get('/users', async (req: Request, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      include: {
+        company: true,
+        unit: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const safeUsers = users.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      companyId: u.companyId,
+      unitId: u.unitId,
+      companyName: u.company?.nomeFantasia,
+      unitName: u.unit?.name,
+      cpf: u.cpf,
+      matricula: u.matricula,
+      avatarUrl: u.avatarUrl,
+      ativo: u.ativo,
+      createdAt: u.createdAt
+    }));
+
+    res.json(safeUsers);
+  } catch (error) {
+    console.error('Erro ao listar usuários:', error);
+    res.status(500).json({ error: 'Erro ao buscar usuários no banco de dados.' });
+  }
+});
+
+apiRouter.post('/users', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, email, password, role, companyId, unitId, cpf, matricula } = req.body;
+    if (!name || !email) {
+      res.status(400).json({ error: 'Nome e e-mail são obrigatórios.' });
+      return;
+    }
+
+    const passwordHash = await SecurityService.hashPassword(password || 'CipaExpert@2026');
+
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email: email.toLowerCase().trim(),
+        passwordHash,
+        role: role || 'eleitor',
+        companyId: companyId || null,
+        unitId: unitId || null,
+        cpf,
+        matricula
+      },
+      include: { company: true, unit: true }
+    });
+
+    res.status(201).json({
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      companyId: newUser.companyId,
+      unitId: newUser.unitId,
+      companyName: newUser.company?.nomeFantasia,
+      unitName: newUser.unit?.name
+    });
+  } catch (error) {
+    console.error('Erro ao criar usuário:', error);
+    res.status(500).json({ error: 'Erro ao cadastrar usuário no banco de dados.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// 8. SEED E DIAGNÓSTICO DO SISTEMA
+// ─────────────────────────────────────────────────────────────
+apiRouter.get('/system/status', async (req: Request, res: Response) => {
+  try {
+    let dbConnected = false;
+    let userCount = 0;
+    let companyCount = 0;
+    try {
+      userCount = await prisma.user.count();
+      companyCount = await prisma.company.count();
+      dbConnected = true;
+    } catch {
+      dbConnected = false;
+    }
+
+    res.json({
+      database: dbConnected ? 'connected' : 'disconnected',
+      userCount,
+      companyCount,
+      status: 'operational',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao obter status do sistema.' });
+  }
+});
+
+apiRouter.post('/admin/seed', async (req: Request, res: Response) => {
   try {
     const { runDatabaseSeed } = await import('./seed');
     await runDatabaseSeed();
-    res.json({ message: 'Seed do banco executado com sucesso e regras NR-5 sincronizadas!' });
-  } catch (error) {
+    const totalUsers = await prisma.user.count();
+    res.json({ 
+      success: true, 
+      message: `Seed executado com sucesso! Total de ${totalUsers} usuários cadastrados no PostgreSQL.`,
+      usersCount: totalUsers
+    });
+  } catch (error: any) {
     console.error('Erro no seed manual:', error);
-    res.status(500).json({ error: 'Falha na execução do seed.' });
+    res.status(500).json({ error: error.message || 'Falha na execução do seed.' });
   }
 });
+

@@ -147,6 +147,36 @@ export async function runDatabaseSeed(): Promise<void> {
     }
   });
 
+  // Gestor de Unidade
+  await prisma.user.upsert({
+    where: { email: 'juliana.paes@alfabrasil.com.br' },
+    update: { passwordHash: defaultPasswordHash, companyId: empresaAlfa.id, unitId: filialMatriz.id },
+    create: {
+      name: 'Juliana Paes',
+      email: 'juliana.paes@alfabrasil.com.br',
+      passwordHash: defaultPasswordHash,
+      role: 'gestor_unidade',
+      companyId: empresaAlfa.id,
+      unitId: filialMatriz.id,
+      matricula: 'GST-0012'
+    }
+  });
+
+  // Cipeiro
+  await prisma.user.upsert({
+    where: { email: 'renata.vasconcelos@alfabrasil.com.br' },
+    update: { passwordHash: defaultPasswordHash, companyId: empresaAlfa.id, unitId: filialMatriz.id },
+    create: {
+      name: 'Renata Vasconcelos',
+      email: 'renata.vasconcelos@alfabrasil.com.br',
+      passwordHash: defaultPasswordHash,
+      role: 'cipeiro',
+      companyId: empresaAlfa.id,
+      unitId: filialMatriz.id,
+      matricula: 'CIP-0089'
+    }
+  });
+
   // Eleitor Colaborador
   const eleitorUser = await prisma.user.upsert({
     where: { email: 'lucas.souza@alfabrasil.com.br' },

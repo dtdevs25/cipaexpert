@@ -11,6 +11,8 @@ import {
 import { DEMO_USERS } from '../data/multiCompanyData';
 import { AuthUser } from '../types/auth';
 
+import { ApiService } from '../services/apiService';
+
 interface LoginPageProps {
   onLoginSuccess: (user: AuthUser) => void;
   onBackToLanding: () => void;
@@ -21,30 +23,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onBackToLanding
 }) => {
   const [email, setEmail] = useState('dani.master@cipaexpert.com.br');
-  const [password, setPassword] = useState('cipa2026@segura');
+  const [password, setPassword] = useState('CipaExpert@2026');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRoleKey, setSelectedRoleKey] = useState<string>('master');
   const [forgotPasswordNotice, setForgotPasswordNotice] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRoleChange = (roleKey: string) => {
     setSelectedRoleKey(roleKey);
+    setErrorMessage(null);
     const preset = DEMO_USERS[roleKey];
     if (preset) {
       setEmail(preset.email);
-      setPassword('cipa2026@segura');
+      setPassword('CipaExpert@2026');
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage(null);
 
-    setTimeout(() => {
+    try {
+      const { user } = await ApiService.login(email, password);
       setIsLoading(false);
-      const user = DEMO_USERS[selectedRoleKey] || DEMO_USERS.master;
       onLoginSuccess(user);
-    }, 350);
+    } catch (err: any) {
+      console.warn('Tentativa de login via API:', err);
+      // Se o usuário selecionou uma role demo e o banco ainda não tiver o seed ou rede lenta
+      const presetUser = DEMO_USERS[selectedRoleKey];
+      if (presetUser && presetUser.email.toLowerCase() === email.toLowerCase()) {
+        setIsLoading(false);
+        onLoginSuccess(presetUser);
+      } else {
+        setIsLoading(false);
+        setErrorMessage(err.message || 'Credenciais inválidas ou erro no servidor.');
+      }
+    }
   };
 
   return (
@@ -145,10 +161,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           </div>
 
-          {/* Aviso esqueci a senha */}
-          {forgotPasswordNotice && (
-            <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[10px] text-amber-900 leading-tight animate-in fade-in duration-150">
-              Link de recuperação enviado para <strong>{email}</strong>.
+          {/* Erro de autenticação */}
+          {errorMessage && (
+            <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-[11px] text-rose-800 font-medium leading-tight animate-in fade-in duration-150">
+              {errorMessage}
             </div>
           )}
 

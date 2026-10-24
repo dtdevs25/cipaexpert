@@ -38,7 +38,7 @@ model Company {
   riscos             RiskPoint[]
   auditLogs          AuditLog[]
 
-  @@map("companies")
+  @@map("empresas")
 }
 
 model CompanyUnit {
@@ -66,7 +66,7 @@ model CompanyUnit {
   colaboradores    Employee[]
 
   @@index([companyId])
-  @@map("company_units")
+  @@map("unidades_empresa")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ model User {
   @@index([companyId])
   @@index([unitId])
   @@index([email])
-  @@map("users")
+  @@map("usuarios")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ model CnaeReference {
   observacoes  String?
 
   @@index([grauDeRisco])
-  @@map("cnae_references")
+  @@map("cnaes_referencia")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ model Employee {
 
   @@index([unitId])
   @@index([matricula])
-  @@map("employees")
+  @@map("colaboradores")
 }
 
 model Dimensionamento {
@@ -402,7 +402,7 @@ model RiskPoint {
 
   @@index([companyId])
   @@index([unitId])
-  @@map("risk_points")
+  @@map("pontos_risco")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -423,5 +423,5 @@ model AuditLog {
 
   @@index([companyId])
   @@index([action])
-  @@map("audit_logs")
+  @@map("logs_auditoria")
 }

@@ -29,6 +29,7 @@ import { CompanyUserManager } from './admin/CompanyUserManager';
 import { RemindersManager } from './admin/RemindersManager';
 import { SignaturePortal } from './admin/SignaturePortal';
 import { AdminDashboard } from './admin/AdminDashboard';
+import { ApiService } from '../services/apiService';
 
 interface AdminLayoutProps {
   currentUser: AuthUser;
@@ -47,10 +48,42 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 }) => {
   // Companies State
   const [companies, setCompanies] = useState<Company[]>(INITIAL_COMPANIES);
+
+  // Sincroniza com as empresas reais do PostgreSQL
+  useEffect(() => {
+    ApiService.getCompanies()
+      .then((data) => {
+        if (data && data.length > 0) {
+          // Ajusta formato das unidades caso necessário
+          const mappedCompanies = data.map(c => ({
+            ...c,
+            modulosContratados: {
+              dimensionamento: c.moduloDimensionamento ?? true,
+              eleicao: c.moduloEleicao ?? true,
+              gestao: c.moduloGestao ?? true
+            },
+            units: (c.units || []).map(u => ({
+              id: u.id,
+              name: u.name,
+              city: u.city,
+              state: u.state,
+              headcount: u.headcount,
+              grauDeRisco: u.grauDeRisco,
+              cnaeCode: u.cnaeCode,
+              cnaeDesc: u.cnaeDesc,
+              cipaAtiva: u.cipaAtiva,
+              gestorName: u.gestorName
+            }))
+          }));
+          setCompanies(mappedCompanies as any);
+        }
+      })
+      .catch((err) => console.log('Aviso ao sincronizar empresas:', err));
+  }, []);
   
   // Selected Company for operations
   const initialCompany = companies.find(c => c.id === currentUser.companyId) || companies[0];
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompany.id);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompany?.id || 'emp-1');
   const activeCompany = companies.find(c => c.id === selectedCompanyId) || companies[0];
   
   // Selected Unit for operations

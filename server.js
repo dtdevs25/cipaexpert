@@ -46,8 +46,27 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
+import { prisma } from './src/backend/db';
+import { runDatabaseSeed } from './src/backend/seed';
+
 // Inicialização do servidor
-app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, async () => {
   console.log(`🚀 [BACKEND] CIPA Expert em execução na porta ${PORT} (${HOST})`);
   console.log(`🛡️  [BACKEND] Autenticação e APIs ativas em /api`);
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const userCount = await prisma.user.count();
+      if (userCount === 0) {
+        console.log('🌱 [BOOT] Banco PostgreSQL vazio detectado. Criando empresas, unidades e usuários de teste...');
+        await runDatabaseSeed();
+        const updatedCount = await prisma.user.count();
+        console.log(`✅ [BOOT] Seed concluído com sucesso! ${updatedCount} usuários prontos para teste.`);
+      } else {
+        console.log(`📦 [DATABASE] PostgreSQL conectado com ${userCount} usuários ativos.`);
+      }
+    } catch (err) {
+      console.warn('⚠️ [BOOT] Aviso ao checar seed do banco:', err?.message || err);
+    }
+  }
 });

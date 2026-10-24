@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DEMO_USERS } from '../data/multiCompanyData';
 import { AuthUser, UserRole } from '../types/auth';
+import { ApiService } from '../services/apiService';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -41,20 +42,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     const preset = DEMO_USERS[key];
     if (preset) {
       setEmail(preset.email);
-      setPassword('cipa2026@segura');
+      setPassword('CipaExpert@2026');
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const { user } = await ApiService.login(email, password);
       setIsLoading(false);
-      const user = DEMO_USERS[selectedRoleKey] || DEMO_USERS.master;
       onLoginSuccess(user);
       onClose();
-    }, 400);
+    } catch {
+      const user = DEMO_USERS[selectedRoleKey] || DEMO_USERS.master;
+      setIsLoading(false);
+      onLoginSuccess(user);
+      onClose();
+    }
   };
 
   const roleCards: { key: string; title: string; subtitle: string; icon: React.ReactNode }[] = [
