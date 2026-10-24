@@ -1,0 +1,6 @@
+{
+  "name": "easy CIPA - Gestão Inteligente da CIPA & NR-5",
+  "description": "Plataforma completa e modular para CIPA: Dimensionamento normativo (NR-5), Eleição online auditável e Gestão contínua com atas, calendário e assinaturas digitais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 1. EMPRESAS E UNIDADES (MULTI-TENANT)
+// ─────────────────────────────────────────────────────────────
+model Company {
+  id                 String   @id @default(uuid())
+  razaoSocial        String
+  nomeFantasia       String
+  cnpj               String   @unique
+  logoUrl            String?
+  cnaePrincipalCode  String?
+  cnaePrincipalDesc  String?
+  enderecoCompleto   String?
+  responsavelAdmin   String?
+  
+  // Módulos contratados
+  moduloDimensionamento Boolean @default(true)
+  moduloEleicao         Boolean @default(true)
+  moduloGestao          Boolean @default(true)
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  units              CompanyUnit[]
+  users              User[]
+  dimensionamentos   Dimensionamento[]
+  eleicoes           Eleicao[]
+  atas               AtaReuniao[]
+  planos5w2h         PlanoAcao5W2H[]
+  riscos             RiskPoint[]
+  auditLogs          AuditLog[]
+
+  @@map("companies")
+}
+
+model CompanyUnit {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  city        String
+  state       String
+  headcount   Int      @default(0)
+  grauDeRisco Int      @default(3) // 1, 2, 3 ou 4 conforme Quadro I da NR-4 / NR-5
+  cnaeCode    String
+  cnaeDesc    String
+  cipaAtiva   Boolean  @default(true)
+  gestorName  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users            User[]
+  dimensionamentos Dimensionamento[]
+  eleicoes         Eleicao[]
+  atas             AtaReuniao[]
+  planos5w2h       PlanoAcao5W2H[]
+  riscos           RiskPoint[]
+  colaboradores    Employee[]
+
+  @@index([companyId])
+  @@map("company_units")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 2. USUÁRIOS E SEGURANÇA (BCRYPT + JWT + RBAC)
+// ─────────────────────────────────────────────────────────────
+enum UserRole {
+  master           // Acesso global em todas as empresas
+  admin_empresa    // Administrador da empresa e filiais
+  gestor_unidade   // Responsável pela filial específica
+  tecnico_sst      // Técnico de SST / Engenharia
+  cipeiro          // Membro da CIPA (eleito ou indicado)
+  eleitor          // Colaborador habilitado para votar
+}
+
+model User {
+  id             String    @id @default(uuid())
+  companyId      String?
+  unitId         String?
+  name           String
+  email          String    @unique
+  passwordHash   String    // Hash seguro via bcrypt (salt 12 rounds)
+  role           UserRole  @default(eleitor)
+  cpf            String?
+  matricula      String?
+  avatarUrl      String?
+  ativo          Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  company        Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  unit           CompanyUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  votos          VotoRegistro[]
+  assinaturas    AssinaturaEletronica[]
+  auditLogs      AuditLog[]
+
+  @@index([companyId])
+  @@index([unitId])
+  @@index([email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 3. BASE DE CNAES OFICIAIS E PARÂMETROS DA NR-5 / NR-4
+// ─────────────────────────────────────────────────────────────
+model CnaeReference {
+  code         String  @id // ex: '2511-0/00'
+  description  String
+  grauDeRisco  Int     // 1, 2, 3 ou 4
+  sectorGroup  String  // Grupo do Quadro I da NR-5 (ex: C-1, C-13, C-31)
+  observacoes  String?
+
+  @@index([grauDeRisco])
+  @@map("cnae_references")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 4. MÓDULO 1: COLABORADORES E HISTÓRICO DE DIMENSIONAMENTO NR-5
+// ─────────────────────────────────────────────────────────────
+model Employee {
+  id           String      @id @default(uuid())
+  unitId       String
+  name         String
+  apelido      String?
+  matricula    String
+  cpf          String
+  cargo        String
+  setor        String
+  email        String
+  dataAdmissao DateTime
+  fotoUrl      String?
+  ativo        Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  unit         CompanyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId])
+  @@index([matricula])
+  @@map("employees")
+}
+
+model Dimensionamento {
+  id                  String   @id @default(uuid())
+  companyId           String
+  unitId              String
+  cnaeCode            String
+  cnaeDesc            String
+  headcount           Int
+  grauDeRisco         Int
+  precisaCipa         Boolean  // Se false = 1 Designado de CIPA
+  efetivosEmpregador  Int      @default(0)
+  suplentesEmpregador Int      @default(0)
+  efetivosEmpregados  Int      @default(0)
+  suplentesEmpregados Int      @default(0)
+  totalMembros        Int      @default(1)
+  observacaoNormativa String   @db.Text
+  calculadoPor        String?
+  createdAt           DateTime @default(now())
+
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit    CompanyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([unitId])
+  @@map("dimensionamentos")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 5. MÓDULO 2: ELEIÇÃO ONLINE AUDITADA (URNA ELETRÔNICA NR-5)
+// ─────────────────────────────────────────────────────────────
+enum EleicaoStatus {
+  planejamento
+  inscricoes_abertas
+  campanha
+  votacao_aberta
+  apurada
+  homologada
+  cancelada
+}
+
+model Eleicao {
+  id                   String        @id @default(uuid())
+  companyId            String
+  unitId               String
+  titulo               String        // ex: "Eleição CIPA - Gestão 2026/2027"
+  status               EleicaoStatus @default(planejamento)
+  dataInicioMandato    DateTime?
+  dataFimMandato       DateTime      // Data de término do mandato atual (âncora do cronograma)
+  
+  // Cronograma Calculado NR-5
+  dataEditalConvocacao DateTime      // 60 dias antes
+  dataConstituicaoCE   DateTime      // 55 dias antes
+  dataInicioInscricoes DateTime      // 45 dias antes (mínimo 15 dias de duração)
+  dataFimInscricoes    DateTime      // 30 dias antes
+  dataInicioVotacao    DateTime      // Pelo menos 30 dias antes do fim do mandato
+  dataFimVotacao       DateTime
+  dataTreinamento      DateTime      // Antes da posse
+  dataPosse            DateTime      // 1º dia útil após término do mandato
+  
+  totalEleitoresAptos  Int           @default(0)
+  votosBrancos         Int           @default(0)
+  votosNulos           Int           @default(0)
+  quorumMinimo         Int           @default(0) // (Aptos / 2) + 1
+  quorumAtingido       Boolean       @default(false)
+
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  company              Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit                 CompanyUnit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  candidatos           Candidato[]
+  votos                VotoRegistro[]
+
+  @@index([companyId])
+  @@index([unitId])
+  @@map("eleicoes")
+}
+
+model Candidato {
+  id           String   @id @default(uuid())
+  eleicaoId    String
+  nome         String
+  apelido      String?
+  cargo        String
+  setor        String
+  tempoEmpresa String
+  fotoUrl      String?
+  numero       String   // Número de urna (ex: '10', '22')
+  propostas    String   @db.Text
+  totalVotos   Int      @default(0)
+  deferido     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  eleicao      Eleicao  @relation(fields: [eleicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([eleicaoId, numero])
+  @@index([eleicaoId])
+  @@map("candidatos")
+}
+
+model VotoRegistro {
+  id              String   @id @default(uuid())
+  eleicaoId       String
+  userId          String   // Vínculo apenas para bloqueio de voto duplo (desacoplado da escolha)
+  hashComprovante String   @unique // SHA-256 criptográfico para auditoria
+  ipAnonimizado   String?
+  timestamp       DateTime @default(now())
+
+  eleicao         Eleicao  @relation(fields: [eleicaoId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eleicaoId, userId]) // Garante matematicamente 1 voto por usuário na eleição
+  @@index([eleicaoId])
+  @@map("votos_registros")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 6. MÓDULO 3: GESTÃO CIPA, ATAS, ASSINATURA DIGITAL E 5W2H
+// ─────────────────────────────────────────────────────────────
+enum TipoReuniao {
+  ordinaria
+  extraordinaria
+}
+
+enum AtaStatus {
+  rascunho
+  aguardando_assinaturas
+  assinada
+  arquivada
+}
+
+model AtaReuniao {
+  id             String      @id @default(uuid())
+  companyId      String
+  unitId         String
+  numero         Int
+  tipo           TipoReuniao @default(ordinaria)
+  dataReuniao    DateTime
+  horario        String      // ex: "14:00 às 15:30"
+  local          String
+  pauta          String      @db.Text
+  deliberacoes   String      @db.Text
+  status         AtaStatus   @default(rascunho)
+  hashDocumento  String?     // Hash SHA-256 do conteúdo integral da ata
+  dataAssinatura DateTime?
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  company        Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit           CompanyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  assinaturas    AssinaturaEletronica[]
+
+  @@index([companyId])
+  @@index([unitId])
+  @@map("atas_reunioes")
+}
+
+model AssinaturaEletronica {
+  id               String   @id @default(uuid())
+  ataId            String
+  userId           String
+  signerName       String
+  signerCpf        String
+  signerRole       String   // "Presidente", "Vice-Presidente", "Membro CIPA"
+  hashAssinatura   String   @unique // Hash SHA-256 único com timestamp e certificado
+  ipAddress        String?
+  userAgent        String?
+  dataHora         DateTime @default(now())
+
+  ata              AtaReuniao @relation(fields: [ataId], references: [id], onDelete: Cascade)
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ataId])
+  @@index([userId])
+  @@map("assinaturas_eletronicas")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 7. PLANO DE AÇÃO 5W2H E MAPA DE RISCOS NR-5
+// ─────────────────────────────────────────────────────────────
+enum Plano5W2HStatus {
+  pendente
+  em_andamento
+  concluido
+  atrasado
+}
+
+enum CategoriaRisco {
+  prevencao_acidentes
+  prevencao_assedio
+  ergonomia
+  epis_epcs
+  treinamento
+}
+
+model PlanoAcao5W2H {
+  id          String          @id @default(uuid())
+  companyId   String
+  unitId      String
+  oQue        String          // What
+  porQue      String          @db.Text // Why
+  onde        String          // Where
+  quem        String          // Who
+  quando      DateTime        // When
+  como        String          @db.Text // How
+  quanto      String          // How much
+  status      Plano5W2HStatus @default(pendente)
+  categoria   CategoriaRisco  @default(prevencao_acidentes)
+  evidencia   String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit        CompanyUnit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([unitId])
+  @@map("planos_5w2h")
+}
+
+enum TipoRiscoAmbiente {
+  fisico     // Verde
+  quimico    // Vermelho
+  biologico  // Marrom
+  ergonomico // Amarelo
+  acidente   // Azul
+}
+
+enum GrauGravidadeRisco {
+  pequeno // Círculo pequeno (Leve)
+  medio   // Círculo médio (Moderado)
+  grande  // Círculo grande (Crítico)
+}
+
+model RiskPoint {
+  id                 String             @id @default(uuid())
+  companyId          String
+  unitId             String
+  setor              String
+  tipoRisco          TipoRiscoAmbiente
+  grauGravidade      GrauGravidadeRisco
+  agenteIdentificado String
+  medidasPreventivas String             @db.Text
+  xPercent           Float              // Posição no layout (0 a 100)
+  yPercent           Float              // Posição no layout (0 a 100)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit               CompanyUnit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([unitId])
+  @@map("risk_points")
+}
+
+// ─────────────────────────────────────────────────────────────
+// 8. AUDITORIA E LOGS IMUTÁVEIS (COMPLIANCE & LGPD)
+// ─────────────────────────────────────────────────────────────
+model AuditLog {
+  id          String   @id @default(uuid())
+  companyId   String?
+  userId      String?
+  action      String   // "LOGIN", "VOTO_REGISTRADO", "ATA_ASSINADA", "DIMENSIONAMENTO_CRIADO"
+  details     String?  @db.Text
+  ipAddress   String?
+  hashSha256  String
+  createdAt   DateTime @default(now())
+
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([action])
+  @@map("audit_logs")
+}
