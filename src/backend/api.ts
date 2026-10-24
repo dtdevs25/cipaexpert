@@ -134,6 +134,41 @@ apiRouter.get('/cnaes', async (req: Request, res: Response) => {
   }
 });
 
+apiRouter.post('/cnaes', async (req: Request, res: Response) => {
+  try {
+    const data = req.body;
+    const items = Array.isArray(data) ? data : [data];
+
+    let count = 0;
+    for (const item of items) {
+      if (item.code && item.description && item.grauDeRisco !== undefined) {
+        await prisma.cnaeReference.upsert({
+          where: { code: item.code },
+          update: {
+            description: item.description,
+            grauDeRisco: Number(item.grauDeRisco),
+            sectorGroup: item.sectorGroup || 'C-1',
+            observacoes: item.observacoes
+          },
+          create: {
+            code: item.code,
+            description: item.description,
+            grauDeRisco: Number(item.grauDeRisco),
+            sectorGroup: item.sectorGroup || 'C-1',
+            observacoes: item.observacoes
+          }
+        });
+        count++;
+      }
+    }
+
+    res.json({ success: true, message: `${count} CNAEs inseridos/atualizados com sucesso!`, totalProcessed: count });
+  } catch (error) {
+    console.error('Erro ao cadastrar CNAEs:', error);
+    res.status(500).json({ error: 'Erro ao registrar CNAEs no banco de dados.' });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────
 // 3. MÓDULO 1: CÁLCULO E HISTÓRICO DE DIMENSIONAMENTO NR-5
 // ─────────────────────────────────────────────────────────────
