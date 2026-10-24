@@ -147,14 +147,14 @@ apiRouter.post('/cnaes', async (req: Request, res: Response) => {
           update: {
             description: item.description,
             grauDeRisco: Number(item.grauDeRisco),
-            sectorGroup: item.sectorGroup || 'C-1',
+            sectorGroup: item.sectorGroup || null,
             observacoes: item.observacoes
           },
           create: {
             code: item.code,
             description: item.description,
             grauDeRisco: Number(item.grauDeRisco),
-            sectorGroup: item.sectorGroup || 'C-1',
+            sectorGroup: item.sectorGroup || null,
             observacoes: item.observacoes
           }
         });

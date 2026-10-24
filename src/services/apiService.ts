@@ -196,5 +196,11 @@ export const ApiService = {
       method: 'POST',
       body: JSON.stringify(planoData)
     });
+  },
+
+  // 8. Consulta de CNAEs do PostgreSQL
+  async getCnaes(query?: string): Promise<any[]> {
+    const url = query ? `/api/cnaes?q=${encodeURIComponent(query)}` : '/api/cnaes';
+    return this.request<any[]>(url);
   }
 };

@@ -116,7 +116,7 @@ model CnaeReference {
   code         String  @id // ex: '2511-0/00'
   description  String
   grauDeRisco  Int     // 1, 2, 3 ou 4
-  sectorGroup  String  // Grupo do Quadro I da NR-5 (ex: C-1, C-13, C-31)
+  sectorGroup  String? // Grupo do Quadro I da NR-5 (ex: C-1, C-13, C-31) ou NULL conforme Anexo I da NR-4
   observacoes  String?
 
   @@index([grauDeRisco])

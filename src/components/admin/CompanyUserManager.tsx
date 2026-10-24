@@ -63,8 +63,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
   // View / Edit / Delete states for User
   const [usersList, setUsersList] = useState<AuthUser[]>(Object.values(DEMO_USERS));
+  const [cnaesList, setCnaesList] = useState<any[]>(CNAE_DATABASE);
 
-  // Sincroniza com os usuários reais do PostgreSQL
+  // Sincroniza com os usuários e CNAEs reais do PostgreSQL
   useEffect(() => {
     ApiService.getUsers()
       .then((data) => {
@@ -73,6 +74,14 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         }
       })
       .catch((err) => console.log('Aviso ao sincronizar usuários do banco:', err));
+
+    ApiService.getCnaes()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setCnaesList(data);
+        }
+      })
+      .catch((err) => console.log('Aviso ao sincronizar CNAEs do banco:', err));
   }, []);
   const [viewingUser, setViewingUser] = useState<AuthUser | null>(null);
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
@@ -176,7 +185,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       return;
     }
 
-    const cnaeObj = CNAE_DATABASE.find(c => c.code === newSelectedCnae);
+    const cnaeObj = cnaesList.find(c => c.code === newSelectedCnae);
     const finalCnaeDesc = newCustomCnaeDesc || cnaeObj?.description || 'Atividade empresarial industrial/comercial';
     const finalGr = cnaeObj?.grauDeRisco || 3;
 
@@ -242,7 +251,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       return;
     }
 
-    const cnaeObj = CNAE_DATABASE.find(c => c.code === newFilialCnae);
+    const cnaeObj = cnaesList.find(c => c.code === newFilialCnae);
 
     const newUnit: CompanyUnit = {
       id: `unit-${Date.now()}`,
@@ -1158,13 +1167,13 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     value={newFilialCnae}
                     onChange={e => {
                       setNewFilialCnae(e.target.value);
-                      const sel = CNAE_DATABASE.find(c => c.code === e.target.value);
+                      const sel = cnaesList.find(c => c.code === e.target.value);
                       if (sel) setNewFilialGr(sel.grauDeRisco);
                     }}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   >
-                    {CNAE_DATABASE.map(c => (
-                      <option key={c.code} value={c.code}>{c.code} - GR {c.grauDeRisco}</option>
+                    {cnaesList.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} - {c.description ? c.description.slice(0, 45) : ''} (GR {c.grauDeRisco})</option>
                     ))}
                   </select>
                 </div>
@@ -1286,9 +1295,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">CNAE da Filial</label>
                   <select
-                    value={editingFilial.filial.cnaeCode || CNAE_DATABASE[10].code}
+                    value={editingFilial.filial.cnaeCode || cnaesList[0]?.code || '2511-0/00'}
                     onChange={e => {
-                      const sel = CNAE_DATABASE.find(c => c.code === e.target.value);
+                      const sel = cnaesList.find(c => c.code === e.target.value);
                       setEditingFilial({
                         ...editingFilial,
                         filial: {
@@ -1301,8 +1310,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     }}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   >
-                    {CNAE_DATABASE.map(c => (
-                      <option key={c.code} value={c.code}>{c.code} - GR {c.grauDeRisco}</option>
+                    {cnaesList.map(c => (
+                      <option key={c.code} value={c.code}>{c.code} - {c.description ? c.description.slice(0, 45) : ''} (GR {c.grauDeRisco})</option>
                     ))}
                   </select>
                 </div>
@@ -1510,12 +1519,12 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   value={newSelectedCnae}
                   onChange={e => {
                     setNewSelectedCnae(e.target.value);
-                    const selected = CNAE_DATABASE.find(c => c.code === e.target.value);
+                    const selected = cnaesList.find(c => c.code === e.target.value);
                     if (selected) setNewCustomCnaeDesc(selected.description);
                   }}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                 >
-                  {CNAE_DATABASE.map(c => (
+                  {cnaesList.map(c => (
                     <option key={c.code} value={c.code}>
                       {c.code} - {c.description} (Grau de Risco {c.grauDeRisco})
                     </option>
@@ -1526,7 +1535,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
                   <span className="text-slate-600 font-medium">Grau de Risco Legal (NR-4):</span>
                   <span className="font-mono font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                    Grau {CNAE_DATABASE.find(c => c.code === newSelectedCnae)?.grauDeRisco || 3} (Automático)
+                    Grau {cnaesList.find(c => c.code === newSelectedCnae)?.grauDeRisco || 3} (Automático)
                   </span>
                 </div>
               </div>
@@ -1801,9 +1810,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 </label>
                 <select
                   required
-                  value={editingCompany.cnaeCode || CNAE_DATABASE[10].code}
+                  value={editingCompany.cnaeCode || cnaesList[0]?.code || '2511-0/00'}
                   onChange={e => {
-                    const sel = CNAE_DATABASE.find(c => c.code === e.target.value);
+                    const sel = cnaesList.find(c => c.code === e.target.value);
                     setEditingCompany({
                       ...editingCompany,
                       cnaeCode: e.target.value,
@@ -1812,7 +1821,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   }}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                 >
-                  {CNAE_DATABASE.map(c => (
+                  {cnaesList.map(c => (
                     <option key={c.code} value={c.code}>
                       {c.code} - {c.description} (Grau de Risco {c.grauDeRisco})
                     </option>
@@ -1823,7 +1832,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
                   <span className="text-slate-600 font-medium">Grau de Risco Legal (NR-4):</span>
                   <span className="font-mono font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                    Grau {CNAE_DATABASE.find(c => c.code === editingCompany.cnaeCode)?.grauDeRisco || 3} (Automático)
+                    Grau {cnaesList.find(c => c.code === editingCompany.cnaeCode)?.grauDeRisco || 3} (Automático)
                   </span>
                 </div>
               </div>

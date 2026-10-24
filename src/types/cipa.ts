@@ -16,7 +16,8 @@ export interface CnaeEntry {
   code: string;
   description: string;
   grauDeRisco: 1 | 2 | 3 | 4;
-  sectorGroup: string; // ex: C-1, C-2, etc. correspondente ao Quadro I da NR-5
+  sectorGroup?: string | null; // ex: C-1, C-2, etc. correspondente ao Quadro I da NR-5
+  observacoes?: string | null;
 }
 
 export interface DimensionamentoResult {
