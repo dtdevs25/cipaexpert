@@ -237,6 +237,42 @@ apiRouter.get('/dimensionamento/historico/:unitId', SecurityService.authenticate
   }
 });
 
+apiRouter.get('/dimensionamento/regras', async (req: Request, res: Response) => {
+  try {
+    const regras = await prisma.nr5DimensionamentoRegra.findMany({
+      orderBy: [{ grauDeRisco: 'asc' }, { faixaMin: 'asc' }]
+    });
+    res.json(regras);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao consultar regras do Quadro I da NR-5.' });
+  }
+});
+
+apiRouter.post('/dimensionamento/regras', async (req: Request, res: Response) => {
+  try {
+    const data = req.body;
+    const items = Array.isArray(data) ? data : [data];
+    let count = 0;
+    for (const item of items) {
+      await prisma.nr5DimensionamentoRegra.create({
+        data: {
+          grauDeRisco: Number(item.grauDeRisco),
+          faixaMin: Number(item.faixaMin),
+          faixaMax: item.faixaMax !== undefined && item.faixaMax !== null ? Number(item.faixaMax) : null,
+          efetivosPorParte: Number(item.efetivosPorParte || 0),
+          suplentesPorParte: Number(item.suplentesPorParte || 0),
+          precisaCipa: item.precisaCipa !== undefined ? Boolean(item.precisaCipa) : true,
+          observacao: item.observacao || null
+        }
+      });
+      count++;
+    }
+    res.json({ success: true, message: `${count} regras do Quadro I da NR-5 salvas com sucesso!` });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao salvar regras da NR-5.' });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────
 // 4. MÓDULO 2: ELEIÇÃO ONLINE E URNA ELETRÔNICA AUDITADA
 // ─────────────────────────────────────────────────────────────

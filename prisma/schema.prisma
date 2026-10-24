@@ -124,6 +124,23 @@ model CnaeReference {
 }
 
 // ─────────────────────────────────────────────────────────────
+// PARÂMETROS OFICIAIS DO QUADRO I DA NR-5 (DIMENSIONAMENTO)
+// ─────────────────────────────────────────────────────────────
+model Nr5DimensionamentoRegra {
+  id                String   @id @default(uuid())
+  grauDeRisco       Int      // 1, 2, 3 ou 4
+  faixaMin          Int      // Ex: 0, 20, 30, 51, 101, etc.
+  faixaMax          Int?     // Ex: 19, 29, 50, 100... ou NULL para última faixa
+  efetivosPorParte  Int      @default(0) // Membros efetivos por representação (empregados e empregador)
+  suplentesPorParte Int      @default(0) // Membros suplentes por representação
+  precisaCipa       Boolean  @default(true) // Se false, é Designado de CIPA
+  observacao        String?
+
+  @@index([grauDeRisco, faixaMin])
+  @@map("nr5_quadro1_regras")
+}
+
+// ─────────────────────────────────────────────────────────────
 // 4. MÓDULO 1: COLABORADORES E HISTÓRICO DE DIMENSIONAMENTO NR-5
 // ─────────────────────────────────────────────────────────────
 model Employee {
