@@ -21,13 +21,162 @@ import {
   Building,
   Layers,
   ArrowRight,
-  KeyRound
+  KeyRound,
+  Search
 } from 'lucide-react';
 import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
 import { DEMO_USERS, INITIAL_COMPANIES } from '../../data/multiCompanyData';
 import { CNAE_DATABASE } from '../../data/cnaeData';
 import { StandardModal } from '../common/StandardModal';
 import { ApiService } from '../../services/apiService';
+
+// Utilitários de formatação em tempo real
+export const formatCNPJ = (val: string): string => {
+  const digits = val.replace(/\D/g, '').slice(0, 14);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+};
+
+export const formatCPF = (val: string): string => {
+  const digits = val.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+};
+
+export const formatCNAE = (val: string): string => {
+  const digits = val.replace(/\D/g, '').slice(0, 7);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 5)}/${digits.slice(5, 7)}`;
+};
+
+// Componente inteligente de busca e digitação de CNAE com largura contida
+interface CnaeSearchSelectProps {
+  value: string;
+  onChange: (cnaeCode: string, description: string, grauDeRisco: 1 | 2 | 3 | 4) => void;
+  cnaesList: any[];
+  label?: string;
+  required?: boolean;
+}
+
+const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
+  value,
+  onChange,
+  cnaesList,
+  label = "CNAE",
+  required = false
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedCnae = cnaesList.find(c => c.code === value);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCnaes = cnaesList.filter(c => {
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+    const cleanCode = c.code.replace(/\D/g, '');
+    const cleanTerm = term.replace(/\D/g, '');
+    return c.code.toLowerCase().includes(term) ||
+      (cleanTerm && cleanCode.includes(cleanTerm)) ||
+      (c.description && c.description.toLowerCase().includes(term));
+  }).slice(0, 30);
+
+  return (
+    <div className="space-y-1 relative w-full" ref={wrapperRef}>
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-bold text-slate-700">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+        {selectedCnae && (
+          <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+            Grau {selectedCnae.grauDeRisco}
+          </span>
+        )}
+      </div>
+
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Digite o código (ex: 2511) ou nome..."
+          value={isOpen ? searchTerm : (selectedCnae ? `${selectedCnae.code} - ${selectedCnae.description.slice(0, 36)}...` : value)}
+          onFocus={() => {
+            setSearchTerm('');
+            setIsOpen(true);
+          }}
+          onChange={e => {
+            const rawVal = e.target.value;
+            setSearchTerm(rawVal);
+            setIsOpen(true);
+            // Se o usuário digitar um código CNAE exato
+            const formatted = formatCNAE(rawVal);
+            const exact = cnaesList.find(c => c.code === rawVal || c.code === formatted);
+            if (exact) {
+              onChange(exact.code, exact.description, exact.grauDeRisco);
+            }
+          }}
+          className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono bg-white cursor-text pr-8"
+        />
+        <div 
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+        >
+          <Search className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 max-h-52 overflow-y-auto w-full divide-y divide-slate-100 animate-in fade-in duration-100">
+          {filteredCnaes.length === 0 ? (
+            <div className="p-3 text-[11px] text-slate-400 text-center">
+              Nenhum CNAE encontrado para "{searchTerm}"
+            </div>
+          ) : (
+            filteredCnaes.map(c => {
+              const isSelected = c.code === value;
+              return (
+                <div
+                  key={c.code}
+                  onClick={() => {
+                    onChange(c.code, c.description, c.grauDeRisco);
+                    setIsOpen(false);
+                    setSearchTerm('');
+                  }}
+                  className={`p-2.5 text-xs hover:bg-emerald-50 cursor-pointer flex items-center justify-between gap-2 transition-colors ${
+                    isSelected ? 'bg-emerald-50/80 font-bold text-emerald-950' : 'text-slate-700'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1 truncate">
+                    <span className="font-mono text-emerald-800 font-bold mr-1.5">{c.code}</span>
+                    <span className="text-slate-600 truncate">{c.description ? c.description.slice(0, 36) : ''}...</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0 font-bold">
+                    GR {c.grauDeRisco}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface CompanyUserManagerProps {
   companies: Company[];
@@ -43,8 +192,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 }) => {
   // Tabs: Empresas | Filiais & Unidades | Usuários
   const [activeTab, setActiveTab] = useState<'empresas' | 'filiais' | 'usuarios'>('empresas');
-  const [companyViewMode, setCompanyViewMode] = useState<'cards' | 'lista'>('cards');
-  const [filialViewMode, setFilialViewMode] = useState<'cards' | 'lista'>('cards');
+  // Padrão: Modo Lista (Tabela) como solicitado pelo usuário
+  const [companyViewMode, setCompanyViewMode] = useState<'cards' | 'lista'>('lista');
+  const [filialViewMode, setFilialViewMode] = useState<'cards' | 'lista'>('lista');
   
   // Registration Modals
   const [isNewCompanyModalOpen, setIsNewCompanyModalOpen] = useState(false);
@@ -141,6 +291,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   // ==========================================
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserCpf, setNewUserCpf] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('tecnico_sst');
   const [newUserCompanyId, setNewUserCompanyId] = useState(companies[0]?.id || 'emp-1');
   const [newUserAvatarUrl, setNewUserAvatarUrl] = useState('');
@@ -396,6 +547,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       id: `usr-${Date.now()}`,
       name: newUserName.trim(),
       email: newUserEmail.trim(),
+      cpf: newUserCpf.trim() ? formatCPF(newUserCpf) : undefined,
       role: newUserRole,
       roleLabel: roleLabels[newUserRole],
       roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[newUserRole]}.`,
@@ -408,12 +560,14 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     setIsNewUserModalOpen(false);
     setNewUserName('');
     setNewUserEmail('');
+    setNewUserCpf('');
     setNewUserAvatarUrl('');
 
     // Persiste no PostgreSQL
     ApiService.createUser({
       name: newUser.name,
       email: newUser.email,
+      cpf: newUser.cpf,
       role: newUser.role,
       companyId: newUser.companyId
     }).catch(err => console.log('Aviso ao persistir usuário no backend:', err));
@@ -670,10 +824,13 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                             setTargetCompanyIdForFilial(company.id);
                             setIsNewFilialModalOpen(true);
                           }}
-                          className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer flex items-center justify-center shrink-0 shadow-2xs active:scale-95"
+                          className="group flex items-center h-7 w-7 hover:w-22 rounded-lg bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-800 border border-emerald-200 hover:border-emerald-300 px-1.5 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Cadastrar Filial"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                            + Filial
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -687,28 +844,37 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <button
                           type="button"
                           onClick={() => setViewingCompany(company)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Visualizar Empresa"
                         >
-                          <Eye className="w-4 h-4 text-blue-600" />
+                          <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                            Visualizar
+                          </span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setEditingCompany(company)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Editar Empresa"
                         >
-                          <Edit3 className="w-4 h-4 text-amber-600" />
+                          <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                            Editar
+                          </span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setCompanyToDelete(company)}
-                          className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Excluir Empresa"
                         >
-                          <Trash2 className="w-4 h-4 text-rose-600" />
+                          <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                            Excluir
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -774,25 +940,39 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <td className="py-4 px-4 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5 justify-center">
                             <button
+                              type="button"
                               onClick={() => setViewingCompany(company)}
-                              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Visualizar Empresa"
                             >
-                              <Eye className="w-4 h-4 text-blue-600" />
+                              <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Visualizar
+                              </span>
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => setEditingCompany(company)}
-                              className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Editar Empresa"
                             >
-                              <Edit3 className="w-4 h-4 text-amber-600" />
+                              <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Editar
+                              </span>
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => setCompanyToDelete(company)}
-                              className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                              className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Excluir Empresa"
                             >
-                              <Trash2 className="w-4 h-4 text-rose-600" />
+                              <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Excluir
+                              </span>
                             </button>
                           </div>
                         </td>
@@ -870,33 +1050,42 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <CheckCircle2 className="w-3.5 h-3.5" /> Estabelecimento Ativo
                       </span>
 
-                      {/* Botões com apenas o ícone sem escrita para não ultrapassar o card */}
+                      {/* Botões com expansão suave e texto no hover */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => setViewingFilial({ filial: item.filial, companyName: item.companyName })}
-                          className="p-2 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Visualizar Filial"
                         >
-                          <Eye className="w-4 h-4 text-blue-600" />
+                          <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                            Visualizar
+                          </span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setEditingFilial({ filial: item.filial, companyId: item.companyId })}
-                          className="p-2 rounded-xl text-slate-500 hover:text-amber-600 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Editar Filial"
                         >
-                          <Edit3 className="w-4 h-4 text-amber-600" />
+                          <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                            Editar
+                          </span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setFilialToDelete({ filial: item.filial, companyId: item.companyId })}
-                          className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                           title="Excluir Filial"
                         >
-                          <Trash2 className="w-4 h-4 text-rose-600" />
+                          <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                          <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                            Excluir
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -944,25 +1133,39 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <td className="py-4 px-4 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5 justify-center">
                             <button
+                              type="button"
                               onClick={() => setViewingFilial({ filial: item.filial, companyName: item.companyName })}
-                              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Visualizar Filial"
                             >
-                              <Eye className="w-4 h-4 text-blue-600" />
+                              <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Visualizar
+                              </span>
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => setEditingFilial({ filial: item.filial, companyId: item.companyId })}
-                              className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Editar Filial"
                             >
-                              <Edit3 className="w-4 h-4 text-amber-600" />
+                              <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Editar
+                              </span>
                             </button>
+
                             <button
+                              type="button"
                               onClick={() => setFilialToDelete({ filial: item.filial, companyId: item.companyId })}
-                              className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                              className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Excluir Filial"
                             >
-                              <Trash2 className="w-4 h-4 text-rose-600" />
+                              <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Excluir
+                              </span>
                             </button>
                           </div>
                         </td>
@@ -1022,9 +1225,16 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                        <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{user.email}</span>
+                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{user.email}</span>
+                        </span>
+                        {user.cpf && (
+                          <span className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200 text-[10px]">
+                            CPF: {user.cpf}
+                          </span>
+                        )}
                         {userComp && (
                           <span className="hidden md:inline text-slate-400">· {userComp.nomeFantasia}</span>
                         )}
@@ -1046,37 +1256,49 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => setViewingUser(user)}
-                        className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                        className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                         title="Visualizar Usuário"
                       >
-                        <Eye className="w-4 h-4 text-blue-600" />
+                        <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                          Visualizar
+                        </span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setEditingUser(user)}
-                        className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                        className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                         title="Editar Usuário"
                       >
-                        <Edit3 className="w-4 h-4 text-amber-600" />
+                        <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                          Editar
+                        </span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleResetUserPassword(user)}
-                        className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                        className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                         title="Reenviar e-mail de redefinição de senha"
                       >
-                        <KeyRound className="w-4 h-4 text-emerald-600" />
+                        <KeyRound className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                          Senha
+                        </span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setUserToDelete(user)}
-                        className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                        className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                         title="Excluir Usuário"
                       >
-                        <Trash2 className="w-4 h-4 text-rose-600" />
+                        <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                          Excluir
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -1144,7 +1366,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     type="text"
                     placeholder="00.000.000/0002-00"
                     value={newFilialCnpj}
-                    onChange={e => setNewFilialCnpj(e.target.value)}
+                    onChange={e => setNewFilialCnpj(formatCNPJ(e.target.value))}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
                 </div>
@@ -1180,23 +1402,16 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">CNAE da Filial</label>
-                  <select
-                    value={newFilialCnae}
-                    onChange={e => {
-                      setNewFilialCnae(e.target.value);
-                      const sel = cnaesList.find(c => c.code === e.target.value);
-                      if (sel) setNewFilialGr(sel.grauDeRisco);
-                    }}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                  >
-                    {cnaesList.map(c => (
-                      <option key={c.code} value={c.code}>{c.code} - {c.description ? c.description.slice(0, 45) : ''} (GR {c.grauDeRisco})</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <CnaeSearchSelect
+                  value={newFilialCnae}
+                  onChange={(code, _desc, gr) => {
+                    setNewFilialCnae(code);
+                    setNewFilialGr(gr);
+                  }}
+                  cnaesList={cnaesList}
+                  label="CNAE da Filial"
+                />
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Grau de Risco (NR-4)</label>
@@ -1277,7 +1492,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     value={editingFilial.filial.cnpj || ''}
                     onChange={e => setEditingFilial({
                       ...editingFilial,
-                      filial: { ...editingFilial.filial, cnpj: e.target.value }
+                      filial: { ...editingFilial.filial, cnpj: formatCNPJ(e.target.value) }
                     })}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
@@ -1328,30 +1543,23 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">CNAE da Filial</label>
-                  <select
-                    value={editingFilial.filial.cnaeCode || cnaesList[0]?.code || '2511-0/00'}
-                    onChange={e => {
-                      const sel = cnaesList.find(c => c.code === e.target.value);
-                      setEditingFilial({
-                        ...editingFilial,
-                        filial: {
-                          ...editingFilial.filial,
-                          cnaeCode: e.target.value,
-                          cnaeDesc: sel?.description || editingFilial.filial.cnaeDesc,
-                          grauDeRisco: (sel ? sel.grauDeRisco : editingFilial.filial.grauDeRisco) as 1 | 2 | 3 | 4
-                        }
-                      });
-                    }}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                  >
-                    {cnaesList.map(c => (
-                      <option key={c.code} value={c.code}>{c.code} - {c.description ? c.description.slice(0, 45) : ''} (GR {c.grauDeRisco})</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <CnaeSearchSelect
+                  value={editingFilial.filial.cnaeCode || '2511-0/00'}
+                  onChange={(code, desc, gr) => {
+                    setEditingFilial({
+                      ...editingFilial,
+                      filial: {
+                        ...editingFilial.filial,
+                        cnaeCode: code,
+                        cnaeDesc: desc,
+                        grauDeRisco: gr
+                      }
+                    });
+                  }}
+                  cnaesList={cnaesList}
+                  label="CNAE da Filial"
+                />
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Grau de Risco (NR-4)</label>
@@ -1517,7 +1725,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     required
                     placeholder="00.000.000/0001-00"
                     value={newCnpj}
-                    onChange={e => setNewCnpj(e.target.value)}
+                    onChange={e => setNewCnpj(formatCNPJ(e.target.value))}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
                 </div>
@@ -1552,25 +1760,16 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  CNAE Principal <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  required
+                <CnaeSearchSelect
                   value={newSelectedCnae}
-                  onChange={e => {
-                    setNewSelectedCnae(e.target.value);
-                    const selected = cnaesList.find(c => c.code === e.target.value);
-                    if (selected) setNewCustomCnaeDesc(selected.description);
+                  onChange={(code, desc) => {
+                    setNewSelectedCnae(code);
+                    setNewCustomCnaeDesc(desc);
                   }}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                >
-                  {cnaesList.map(c => (
-                    <option key={c.code} value={c.code}>
-                      {c.code} - {c.description} (Grau de Risco {c.grauDeRisco})
-                    </option>
-                  ))}
-                </select>
+                  cnaesList={cnaesList}
+                  label="CNAE Principal"
+                  required
+                />
 
                 {/* Grau de Risco automático trazido da base legal do CNAE */}
                 <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
@@ -1813,7 +2012,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     type="text"
                     required
                     value={editingCompany.cnpj}
-                    onChange={e => setEditingCompany({ ...editingCompany, cnpj: e.target.value })}
+                    onChange={e => setEditingCompany({ ...editingCompany, cnpj: formatCNPJ(e.target.value) })}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
                 </div>
@@ -1843,28 +2042,19 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  CNAE Principal <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  required
-                  value={editingCompany.cnaeCode || cnaesList[0]?.code || '2511-0/00'}
-                  onChange={e => {
-                    const sel = cnaesList.find(c => c.code === e.target.value);
+                <CnaeSearchSelect
+                  value={editingCompany.cnaeCode || '2511-0/00'}
+                  onChange={(code, desc) => {
                     setEditingCompany({
                       ...editingCompany,
-                      cnaeCode: e.target.value,
-                      cnaeDesc: sel ? sel.description : editingCompany.cnaeDesc
+                      cnaeCode: code,
+                      cnaeDesc: desc
                     });
                   }}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                >
-                  {cnaesList.map(c => (
-                    <option key={c.code} value={c.code}>
-                      {c.code} - {c.description} (Grau de Risco {c.grauDeRisco})
-                    </option>
-                  ))}
-                </select>
+                  cnaesList={cnaesList}
+                  label="CNAE Principal"
+                  required
+                />
 
                 {/* Grau de Risco automático trazido da base legal do CNAE */}
                 <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
@@ -1949,6 +2139,12 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span className="truncate">{viewingUser.email}</span>
                   </div>
+                  {viewingUser.cpf && (
+                    <div className="flex items-center gap-1.5 text-slate-600 mt-0.5 font-mono text-[11px] font-bold">
+                      <span className="text-slate-400 font-sans font-normal">CPF:</span>
+                      <span>{viewingUser.cpf}</span>
+                    </div>
+                  )}
                   <span className="inline-block mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-900">
                     {viewingUser.roleLabel}
                   </span>
@@ -2111,6 +2307,17 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               </div>
 
               <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                <input
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={editingUser.cpf || ''}
+                  onChange={e => setEditingUser({ ...editingUser, cpf: formatCPF(e.target.value) })}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
                 <select
                   value={editingUser.companyId || companies[0]?.id}
@@ -2267,6 +2474,17 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   value={newUserEmail}
                   onChange={e => setNewUserEmail(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                <input
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={newUserCpf}
+                  onChange={e => setNewUserCpf(formatCPF(e.target.value))}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                 />
               </div>
 

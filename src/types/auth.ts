@@ -47,6 +47,7 @@ export interface AuthUser {
   roleDescription: string;
   companyId?: string;       // Presente se vinculado a uma empresa
   unitId?: string;          // Presente se vinculado a uma unidade específica
+  cpf?: string;             // CPF do usuário formatado 000.000.000-00
   avatarInitials: string;
   avatarUrl?: string;       // Foto de perfil do usuário
 }
