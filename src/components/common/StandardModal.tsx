@@ -9,7 +9,8 @@ import {
   Building2, 
   User, 
   ShieldCheck,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 
 export type StandardModalType = 'confirm_delete' | 'success' | 'info' | 'warning' | 'error';
@@ -83,7 +84,7 @@ export const StandardModal: React.FC<StandardModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
-        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
+        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
         role="dialog"
         aria-modal="true"
       >
@@ -109,10 +110,10 @@ export const StandardModal: React.FC<StandardModalProps> = ({
           </button>
         </div>
 
-        {/* Modal content body */}
-        <div className="p-6 flex flex-col items-center text-center">
+        {/* Modal content body (rolável se necessário) */}
+        <div className="p-6 flex flex-col items-center text-center overflow-y-auto flex-1 overscroll-contain">
           {/* Badge Icon */}
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-xs ${iconBg}`}>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-xs shrink-0 ${iconBg}`}>
             <IconComponent className="w-7 h-7" />
           </div>
 
@@ -129,16 +130,18 @@ export const StandardModal: React.FC<StandardModalProps> = ({
               {children}
             </div>
           )}
+        </div>
 
-          {/* Action Buttons */}
-          <div className="w-full grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-slate-100">
+        {/* Action Buttons (sempre fixos no rodapé) */}
+        <div className="w-full p-4 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50/80 shrink-0">
+          <div className="w-full grid grid-cols-2 gap-3">
             {type === 'confirm_delete' || type === 'warning' ? (
               <>
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={isConfirming}
-                  className="w-full py-2.5 px-4 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full py-2.5 px-4 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
                 >
                   {cancelLabel}
                 </button>
@@ -146,10 +149,13 @@ export const StandardModal: React.FC<StandardModalProps> = ({
                   type="button"
                   onClick={onConfirm}
                   disabled={isConfirming}
-                  className={`w-full py-2.5 px-4 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${confirmBtn}`}
+                  className={`w-full py-2.5 px-4 text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${confirmBtn}`}
                 >
                   {isConfirming ? (
-                    <span>Processando...</span>
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                      <span>Processando...</span>
+                    </>
                   ) : (
                     <>
                       {type === 'confirm_delete' && <Trash2 className="w-3.5 h-3.5" />}

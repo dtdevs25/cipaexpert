@@ -22,7 +22,8 @@ import {
   Layers,
   ArrowRight,
   KeyRound,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
 import { DEMO_USERS, INITIAL_COMPANIES } from '../../data/multiCompanyData';
@@ -196,7 +197,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const [companyViewMode, setCompanyViewMode] = useState<'cards' | 'lista'>('lista');
   const [filialViewMode, setFilialViewMode] = useState<'cards' | 'lista'>('lista');
   
-  // Registration Modals
+  // Registration Modals & Loading State
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNewCompanyModalOpen, setIsNewCompanyModalOpen] = useState(false);
   const [isNewFilialModalOpen, setIsNewFilialModalOpen] = useState(false);
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
@@ -317,190 +319,219 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   };
 
   // Create Company
-  const handleCreateCompany = (e: React.FormEvent) => {
+  const handleCreateCompany = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!newCnpj.trim() || !newFantasia.trim() || !newAdmin.trim() || !newEndereco.trim() || !newSelectedCnae) {
       showFeedback('Campos Obrigatórios', 'CNPJ, CNAE, Nome Fantasia, Responsável Administrador e Endereço Completo são obrigatórios.', 'warning');
       return;
     }
 
-    const cnaeObj = cnaesList.find(c => c.code === newSelectedCnae);
-    const finalCnaeDesc = newCustomCnaeDesc || cnaeObj?.description || 'Atividade empresarial industrial/comercial';
-    const finalGr = cnaeObj?.grauDeRisco || 3;
+    setIsSubmitting(true);
+    try {
+      const cnaeObj = cnaesList.find(c => c.code === newSelectedCnae);
+      const finalCnaeDesc = newCustomCnaeDesc || cnaeObj?.description || 'Atividade empresarial industrial/comercial';
+      const finalGr = cnaeObj?.grauDeRisco || 3;
 
-    const newCompany: Company = {
-      id: `emp-${Date.now()}`,
-      razaoSocial: newRazao.trim() || newFantasia.trim(),
-      nomeFantasia: newFantasia.trim(),
-      cnpj: newCnpj.trim(),
-      logoUrl: newLogoUrl.trim(),
-      cnaeCode: newSelectedCnae,
-      cnaeDesc: finalCnaeDesc,
-      enderecoCompleto: newEndereco.trim(),
-      responsavelAdmin: newAdmin.trim(),
-      modulosContratados: newModulos,
-      units: [
-        {
-          id: `unit-${Date.now()}-1`,
-          name: newUnitName.trim() || 'Matriz Corporativa',
-          city: newEndereco.split(',').length > 1 ? newEndereco.split(',')[newEndereco.split(',').length - 2]?.trim() || 'São Paulo' : 'São Paulo',
-          state: 'SP',
-          headcount: 0,
-          grauDeRisco: finalGr,
-          cnaeCode: newSelectedCnae,
-          cnaeDesc: finalCnaeDesc,
-          cipaAtiva: true,
-          gestorName: newAdmin.trim()
-        }
-      ]
-    };
+      const newCompany: Company = {
+        id: `emp-${Date.now()}`,
+        razaoSocial: newRazao.trim() || newFantasia.trim(),
+        nomeFantasia: newFantasia.trim(),
+        cnpj: newCnpj.trim(),
+        logoUrl: newLogoUrl.trim(),
+        cnaeCode: newSelectedCnae,
+        cnaeDesc: finalCnaeDesc,
+        enderecoCompleto: newEndereco.trim(),
+        responsavelAdmin: newAdmin.trim(),
+        modulosContratados: newModulos,
+        units: [
+          {
+            id: `unit-${Date.now()}-1`,
+            name: newUnitName.trim() || 'Matriz Corporativa',
+            city: newEndereco.split(',').length > 1 ? newEndereco.split(',')[newEndereco.split(',').length - 2]?.trim() || 'São Paulo' : 'São Paulo',
+            state: 'SP',
+            headcount: 0,
+            grauDeRisco: finalGr,
+            cnaeCode: newSelectedCnae,
+            cnaeDesc: finalCnaeDesc,
+            cipaAtiva: true,
+            gestorName: newAdmin.trim()
+          }
+        ]
+      };
 
-    onUpdateCompanies([...companies, newCompany]);
-    setIsNewCompanyModalOpen(false);
+      onUpdateCompanies([...companies, newCompany]);
+      setIsNewCompanyModalOpen(false);
 
-    // Persiste no PostgreSQL
-    ApiService.createCompany({
-      razaoSocial: newCompany.razaoSocial,
-      nomeFantasia: newCompany.nomeFantasia,
-      cnpj: newCompany.cnpj,
-      cnaePrincipalCode: newCompany.cnaeCode,
-      cnaePrincipalDesc: newCompany.cnaeDesc,
-      enderecoCompleto: newCompany.enderecoCompleto,
-      responsavelAdmin: newCompany.responsavelAdmin
-    }).catch(err => console.log('Aviso ao persistir empresa no backend:', err));
+      // Persiste no PostgreSQL
+      await ApiService.createCompany({
+        razaoSocial: newCompany.razaoSocial,
+        nomeFantasia: newCompany.nomeFantasia,
+        cnpj: newCompany.cnpj,
+        cnaePrincipalCode: newCompany.cnaeCode,
+        cnaePrincipalDesc: newCompany.cnaeDesc,
+        enderecoCompleto: newCompany.enderecoCompleto,
+        responsavelAdmin: newCompany.responsavelAdmin
+      }).catch(err => console.log('Aviso ao persistir empresa no backend:', err));
 
-    setNewCnpj('');
-    setNewFantasia('');
-    setNewRazao('');
-    setNewAdmin('');
-    setNewEndereco('');
-    setNewLogoUrl('');
+      setNewCnpj('');
+      setNewFantasia('');
+      setNewRazao('');
+      setNewAdmin('');
+      setNewEndereco('');
+      setNewLogoUrl('');
 
-    showFeedback(
-      'Empresa Cadastrada!',
-      `A organização "${newCompany.nomeFantasia}" foi registrada com sucesso.`
-    );
+      showFeedback(
+        'Empresa Cadastrada!',
+        `A organização "${newCompany.nomeFantasia}" foi registrada com sucesso.`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Create Filial / Unit
-  const handleCreateFilial = (e: React.FormEvent) => {
+  const handleCreateFilial = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     if (!targetCompanyIdForFilial || !newFilialName.trim() || !newFilialCity.trim() || !newFilialGestor.trim()) {
       showFeedback('Campos Obrigatórios', 'Selecione a empresa e informe o nome da filial, cidade e gestor local.', 'warning');
       return;
     }
 
-    const cnaeObj = cnaesList.find(c => c.code === newFilialCnae);
+    setIsSubmitting(true);
+    try {
+      const cnaeObj = cnaesList.find(c => c.code === newFilialCnae);
 
-    const newUnit: CompanyUnit = {
-      id: `unit-${Date.now()}`,
-      name: newFilialName.trim(),
-      cnpj: newFilialCnpj.trim() || undefined,
-      city: newFilialCity.trim(),
-      state: newFilialState.trim().toUpperCase(),
-      headcount: 0,
-      grauDeRisco: newFilialGr,
-      cnaeCode: newFilialCnae,
-      cnaeDesc: cnaeObj?.description || 'Atividade Operacional da Filial',
-      cipaAtiva: true,
-      gestorName: newFilialGestor.trim()
-    };
+      const newUnit: CompanyUnit = {
+        id: `unit-${Date.now()}`,
+        name: newFilialName.trim(),
+        cnpj: newFilialCnpj.trim() || undefined,
+        city: newFilialCity.trim(),
+        state: newFilialState.trim().toUpperCase(),
+        headcount: 0,
+        grauDeRisco: newFilialGr,
+        cnaeCode: newFilialCnae,
+        cnaeDesc: cnaeObj?.description || 'Atividade Operacional da Filial',
+        cipaAtiva: true,
+        gestorName: newFilialGestor.trim()
+      };
 
-    const updatedCompanies = companies.map(c => {
-      if (c.id === targetCompanyIdForFilial) {
-        return {
-          ...c,
-          units: [...c.units, newUnit]
-        };
-      }
-      return c;
-    });
+      const updatedCompanies = companies.map(c => {
+        if (c.id === targetCompanyIdForFilial) {
+          return {
+            ...c,
+            units: [...c.units, newUnit]
+          };
+        }
+        return c;
+      });
 
-    onUpdateCompanies(updatedCompanies);
-    setIsNewFilialModalOpen(false);
+      onUpdateCompanies(updatedCompanies);
+      setIsNewFilialModalOpen(false);
 
-    // Persiste no PostgreSQL
-    ApiService.createUnit(targetCompanyIdForFilial, {
-      name: newUnit.name,
-      cnpj: newUnit.cnpj,
-      city: newUnit.city,
-      state: newUnit.state,
-      headcount: newUnit.headcount,
-      grauDeRisco: newUnit.grauDeRisco,
-      cnaeCode: newUnit.cnaeCode,
-      cnaeDesc: newUnit.cnaeDesc,
-      gestorName: newUnit.gestorName
-    } as any).catch(err => console.log('Aviso ao persistir filial no backend:', err));
+      // Persiste no PostgreSQL
+      await ApiService.createUnit(targetCompanyIdForFilial, {
+        name: newUnit.name,
+        cnpj: newUnit.cnpj,
+        city: newUnit.city,
+        state: newUnit.state,
+        headcount: newUnit.headcount,
+        grauDeRisco: newUnit.grauDeRisco,
+        cnaeCode: newUnit.cnaeCode,
+        cnaeDesc: newUnit.cnaeDesc,
+        gestorName: newUnit.gestorName
+      } as any).catch(err => console.log('Aviso ao persistir filial no backend:', err));
 
-    const targetCompName = companies.find(c => c.id === targetCompanyIdForFilial)?.nomeFantasia || 'Empresa';
-    setNewFilialName('');
-    setNewFilialCnpj('');
-    setNewFilialCity('');
-    setNewFilialGestor('');
+      const targetCompName = companies.find(c => c.id === targetCompanyIdForFilial)?.nomeFantasia || 'Empresa';
+      setNewFilialName('');
+      setNewFilialCnpj('');
+      setNewFilialCity('');
+      setNewFilialGestor('');
 
-    showFeedback(
-      'Filial Cadastrada com Sucesso!',
-      `O estabelecimento "${newUnit.name}" foi vinculado à organização "${targetCompName}".`
-    );
+      showFeedback(
+        'Filial Cadastrada com Sucesso!',
+        `O estabelecimento "${newUnit.name}" foi vinculado à organização "${targetCompName}".`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Save Edit Filial
-  const handleSaveEditFilial = (e: React.FormEvent) => {
+  const handleSaveEditFilial = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingFilial) return;
+    if (!editingFilial || isSubmitting) return;
 
-    const updatedCompanies = companies.map(c => {
-      if (c.id === editingFilial.companyId) {
-        return {
-          ...c,
-          units: c.units.map(u => u.id === editingFilial.filial.id ? editingFilial.filial : u)
-        };
-      }
-      return c;
-    });
+    setIsSubmitting(true);
+    try {
+      const updatedCompanies = companies.map(c => {
+        if (c.id === editingFilial.companyId) {
+          return {
+            ...c,
+            units: c.units.map(u => u.id === editingFilial.filial.id ? editingFilial.filial : u)
+          };
+        }
+        return c;
+      });
 
-    onUpdateCompanies(updatedCompanies);
-    const unitName = editingFilial.filial.name;
-    setEditingFilial(null);
-    showFeedback('Filial Atualizada!', `Os dados da filial "${unitName}" foram salvos com sucesso.`);
+      onUpdateCompanies(updatedCompanies);
+      const unitName = editingFilial.filial.name;
+      setEditingFilial(null);
+      showFeedback('Filial Atualizada!', `Os dados da filial "${unitName}" foram salvos com sucesso.`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Save Edit Company (Funcional)
-  const handleSaveEditCompany = (e: React.FormEvent) => {
+  const handleSaveEditCompany = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingCompany) return;
+    if (!editingCompany || isSubmitting) return;
 
-    const updated = companies.map(c => c.id === editingCompany.id ? editingCompany : c);
-    onUpdateCompanies(updated);
-    const name = editingCompany.nomeFantasia;
-    setEditingCompany(null);
-    showFeedback('Empresa Atualizada!', `Os dados cadastrais de "${name}" foram atualizados com sucesso.`);
+    setIsSubmitting(true);
+    try {
+      const updated = companies.map(c => c.id === editingCompany.id ? editingCompany : c);
+      onUpdateCompanies(updated);
+      const name = editingCompany.nomeFantasia;
+      setEditingCompany(null);
+      showFeedback('Empresa Atualizada!', `Os dados cadastrais de "${name}" foram atualizados com sucesso.`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Save Edit User (Funcional)
-  const handleSaveEditUser = (e: React.FormEvent) => {
+  const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingUser) return;
+    if (!editingUser || isSubmitting) return;
 
-    const roleLabels: Record<UserRole, string> = {
-      master: 'Usuário Master (Super Admin)',
-      admin_empresa: 'Administrador da Empresa',
-      gestor_unidade: 'Gestor de Unidade',
-      tecnico_sst: 'Técnico de Segurança do Trabalho',
-      cipeiro: 'Cipeiro (Eleito)',
-      eleitor: 'Eleitor (Colaborador CLT)'
-    };
+    setIsSubmitting(true);
+    try {
+      const roleLabels: Record<UserRole, string> = {
+        master: 'Usuário Master (Super Admin)',
+        admin_empresa: 'Administrador da Empresa',
+        gestor_unidade: 'Gestor de Unidade',
+        tecnico_sst: 'Técnico de Segurança do Trabalho',
+        cipeiro: 'Cipeiro (Eleito)',
+        eleitor: 'Eleitor (Colaborador CLT)'
+      };
 
-    const updated = usersList.map(u => u.id === editingUser.id ? {
-      ...editingUser,
-      roleLabel: roleLabels[editingUser.role] || editingUser.roleLabel,
-      roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[editingUser.role] || editingUser.roleLabel}.`,
-      avatarInitials: editingUser.name.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-    } : u);
-    setUsersList(updated);
-    const name = editingUser.name;
-    setEditingUser(null);
-    showFeedback('Usuário Atualizado!', `As alterações cadastrais do usuário "${name}" foram salvas.`);
+      const updated = usersList.map(u => u.id === editingUser.id ? {
+        ...editingUser,
+        roleLabel: roleLabels[editingUser.role] || editingUser.roleLabel,
+        roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[editingUser.role] || editingUser.roleLabel}.`,
+        avatarInitials: editingUser.name.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+      } : u);
+      setUsersList(updated);
+      const name = editingUser.name;
+      setEditingUser(null);
+      showFeedback('Usuário Atualizado!', `As alterações cadastrais do usuário "${name}" foram salvas.`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Confirm Delete Filial
@@ -530,49 +561,54 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   };
 
   // Create User
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserName.trim() || !newUserEmail.trim()) return;
+    if (!newUserName.trim() || !newUserEmail.trim() || isSubmitting) return;
 
-    const roleLabels: Record<UserRole, string> = {
-      master: 'Usuário Master (Super Admin)',
-      admin_empresa: 'Administrador da Empresa',
-      gestor_unidade: 'Gestor de Unidade',
-      tecnico_sst: 'Técnico de Segurança do Trabalho',
-      cipeiro: 'Cipeiro (Eleito)',
-      eleitor: 'Eleitor (Colaborador CLT)'
-    };
+    setIsSubmitting(true);
+    try {
+      const roleLabels: Record<UserRole, string> = {
+        master: 'Usuário Master (Super Admin)',
+        admin_empresa: 'Administrador da Empresa',
+        gestor_unidade: 'Gestor de Unidade',
+        tecnico_sst: 'Técnico de Segurança do Trabalho',
+        cipeiro: 'Cipeiro (Eleito)',
+        eleitor: 'Eleitor (Colaborador CLT)'
+      };
 
-    const newUser: AuthUser = {
-      id: `usr-${Date.now()}`,
-      name: newUserName.trim(),
-      email: newUserEmail.trim(),
-      cpf: newUserCpf.trim() ? formatCPF(newUserCpf) : undefined,
-      role: newUserRole,
-      roleLabel: roleLabels[newUserRole],
-      roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[newUserRole]}.`,
-      companyId: newUserCompanyId,
-      avatarInitials: newUserName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
-      avatarUrl: newUserAvatarUrl.trim() || undefined
-    };
+      const newUser: AuthUser = {
+        id: `usr-${Date.now()}`,
+        name: newUserName.trim(),
+        email: newUserEmail.trim(),
+        cpf: newUserCpf.trim() ? formatCPF(newUserCpf) : undefined,
+        role: newUserRole,
+        roleLabel: roleLabels[newUserRole],
+        roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[newUserRole]}.`,
+        companyId: newUserCompanyId,
+        avatarInitials: newUserName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+        avatarUrl: newUserAvatarUrl.trim() || undefined
+      };
 
-    setUsersList([...usersList, newUser]);
-    setIsNewUserModalOpen(false);
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserCpf('');
-    setNewUserAvatarUrl('');
+      setUsersList([...usersList, newUser]);
+      setIsNewUserModalOpen(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserCpf('');
+      setNewUserAvatarUrl('');
 
-    // Persiste no PostgreSQL
-    ApiService.createUser({
-      name: newUser.name,
-      email: newUser.email,
-      cpf: newUser.cpf,
-      role: newUser.role,
-      companyId: newUser.companyId
-    }).catch(err => console.log('Aviso ao persistir usuário no backend:', err));
+      // Persiste no PostgreSQL
+      await ApiService.createUser({
+        name: newUser.name,
+        email: newUser.email,
+        cpf: newUser.cpf,
+        role: newUser.role,
+        companyId: newUser.companyId
+      }).catch(err => console.log('Aviso ao persistir usuário no backend:', err));
 
-    showFeedback('Usuário Cadastrado!', `O usuário "${newUser.name}" foi habilitado com sucesso.`);
+      showFeedback('Usuário Cadastrado!', `O usuário "${newUser.name}" foi habilitado com sucesso.`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Reenviar email de redefinição de senha
@@ -1314,136 +1350,154 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {isNewFilialModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-emerald-700" />
                 Cadastrar Nova Filial / Estabelecimento
               </h3>
-              <button onClick={() => setIsNewFilialModalOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setIsNewFilialModalOpen(false)} 
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer disabled:opacity-40"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateFilial} className="p-6 space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Empresa Vinculada <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  required
-                  value={targetCompanyIdForFilial}
-                  onChange={e => setTargetCompanyIdForFilial(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                >
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.nomeFantasia} (CNPJ: {c.cnpj})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleCreateFilial} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">
-                    Nome da Filial / Identificação <span className="text-rose-500">*</span>
+                    Empresa Vinculada <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="Ex: Planta de Fundição Betim ou CD Cajamar"
-                    value={newFilialName}
-                    onChange={e => setNewFilialName(e.target.value)}
+                    value={targetCompanyIdForFilial}
+                    onChange={e => setTargetCompanyIdForFilial(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  />
+                  >
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.nomeFantasia} (CNPJ: {c.cnpj})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    CNPJ da Filial <span className="text-slate-400 font-normal">(caso possua CNPJ próprio)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="00.000.000/0002-00"
-                    value={newFilialCnpj}
-                    onChange={e => setNewFilialCnpj(formatCNPJ(e.target.value))}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    Cidade <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Betim"
-                    value={newFilialCity}
-                    onChange={e => setNewFilialCity(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    Estado (UF) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={2}
-                    placeholder="MG"
-                    value={newFilialState}
-                    onChange={e => setNewFilialState(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <CnaeSearchSelect
-                  value={newFilialCnae}
-                  onChange={(code, _desc, gr) => {
-                    setNewFilialCnae(code);
-                    setNewFilialGr(gr);
-                  }}
-                  cnaesList={cnaesList}
-                  label="CNAE da Filial"
-                />
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Grau de Risco (NR-4)</label>
-                  <div className="w-full px-3 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl font-mono text-slate-800 font-bold flex items-center justify-between">
-                    <span>Grau {newFilialGr}</span>
-                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      Automático Legal
-                    </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Nome da Filial / Identificação <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Planta de Fundição Betim ou CD Cajamar"
+                      value={newFilialName}
+                      onChange={e => setNewFilialName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      CNPJ da Filial <span className="text-slate-400 font-normal">(caso possua CNPJ próprio)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="00.000.000/0002-00"
+                      value={newFilialCnpj}
+                      onChange={e => setNewFilialCnpj(formatCNPJ(e.target.value))}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Cidade <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Betim"
+                      value={newFilialCity}
+                      onChange={e => setNewFilialCity(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Estado (UF) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={2}
+                      placeholder="MG"
+                      value={newFilialState}
+                      onChange={e => setNewFilialState(e.target.value.toUpperCase())}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <CnaeSearchSelect
+                    value={newFilialCnae}
+                    onChange={(code, _desc, gr) => {
+                      setNewFilialCnae(code);
+                      setNewFilialGr(gr);
+                    }}
+                    cnaesList={cnaesList}
+                    label="CNAE da Filial"
+                  />
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Grau de Risco (NR-4)</label>
+                    <div className="w-full px-3 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl font-mono text-slate-800 font-bold flex items-center justify-between">
+                      <span>Grau {newFilialGr}</span>
+                      <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        Automático Legal
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Gestor Responsável Local <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nome do Gerente de Unidade / Supervisor SST"
+                    value={newFilialGestor}
+                    onChange={e => setNewFilialGestor(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Gestor Responsável Local <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Nome do Gerente de Unidade / Supervisor SST"
-                  value={newFilialGestor}
-                  onChange={e => setNewFilialGestor(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+              {/* Rodapé Fixo com Botão de Ação */}
+              <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsNewFilialModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-2"
                 >
-                  Cadastrar Filial
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                  <span>{isSubmitting ? 'Cadastrando...' : 'Cadastrar Filial'}</span>
                 </button>
               </div>
             </form>
@@ -1456,128 +1510,146 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {editingFilial && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-600" />
                 Editar Dados da Filial
               </h3>
-              <button onClick={() => setEditingFilial(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setEditingFilial(null)} 
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer disabled:opacity-40"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditFilial} className="p-6 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleSaveEditFilial} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Nome da Filial</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingFilial.filial.name}
+                      onChange={e => setEditingFilial({
+                        ...editingFilial,
+                        filial: { ...editingFilial.filial, name: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      CNPJ da Filial <span className="text-slate-400 font-normal">(específico da unidade)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="00.000.000/0002-00"
+                      value={editingFilial.filial.cnpj || ''}
+                      onChange={e => setEditingFilial({
+                        ...editingFilial,
+                        filial: { ...editingFilial.filial, cnpj: formatCNPJ(e.target.value) }
+                      })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Cidade</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingFilial.filial.city}
+                      onChange={e => setEditingFilial({
+                        ...editingFilial,
+                        filial: { ...editingFilial.filial, city: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Estado (UF)</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={2}
+                      value={editingFilial.filial.state}
+                      onChange={e => setEditingFilial({
+                        ...editingFilial,
+                        filial: { ...editingFilial.filial, state: e.target.value.toUpperCase() }
+                      })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Nome da Filial</label>
+                  <label className="text-xs font-bold text-slate-700">Gestor Local</label>
                   <input
                     type="text"
                     required
-                    value={editingFilial.filial.name}
+                    value={editingFilial.filial.gestorName}
                     onChange={e => setEditingFilial({
                       ...editingFilial,
-                      filial: { ...editingFilial.filial, name: e.target.value }
+                      filial: { ...editingFilial.filial, gestorName: e.target.value }
                     })}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
-                    CNPJ da Filial <span className="text-slate-400 font-normal">(específico da unidade)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="00.000.000/0002-00"
-                    value={editingFilial.filial.cnpj || ''}
-                    onChange={e => setEditingFilial({
-                      ...editingFilial,
-                      filial: { ...editingFilial.filial, cnpj: formatCNPJ(e.target.value) }
-                    })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <CnaeSearchSelect
+                    value={editingFilial.filial.cnaeCode || '2511-0/00'}
+                    onChange={(code, desc, gr) => {
+                      setEditingFilial({
+                        ...editingFilial,
+                        filial: {
+                          ...editingFilial.filial,
+                          cnaeCode: code,
+                          cnaeDesc: desc,
+                          grauDeRisco: gr
+                        }
+                      });
+                    }}
+                    cnaesList={cnaesList}
+                    label="CNAE da Filial"
                   />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Cidade</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingFilial.filial.city}
-                    onChange={e => setEditingFilial({
-                      ...editingFilial,
-                      filial: { ...editingFilial.filial, city: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Estado (UF)</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={2}
-                    value={editingFilial.filial.state}
-                    onChange={e => setEditingFilial({
-                      ...editingFilial,
-                      filial: { ...editingFilial.filial, state: e.target.value.toUpperCase() }
-                    })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Gestor Local</label>
-                <input
-                  type="text"
-                  required
-                  value={editingFilial.filial.gestorName}
-                  onChange={e => setEditingFilial({
-                    ...editingFilial,
-                    filial: { ...editingFilial.filial, gestorName: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <CnaeSearchSelect
-                  value={editingFilial.filial.cnaeCode || '2511-0/00'}
-                  onChange={(code, desc, gr) => {
-                    setEditingFilial({
-                      ...editingFilial,
-                      filial: {
-                        ...editingFilial.filial,
-                        cnaeCode: code,
-                        cnaeDesc: desc,
-                        grauDeRisco: gr
-                      }
-                    });
-                  }}
-                  cnaesList={cnaesList}
-                  label="CNAE da Filial"
-                />
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Grau de Risco (NR-4)</label>
-                  <div className="w-full px-3 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl font-mono text-slate-800 font-bold flex items-center justify-between">
-                    <span>Grau {editingFilial.filial.grauDeRisco}</span>
-                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      Automático Legal
-                    </span>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">Grau de Risco (NR-4)</label>
+                    <div className="w-full px-3 py-2 text-xs bg-slate-100 border border-slate-200 rounded-xl font-mono text-slate-800 font-bold flex items-center justify-between">
+                      <span>Grau {editingFilial.filial.grauDeRisco}</span>
+                      <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        Automático Legal
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+              {/* Rodapé Fixo com Botão de Ação */}
+              <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditingFilial(null)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-2"
                 >
-                  Salvar Alterações
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                  <span>{isSubmitting ? 'Salvando...' : 'Salvar Alterações'}</span>
                 </button>
               </div>
             </form>
@@ -1630,6 +1702,30 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 <strong className="text-slate-800 text-xs block">{viewingFilial.filial.gestorName}</strong>
               </div>
             </div>
+
+            {/* Rodapé Fixo */}
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewingFilial(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const f = viewingFilial;
+                  const comp = companies.find(c => c.nomeFantasia === f.companyName) || companies[0];
+                  setViewingFilial(null);
+                  setEditingFilial({ filial: f.filial, companyId: comp.id });
+                }}
+                className="px-4 py-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Editar Filial</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1639,181 +1735,199 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {isNewCompanyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-emerald-700" />
                 Cadastrar Empresa Cliente
               </h3>
-              <button onClick={() => setIsNewCompanyModalOpen(false)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setIsNewCompanyModalOpen(false)} 
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer disabled:opacity-40"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCompany} className="p-6 space-y-4 overflow-y-auto text-xs">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
-                  Logo da Empresa (Redondo)
-                </label>
-                
-                <div className="flex items-center gap-4">
-                  {newLogoUrl ? (
-                    <img
-                      src={newLogoUrl}
-                      alt="Logo preview"
-                      className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-slate-200 border border-slate-300 flex flex-col items-center justify-center text-slate-400">
-                      <Building2 className="w-6 h-6" />
-                      <span className="text-[9px] mt-0.5">Sem logo</span>
-                    </div>
-                  )}
+            <form onSubmit={handleCreateCompany} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    Logo da Empresa (Redondo)
+                  </label>
+                  
+                  <div className="flex items-center gap-4">
+                    {newLogoUrl ? (
+                      <img
+                        src={newLogoUrl}
+                        alt="Logo preview"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-slate-200 border border-slate-300 flex flex-col items-center justify-center text-slate-400">
+                        <Building2 className="w-6 h-6" />
+                        <span className="text-[9px] mt-0.5">Sem logo</span>
+                      </div>
+                    )}
 
-                  <div className="space-y-1.5 flex-1">
-                    <input
-                      type="file"
-                      ref={companyLogoInputRef}
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileToDataUrl(file, async (url) => {
-                            setNewLogoUrl(url);
-                            try {
-                              const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'empresas');
-                              if (res?.url) setNewLogoUrl(res.url);
-                            } catch (err) {
-                              console.warn('Erro ao enviar logo para MinIO:', err);
-                            }
-                          });
-                        }
-                      }}
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => companyLogoInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Carregar do Computador</span>
-                      </button>
-                      {newLogoUrl && (
+                    <div className="space-y-1.5 flex-1">
+                      <input
+                        type="file"
+                        ref={companyLogoInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileToDataUrl(file, async (url) => {
+                              setNewLogoUrl(url);
+                              try {
+                                const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'empresas');
+                                if (res?.url) setNewLogoUrl(res.url);
+                              } catch (err) {
+                                console.warn('Erro ao enviar logo para MinIO:', err);
+                              }
+                            });
+                          }
+                        }}
+                      />
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => setNewLogoUrl('')}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold cursor-pointer"
+                          onClick={() => companyLogoInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
                         >
-                          Remover
+                          <Upload className="w-3 h-3" />
+                          <span>Carregar do Computador</span>
                         </button>
-                      )}
+                        {newLogoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setNewLogoUrl('')}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold cursor-pointer"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      CNPJ <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="00.000.000/0001-00"
+                      value={newCnpj}
+                      onChange={e => setNewCnpj(formatCNPJ(e.target.value))}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Nome Fantasia <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: Alfa Brasil Industrial"
+                      value={newFantasia}
+                      onChange={e => {
+                        setNewFantasia(e.target.value);
+                        if (!newRazao) setNewRazao(e.target.value);
+                      }}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Razão Social</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Indústrias Metalmecânicas Alfa Brasil S.A."
+                    value={newRazao}
+                    onChange={e => setNewRazao(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <CnaeSearchSelect
+                    value={newSelectedCnae}
+                    onChange={(code, desc) => {
+                      setNewSelectedCnae(code);
+                      setNewCustomCnaeDesc(desc);
+                    }}
+                    cnaesList={cnaesList}
+                    label="CNAE Principal"
+                    required
+                  />
+
+                  {/* Grau de Risco automático trazido da base legal do CNAE */}
+                  <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Grau de Risco Legal (NR-4):</span>
+                    <span className="font-mono font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                      Grau {cnaesList.find(c => c.code === newSelectedCnae)?.grauDeRisco || 3} (Automático)
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">
-                    CNPJ <span className="text-rose-500">*</span>
+                    Responsável Administrador <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="00.000.000/0001-00"
-                    value={newCnpj}
-                    onChange={e => setNewCnpj(formatCNPJ(e.target.value))}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    placeholder="Nome do Diretor / Gestor Geral / RH"
+                    value={newAdmin}
+                    onChange={e => setNewAdmin(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">
-                    Nome Fantasia <span className="text-rose-500">*</span>
+                    Endereço Completo da Empresa <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Ex: Alfa Brasil Industrial"
-                    value={newFantasia}
-                    onChange={e => {
-                      setNewFantasia(e.target.value);
-                      if (!newRazao) setNewRazao(e.target.value);
-                    }}
+                    placeholder="Ex: Av. das Indústrias, 1500, Distrito Industrial, São Paulo - SP, CEP 04795-100"
+                    value={newEndereco}
+                    onChange={e => setNewEndereco(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Razão Social</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Indústrias Metalmecânicas Alfa Brasil S.A."
-                  value={newRazao}
-                  onChange={e => setNewRazao(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <CnaeSearchSelect
-                  value={newSelectedCnae}
-                  onChange={(code, desc) => {
-                    setNewSelectedCnae(code);
-                    setNewCustomCnaeDesc(desc);
-                  }}
-                  cnaesList={cnaesList}
-                  label="CNAE Principal"
-                  required
-                />
-
-                {/* Grau de Risco automático trazido da base legal do CNAE */}
-                <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
-                  <span className="text-slate-600 font-medium">Grau de Risco Legal (NR-4):</span>
-                  <span className="font-mono font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                    Grau {cnaesList.find(c => c.code === newSelectedCnae)?.grauDeRisco || 3} (Automático)
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Responsável Administrador <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Nome do Diretor / Gestor Geral / RH"
-                  value={newAdmin}
-                  onChange={e => setNewAdmin(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Endereço Completo da Empresa <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Av. das Indústrias, 1500, Distrito Industrial, São Paulo - SP, CEP 04795-100"
-                  value={newEndereco}
-                  onChange={e => setNewEndereco(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+              {/* Rodapé Fixo com Botão de Ação */}
+              <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsNewCompanyModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-2"
                 >
-                  Salvar Empresa
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                  <span>{isSubmitting ? 'Cadastrando...' : 'Cadastrar Empresa'}</span>
                 </button>
               </div>
             </form>
@@ -1925,178 +2039,196 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {editingCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-600" />
                 Editar Dados da Empresa
               </h3>
-              <button onClick={() => setEditingCompany(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setEditingCompany(null)} 
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer disabled:opacity-40"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditCompany} className="p-6 space-y-4 overflow-y-auto text-xs">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
-                  Logo da Empresa (Redondo)
-                </label>
-                
-                <div className="flex items-center gap-4">
-                  {editingCompany.logoUrl ? (
-                    <img
-                      src={editingCompany.logoUrl}
-                      alt="Logo preview"
-                      className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-slate-200 border border-slate-300 flex flex-col items-center justify-center text-slate-400">
-                      <Building2 className="w-6 h-6" />
-                      <span className="text-[9px] mt-0.5">Sem logo</span>
-                    </div>
-                  )}
+            <form onSubmit={handleSaveEditCompany} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    Logo da Empresa (Redondo)
+                  </label>
+                  
+                  <div className="flex items-center gap-4">
+                    {editingCompany.logoUrl ? (
+                      <img
+                        src={editingCompany.logoUrl}
+                        alt="Logo preview"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full bg-slate-200 border border-slate-300 flex flex-col items-center justify-center text-slate-400">
+                        <Building2 className="w-6 h-6" />
+                        <span className="text-[9px] mt-0.5">Sem logo</span>
+                      </div>
+                    )}
 
-                  <div className="space-y-1.5 flex-1">
-                    <input
-                      type="file"
-                      ref={editCompanyLogoInputRef}
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileToDataUrl(file, async (url) => {
-                            setEditingCompany({ ...editingCompany, logoUrl: url });
-                            try {
-                              const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'empresas', editingCompany.id);
-                              if (res?.url) {
-                                setEditingCompany(prev => prev ? ({ ...prev, logoUrl: res.url }) : null);
+                    <div className="space-y-1.5 flex-1">
+                      <input
+                        type="file"
+                        ref={editCompanyLogoInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileToDataUrl(file, async (url) => {
+                              setEditingCompany({ ...editingCompany, logoUrl: url });
+                              try {
+                                const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'empresas', editingCompany.id);
+                                if (res?.url) {
+                                  setEditingCompany(prev => prev ? ({ ...prev, logoUrl: res.url }) : null);
+                                }
+                              } catch (err) {
+                                console.warn('Erro ao enviar logo para MinIO:', err);
                               }
-                            } catch (err) {
-                              console.warn('Erro ao enviar logo para MinIO:', err);
-                            }
-                          });
-                        }
-                      }}
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => editCompanyLogoInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Carregar do Computador</span>
-                      </button>
-                      {editingCompany.logoUrl && (
+                            });
+                          }
+                        }}
+                      />
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => setEditingCompany({ ...editingCompany, logoUrl: '' })}
-                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold cursor-pointer"
+                          onClick={() => editCompanyLogoInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
                         >
-                          Remover
+                          <Upload className="w-3 h-3" />
+                          <span>Carregar do Computador</span>
                         </button>
-                      )}
+                        {editingCompany.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingCompany({ ...editingCompany, logoUrl: '' })}
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold cursor-pointer"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      CNPJ <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingCompany.cnpj}
+                      onChange={e => setEditingCompany({ ...editingCompany, cnpj: formatCNPJ(e.target.value) })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Nome Fantasia <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingCompany.nomeFantasia}
+                      onChange={e => setEditingCompany({ ...editingCompany, nomeFantasia: e.target.value })}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Razão Social</label>
+                  <input
+                    type="text"
+                    value={editingCompany.razaoSocial}
+                    onChange={e => setEditingCompany({ ...editingCompany, razaoSocial: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <CnaeSearchSelect
+                    value={editingCompany.cnaeCode || '2511-0/00'}
+                    onChange={(code, desc) => {
+                      setEditingCompany({
+                        ...editingCompany,
+                        cnaeCode: code,
+                        cnaeDesc: desc
+                      });
+                    }}
+                    cnaesList={cnaesList}
+                    label="CNAE Principal"
+                    required
+                  />
+
+                  {/* Grau de Risco automático trazido da base legal do CNAE */}
+                  <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Grau de Risco Legal (NR-4):</span>
+                    <span className="font-mono font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                      Grau {cnaesList.find(c => c.code === editingCompany.cnaeCode)?.grauDeRisco || 3} (Automático)
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">
-                    CNPJ <span className="text-rose-500">*</span>
+                    Responsável Administrador <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    value={editingCompany.cnpj}
-                    onChange={e => setEditingCompany({ ...editingCompany, cnpj: formatCNPJ(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    value={editingCompany.responsavelAdmin}
+                    onChange={e => setEditingCompany({ ...editingCompany, responsavelAdmin: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">
-                    Nome Fantasia <span className="text-rose-500">*</span>
+                    Endereço Completo <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    value={editingCompany.nomeFantasia}
-                    onChange={e => setEditingCompany({ ...editingCompany, nomeFantasia: e.target.value })}
+                    value={editingCompany.enderecoCompleto || ''}
+                    onChange={e => setEditingCompany({ ...editingCompany, enderecoCompleto: e.target.value })}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Razão Social</label>
-                <input
-                  type="text"
-                  value={editingCompany.razaoSocial}
-                  onChange={e => setEditingCompany({ ...editingCompany, razaoSocial: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <CnaeSearchSelect
-                  value={editingCompany.cnaeCode || '2511-0/00'}
-                  onChange={(code, desc) => {
-                    setEditingCompany({
-                      ...editingCompany,
-                      cnaeCode: code,
-                      cnaeDesc: desc
-                    });
-                  }}
-                  cnaesList={cnaesList}
-                  label="CNAE Principal"
-                  required
-                />
-
-                {/* Grau de Risco automático trazido da base legal do CNAE */}
-                <div className="mt-1.5 p-2 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs">
-                  <span className="text-slate-600 font-medium">Grau de Risco Legal (NR-4):</span>
-                  <span className="font-mono font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                    Grau {cnaesList.find(c => c.code === editingCompany.cnaeCode)?.grauDeRisco || 3} (Automático)
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Responsável Administrador <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingCompany.responsavelAdmin}
-                  onChange={e => setEditingCompany({ ...editingCompany, responsavelAdmin: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Endereço Completo <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editingCompany.enderecoCompleto || ''}
-                  onChange={e => setEditingCompany({ ...editingCompany, enderecoCompleto: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
+              {/* Rodapé Fixo com Botão de Ação */}
+              <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setEditingCompany(null)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-2"
                 >
-                  Salvar Alterações
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                  <span>{isSubmitting ? 'Salvando...' : 'Salvar Alterações'}</span>
                 </button>
               </div>
             </form>
@@ -2201,167 +2333,188 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* MODAL EDITAR USUÁRIO                                                      */}
       {/* ========================================================================= */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[85vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-3 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
+            <div className="px-5 py-3.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-600" />
                 Editar Usuário
               </h3>
-              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+              <button 
+                type="button"
+                onClick={() => setEditingUser(null)} 
+                disabled={isSubmitting}
+                className="text-slate-400 hover:text-slate-700 cursor-pointer disabled:opacity-40"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditUser} className="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 overscroll-contain">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="relative shrink-0">
-                  {editingUser.avatarUrl ? (
-                    <img
-                      src={editingUser.avatarUrl}
-                      alt="Avatar"
-                      className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-300">
-                      {editingUser.avatarInitials}
-                    </div>
-                  )}
+            <form onSubmit={handleSaveEditUser} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto flex-1 overscroll-contain">
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="relative shrink-0">
+                    {editingUser.avatarUrl ? (
+                      <img
+                        src={editingUser.avatarUrl}
+                        alt="Avatar"
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-300">
+                        {editingUser.avatarInitials}
+                      </div>
+                    )}
 
-                  <button
-                    type="button"
-                    onClick={() => editUserPhotoInputRef.current?.click()}
-                    className="w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center absolute -bottom-0.5 -right-0.5 shadow-md cursor-pointer"
-                    title="Trocar Foto"
-                  >
-                    <Camera className="w-3 h-3" />
-                  </button>
-                </div>
-
-                <input
-                  type="file"
-                  ref={editUserPhotoInputRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileToDataUrl(file, async (url) => {
-                        setEditingUser({ ...editingUser, avatarUrl: url });
-                        try {
-                          const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'usuarios', editingUser.id);
-                          if (res?.url) {
-                            setEditingUser(prev => prev ? ({ ...prev, avatarUrl: res.url }) : null);
-                          }
-                        } catch (err) {
-                          console.warn('Erro ao enviar avatar para MinIO:', err);
-                        }
-                      });
-                    }
-                  }}
-                />
-
-                <div className="min-w-0 flex-1 space-y-1">
-                  <span className="text-[11px] font-bold text-slate-700 block">Foto de Perfil</span>
-                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => editUserPhotoInputRef.current?.click()}
-                      className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                      className="w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center absolute -bottom-0.5 -right-0.5 shadow-md cursor-pointer"
+                      title="Trocar Foto"
                     >
-                      Selecionar foto do computador
+                      <Camera className="w-3 h-3" />
                     </button>
-                    {editingUser.avatarUrl && (
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={editUserPhotoInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileToDataUrl(file, async (url) => {
+                          setEditingUser({ ...editingUser, avatarUrl: url });
+                          try {
+                            const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'usuarios', editingUser.id);
+                            if (res?.url) {
+                              setEditingUser(prev => prev ? ({ ...prev, avatarUrl: res.url }) : null);
+                            }
+                          } catch (err) {
+                            console.warn('Erro ao enviar avatar para MinIO:', err);
+                          }
+                        });
+                      }
+                    }}
+                  />
+
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <span className="text-[11px] font-bold text-slate-700 block">Foto de Perfil</span>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setEditingUser({ ...editingUser, avatarUrl: undefined })}
-                        className="text-xs text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                        onClick={() => editUserPhotoInputRef.current?.click()}
+                        className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
                       >
-                        Remover foto
+                        Selecionar foto do computador
                       </button>
-                    )}
+                      {editingUser.avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser({ ...editingUser, avatarUrl: undefined })}
+                          className="text-xs text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                        >
+                          Remover foto
+                        </button>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Nome Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingUser.name}
+                    onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">E-mail Corporativo</label>
+                  <input
+                    type="email"
+                    required
+                    value={editingUser.email}
+                    onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                  <input
+                    type="text"
+                    placeholder="000.000.000-00"
+                    value={editingUser.cpf || ''}
+                    onChange={e => setEditingUser({ ...editingUser, cpf: formatCPF(e.target.value) })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
+                  <select
+                    value={editingUser.companyId || companies[0]?.id}
+                    onChange={e => setEditingUser({ ...editingUser, companyId: e.target.value })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.nomeFantasia}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
+                  <select
+                    value={editingUser.role}
+                    onChange={e => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="admin_empresa">Administrador da Empresa</option>
+                    <option value="gestor_unidade">Gestor de Unidade</option>
+                    <option value="tecnico_sst">Técnico de Segurança do Trabalho (SST)</option>
+                    <option value="cipeiro">Cipeiro (Eleito/Indicado)</option>
+                    <option value="eleitor">Eleitor (Colaborador Votante)</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Nome Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={editingUser.name}
-                  onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">E-mail Corporativo</label>
-                <input
-                  type="email"
-                  required
-                  value={editingUser.email}
-                  onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00"
-                  value={editingUser.cpf || ''}
-                  onChange={e => setEditingUser({ ...editingUser, cpf: formatCPF(e.target.value) })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
-                <select
-                  value={editingUser.companyId || companies[0]?.id}
-                  onChange={e => setEditingUser({ ...editingUser, companyId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                >
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>{c.nomeFantasia}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
-                <select
-                  value={editingUser.role}
-                  onChange={e => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="admin_empresa">Administrador da Empresa</option>
-                  <option value="gestor_unidade">Gestor de Unidade</option>
-                  <option value="tecnico_sst">Técnico de Segurança do Trabalho (SST)</option>
-                  <option value="cipeiro">Cipeiro (Eleito/Indicado)</option>
-                  <option value="eleitor">Eleitor (Colaborador Votante)</option>
-                </select>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 shrink-0">
+              {/* Rodapé Fixo */}
+              <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => handleResetUserPassword(editingUser)}
-                  className="px-3 py-2 rounded-xl text-emerald-700 hover:bg-emerald-50 border border-emerald-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-3 py-2 rounded-xl text-emerald-700 hover:bg-emerald-100 bg-white border border-emerald-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
                   title="Reenviar e-mail de redefinição de senha"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Reenviar E-mail de Senha</span>
+                  <span>Redefinir Senha</span>
                 </button>
 
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all"
-                >
-                  Salvar Alterações
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    disabled={isSubmitting}
+                    className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isSubmitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                    <span>{isSubmitting ? 'Salvando...' : 'Salvar Alterações'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -2384,144 +2537,157 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-4 sm:p-5 space-y-3 text-xs overflow-y-auto flex-1 overscroll-contain">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="relative shrink-0">
-                  {newUserAvatarUrl ? (
-                    <img
-                      src={newUserAvatarUrl}
-                      alt="Avatar"
-                      className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-300">
-                      {newUserName ? newUserName.slice(0, 2).toUpperCase() : <Camera className="w-5 h-5 text-slate-400" />}
-                    </div>
-                  )}
+            <form onSubmit={handleCreateUser} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto flex-1 overscroll-contain">
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="relative shrink-0">
+                    {newUserAvatarUrl ? (
+                      <img
+                        src={newUserAvatarUrl}
+                        alt="Avatar"
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center ring-2 ring-slate-300">
+                        {newUserName ? newUserName.slice(0, 2).toUpperCase() : <Camera className="w-5 h-5 text-slate-400" />}
+                      </div>
+                    )}
 
-                  <button
-                    type="button"
-                    onClick={() => userPhotoInputRef.current?.click()}
-                    className="w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center absolute -bottom-0.5 -right-0.5 shadow-md cursor-pointer"
-                    title="Carregar Foto"
-                  >
-                    <Camera className="w-3 h-3" />
-                  </button>
-                </div>
-
-                <input
-                  type="file"
-                  ref={userPhotoInputRef}
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileToDataUrl(file, async (url) => {
-                        setNewUserAvatarUrl(url);
-                        try {
-                          const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'usuarios');
-                          if (res?.url) setNewUserAvatarUrl(res.url);
-                        } catch (err) {
-                          console.warn('Erro ao enviar avatar para MinIO:', err);
-                        }
-                      });
-                    }
-                  }}
-                />
-
-                <div className="min-w-0 flex-1 space-y-1">
-                  <span className="text-[11px] font-bold text-slate-700 block">Foto de Perfil</span>
-                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => userPhotoInputRef.current?.click()}
-                      className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                      className="w-5 h-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center absolute -bottom-0.5 -right-0.5 shadow-md cursor-pointer"
+                      title="Carregar Foto"
                     >
-                      Selecionar foto do computador
+                      <Camera className="w-3 h-3" />
                     </button>
-                    {newUserAvatarUrl && (
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={userPhotoInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileToDataUrl(file, async (url) => {
+                          setNewUserAvatarUrl(url);
+                          try {
+                            const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'usuarios');
+                            if (res?.url) setNewUserAvatarUrl(res.url);
+                          } catch (err) {
+                            console.warn('Erro ao enviar avatar para MinIO:', err);
+                          }
+                        });
+                      }
+                    }}
+                  />
+
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <span className="text-[11px] font-bold text-slate-700 block">Foto de Perfil</span>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setNewUserAvatarUrl('')}
-                        className="text-xs text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                        onClick={() => userPhotoInputRef.current?.click()}
+                        className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
                       >
-                        Remover foto
+                        Selecionar foto do computador
                       </button>
-                    )}
+                      {newUserAvatarUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setNewUserAvatarUrl('')}
+                          className="text-xs text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                        >
+                          Remover foto
+                        </button>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Nome Completo</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Carlos Silva"
+                    value={newUserName}
+                    onChange={e => setNewUserName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">E-mail Corporativo</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="carlos.silva@empresa.com.br"
+                    value={newUserEmail}
+                    onChange={e => setNewUserEmail(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                  <input
+                    type="text"
+                    placeholder="000.000.000-00"
+                    value={newUserCpf}
+                    onChange={e => setNewUserCpf(formatCPF(e.target.value))}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
+                  <select
+                    value={newUserCompanyId}
+                    onChange={e => setNewUserCompanyId(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  >
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.nomeFantasia}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
+                  <select
+                    value={newUserRole}
+                    onChange={e => setNewUserRole(e.target.value as UserRole)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="admin_empresa">Administrador da Empresa</option>
+                    <option value="gestor_unidade">Gestor de Unidade</option>
+                    <option value="tecnico_sst">Técnico de Segurança do Trabalho (SST)</option>
+                    <option value="cipeiro">Cipeiro (Eleito/Indicado)</option>
+                    <option value="eleitor">Eleitor (Colaborador Votante)</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Nome Completo</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Carlos Silva"
-                  value={newUserName}
-                  onChange={e => setNewUserName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">E-mail Corporativo</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="carlos.silva@empresa.com.br"
-                  value={newUserEmail}
-                  onChange={e => setNewUserEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00"
-                  value={newUserCpf}
-                  onChange={e => setNewUserCpf(formatCPF(e.target.value))}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
-                <select
-                  value={newUserCompanyId}
-                  onChange={e => setNewUserCompanyId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+              {/* Rodapé fixo */}
+              <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsNewUserModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id}>{c.nomeFantasia}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
-                <select
-                  value={newUserRole}
-                  onChange={e => setNewUserRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="admin_empresa">Administrador da Empresa</option>
-                  <option value="gestor_unidade">Gestor de Unidade</option>
-                  <option value="tecnico_sst">Técnico de Segurança do Trabalho (SST)</option>
-                  <option value="cipeiro">Cipeiro (Eleito/Indicado)</option>
-                  <option value="eleitor">Eleitor (Colaborador Votante)</option>
-                </select>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+                  Cancelar
+                </button>
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-2"
                 >
-                  Salvar Usuário
+                  {isSubmitting && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                  <span>{isSubmitting ? 'Cadastrando...' : 'Cadastrar Usuário'}</span>
                 </button>
               </div>
             </form>
