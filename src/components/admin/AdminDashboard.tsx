@@ -18,7 +18,7 @@ import {
   ChevronRight,
   TrendingUp,
   MapPin,
-  LayoutDashboard
+  BarChart3
 } from 'lucide-react';
 import { AuthUser, Company } from '../../types/auth';
 
@@ -71,14 +71,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="w-full space-y-5 animate-in fade-in duration-150">
       
       {/* ========================================================================= */}
-      {/* CABEÇALHO COM HEADER NA COR VERDE CLARO                                  */}
+      {/* CABEÇALHO COM HEADER NA COR VERDE MAIS VIBRANTE E COMPACTO                */}
       {/* ========================================================================= */}
-      <div className="bg-emerald-50/70 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 shadow-xs flex items-center justify-between gap-4 w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
-            <LayoutDashboard className="w-5 h-5 text-emerald-700" />
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <BarChart3 className="w-4 h-4 text-white" />
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight">
             Dashboard
           </h2>
         </div>

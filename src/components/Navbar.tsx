@@ -108,15 +108,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Linha divisória sutil */}
                 <div className="h-7 w-px bg-slate-200"></div>
 
-                {/* Botão de Sair ao lado */}
+                {/* Botão de Sair ao lado com efeito idêntico ao Voltar do Login (expande no hover) */}
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-rose-700 bg-slate-100 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="group flex items-center h-9 w-9 hover:w-22 rounded-full bg-slate-100 hover:bg-rose-50 active:scale-95 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 px-2.5 transition-all duration-300 ease-in-out cursor-pointer shadow-xs overflow-hidden shrink-0"
                   title="Sair do sistema"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600" />
-                  <span className="hidden sm:inline">Sair</span>
+                  <LogOut className="w-4 h-4 shrink-0 transition-transform group-hover:scale-105 text-slate-500 group-hover:text-rose-600" />
+                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-2 text-xs font-bold transition-opacity duration-300">
+                    Sair
+                  </span>
                 </button>
 
               </div>

@@ -446,28 +446,28 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     <div className="w-full space-y-4 animate-in fade-in duration-150">
       
       {/* ========================================================================= */}
-      {/* 1. CARD DO TÍTULO: CABEÇALHO NA COR VERDE CLARO                           */}
+      {/* 1. CARD DO TÍTULO: CABEÇALHO VERDE MAIS VIBRANTE E COMPACTO                */}
       {/* ========================================================================= */}
-      <div className="bg-emerald-50/70 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 shadow-xs flex items-center justify-between gap-4 w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
-            {activeTab === 'empresas' && <Building2 className="w-5 h-5 text-emerald-700" />}
-            {activeTab === 'filiais' && <MapPin className="w-5 h-5 text-emerald-700" />}
-            {activeTab === 'usuarios' && <Users className="w-5 h-5 text-emerald-700" />}
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+            {activeTab === 'empresas' && <Building2 className="w-4 h-4 text-white" />}
+            {activeTab === 'filiais' && <MapPin className="w-4 h-4 text-white" />}
+            {activeTab === 'usuarios' && <Users className="w-4 h-4 text-white" />}
           </div>
-          <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight">
             Cadastros Gerais
           </h2>
         </div>
 
-        {/* Botão de Criação Único (Sem duplicar o '+') */}
+        {/* Botão de Criação Único */}
         {activeTab === 'empresas' && (
           <button
             type="button"
             onClick={() => setIsNewCompanyModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Empresa</span>
           </button>
         )}
@@ -479,9 +479,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               setTargetCompanyIdForFilial(companies[0]?.id || '');
               setIsNewFilialModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Filial</span>
           </button>
         )}
@@ -490,9 +490,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
           <button
             type="button"
             onClick={() => setIsNewUserModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>Usuário</span>
           </button>
         )}

@@ -11,7 +11,8 @@ import {
   UserCheck, 
   Eye, 
   Download,
-  AlertCircle
+  AlertCircle,
+  PenTool
 } from 'lucide-react';
 import { GeneratedDocument, generateCipaDocument } from '../../data/documentTemplates';
 
@@ -106,13 +107,13 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-150">
       
-      {/* Header com estilo verde claro padronizado */}
-      <div className="flex items-center justify-between gap-4 bg-emerald-50/80 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 shadow-xs w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
-            <FileSignature className="w-5 h-5 text-emerald-700" />
+      {/* Header com estilo verde mais vibrante e compacto */}
+      <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs w-full">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <PenTool className="w-4 h-4 text-white" />
           </div>
-          <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight">
             Portal de Assinaturas Digitais da CIPA
           </h2>
         </div>

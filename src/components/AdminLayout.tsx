@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
+  BarChart3,
   Building2, 
   Calculator, 
   Vote, 
-  FileSignature, 
-  Bell, 
-  Key, 
+  ClipboardList, 
+  CalendarClock, 
+  PenTool, 
   MapPin,
-  LayoutDashboard,
-  Layers,
   ChevronLeft,
   ChevronRight,
   Menu,
@@ -146,28 +145,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
     if (isCipeiro) {
       return [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-emerald-400' },
-        { id: 'assinaturas', label: 'Assinaturas', icon: Key, color: 'text-amber-400' },
-        { id: 'gestao', label: 'Gestão CIPA & Atas', icon: FileSignature, color: 'text-sky-400' },
-        { id: 'lembretes', label: 'Lembretes e Reuniões', icon: Bell, color: 'text-rose-400' }
+        { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'text-emerald-400' },
+        { id: 'assinaturas', label: 'Assinaturas', icon: PenTool, color: 'text-amber-400' },
+        { id: 'gestao', label: 'Gestão CIPA & Atas', icon: ClipboardList, color: 'text-sky-400' },
+        { id: 'lembretes', label: 'Lembretes e Reuniões', icon: CalendarClock, color: 'text-rose-400' }
       ];
     }
 
     // Master, Admin Empresa, Gestor Unidade, Técnico SST
     const items = [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-emerald-400' }
+      { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'text-emerald-400' }
     ];
 
     if (isMaster || isAdminEmpresa || isGestorUnidade) {
-      items.push({ id: 'cadastros', label: 'Cadastros Gerais', icon: Layers, color: 'text-emerald-400' });
+      items.push({ id: 'cadastros', label: 'Cadastros Gerais', icon: Building2, color: 'text-emerald-400' });
     }
 
     items.push(
       { id: 'dimensionamento', label: 'Módulo 1: Dimensionamento', icon: Calculator, color: 'text-blue-400' },
       { id: 'eleicao', label: 'Módulo 2: Eleição Online', icon: Vote, color: 'text-purple-400' },
-      { id: 'gestao', label: 'Módulo 3: Gestão CIPA', icon: FileSignature, color: 'text-sky-400' },
-      { id: 'assinaturas', label: 'Portal de Assinaturas', icon: Key, color: 'text-amber-400' },
-      { id: 'lembretes', label: 'Lembretes & Alertas', icon: Bell, color: 'text-rose-400' }
+      { id: 'gestao', label: 'Módulo 3: Gestão CIPA', icon: ClipboardList, color: 'text-sky-400' },
+      { id: 'assinaturas', label: 'Portal de Assinaturas', icon: PenTool, color: 'text-amber-400' },
+      { id: 'lembretes', label: 'Lembretes & Alertas', icon: CalendarClock, color: 'text-rose-400' }
     );
 
     return items;

@@ -133,26 +133,26 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-150">
       
-      {/* Module Top Bar: Verde Claro Padronizado */}
-      <div className="bg-emerald-50/80 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
-            <Vote className="w-5 h-5 text-emerald-700" />
+      {/* Module Top Bar: Verde Mais Vibrante e Compacto */}
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Vote className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+            <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight">
               Módulo 2 · Eleição Online Auditada & Urna Digital
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-[11px] text-emerald-800 font-medium">
               {activeCompany.nomeFantasia} · {activeUnit.name}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleEmitirAtaEleicao}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-colors shadow-xs whitespace-nowrap cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-600 rounded-lg transition-colors shadow-xs whitespace-nowrap cursor-pointer active:scale-95"
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Emitir Ata de Apuração Oficial</span>

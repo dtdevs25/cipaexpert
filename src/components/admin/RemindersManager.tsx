@@ -16,7 +16,8 @@ import {
   Check,
   Trash2,
   Eye,
-  Edit3
+  Edit3,
+  CalendarClock
 } from 'lucide-react';
 import { StandardModal } from '../common/StandardModal';
 
@@ -166,22 +167,22 @@ export const RemindersManager: React.FC<RemindersManagerProps> = ({
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-150">
       
-      {/* Header Bar: 100% Responsivo com Header Verde Claro Padronizado */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-emerald-50/80 p-4 sm:p-5 rounded-2xl border border-emerald-200/80 shadow-xs w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
-            <Bell className="w-5 h-5 text-emerald-700" />
+      {/* Header Bar: Verde Mais Vibrante e Compacto */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs w-full">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <CalendarClock className="w-4 h-4 text-white" />
           </div>
-          <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight">
             Central de Lembretes & Alertas NR-5
           </h2>
         </div>
 
         <button
           onClick={() => setIsNewModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer self-start sm:self-auto active:scale-95"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer self-start sm:self-auto active:scale-95"
         >
-          <Plus className="w-4 h-4 text-white" />
+          <Plus className="w-3.5 h-3.5 text-white" />
           <span>Novo Lembrete</span>
         </button>
       </div>
