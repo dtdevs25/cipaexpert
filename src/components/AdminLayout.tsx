@@ -67,6 +67,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             units: Array.isArray(c.units) ? c.units.map(u => ({
               id: u.id,
               name: u.name,
+              cnpj: u.cnpj || (u as any).cnpj,
               city: u.city,
               state: u.state,
               headcount: u.headcount,
@@ -99,6 +100,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [activeTab, setActiveTab] = useState<string>(
     currentUser.role === 'eleitor' ? 'eleicao' : (initialTab === 'menu' ? 'dashboard' : initialTab)
   );
+
+  // Regra de Negócio Multiunidades: "Todas as Unidades" é exclusivo da tela de Dashboard.
+  // Em qualquer outro módulo (Assinaturas, Gestão, Eleição, etc.), deve-se tratar cada filial individualmente.
+  useEffect(() => {
+    if (activeTab !== 'dashboard' && selectedUnitId === 'todas') {
+      if (safeActiveUnits.length > 0) {
+        setSelectedUnitId(safeActiveUnits[0].id);
+      }
+    }
+  }, [activeTab, selectedUnitId, safeActiveUnits]);
 
   // Intelligent Auto-Expand on Hover Sidebar State (com opção de fixar)
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -362,14 +373,18 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     onChange={(e) => setSelectedUnitId(e.target.value)}
                     className="font-semibold text-emerald-950 bg-white/90 hover:bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer shadow-2xs transition-colors"
                   >
-                    <option value="todas">Todas as Unidades (Visão Consolidada)</option>
+                    {activeTab === 'dashboard' && (
+                      <option value="todas">Todas as Unidades (Visão Consolidada)</option>
+                    )}
                     {(activeCompany.units || []).map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
+                      <option key={u.id} value={u.id}>
+                        {u.name} {u.cnpj ? `(CNPJ: ${u.cnpj})` : ''}
+                      </option>
                     ))}
                   </select>
                 ) : (
                   <span className="font-semibold text-emerald-950 bg-white/90 px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs">
-                    {activeUnit?.name}
+                    {activeUnit?.name} {activeUnit?.cnpj ? `(CNPJ: ${activeUnit.cnpj})` : ''}
                   </span>
                 )}
               </div>
@@ -455,7 +470,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               companyName={activeCompany.razaoSocial}
               unitId={activeUnit?.id}
               unitName={activeUnit?.name}
-              cnpj={activeCompany.cnpj}
+              cnpj={activeUnit?.cnpj || activeCompany.cnpj}
               onOpenDocument={onOpenDocument}
               onOpenSignatureModal={onOpenSignatureModal}
               signedAtas={signedAtas}

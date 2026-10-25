@@ -20,6 +20,7 @@ export const INITIAL_COMPANIES: Company[] = [
       {
         id: 'unit-1-matriz',
         name: 'Matriz Corporativa & Linha 01 (São Paulo - SP)',
+        cnpj: '12.345.678/0001-90',
         city: 'São Paulo',
         state: 'SP',
         headcount: 145,
@@ -32,6 +33,7 @@ export const INITIAL_COMPANIES: Company[] = [
       {
         id: 'unit-1-betim',
         name: 'Planta de Fundição & Usinagem (Betim - MG)',
+        cnpj: '12.345.678/0002-71',
         city: 'Betim',
         state: 'MG',
         headcount: 320,
@@ -44,6 +46,7 @@ export const INITIAL_COMPANIES: Company[] = [
       {
         id: 'unit-1-cajamar',
         name: 'Centro Logístico e Distribuição (Cajamar - SP)',
+        cnpj: '12.345.678/0003-52',
         city: 'Cajamar',
         state: 'SP',
         headcount: 85,
@@ -74,6 +77,7 @@ export const INITIAL_COMPANIES: Company[] = [
       {
         id: 'unit-2-central',
         name: 'Hospital Geral Central (Curitiba - PR)',
+        cnpj: '98.765.432/0001-10',
         city: 'Curitiba',
         state: 'PR',
         headcount: 420,
@@ -104,6 +108,7 @@ export const INITIAL_COMPANIES: Company[] = [
       {
         id: 'unit-3-campinas',
         name: 'Hub Operacional Aeroporto (Campinas - SP)',
+        cnpj: '45.123.789/0001-55',
         city: 'Campinas',
         state: 'SP',
         headcount: 195,

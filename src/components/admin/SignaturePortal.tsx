@@ -239,19 +239,9 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
             <PenTool className="w-5 h-5 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight leading-tight">
-                CIPASign
-              </h2>
-              {unitName && (
-                <span className="text-[11px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-emerald-200/90 text-emerald-950 border border-emerald-300 shadow-2xs">
-                  {unitName}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-emerald-800 font-medium">
-              {companyName} {cnpj ? `· CNPJ ${cnpj}` : ''}
-            </p>
+            <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight leading-tight">
+              CIPASign
+            </h2>
           </div>
         </div>
 

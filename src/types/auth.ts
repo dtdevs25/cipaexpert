@@ -9,6 +9,7 @@ export type UserRole =
 export interface CompanyUnit {
   id: string;
   name: string;
+  cnpj?: string;
   city: string;
   state: string;
   headcount: number;

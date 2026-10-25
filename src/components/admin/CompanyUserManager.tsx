@@ -123,6 +123,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   // ==========================================
   const [targetCompanyIdForFilial, setTargetCompanyIdForFilial] = useState(companies[0]?.id || '');
   const [newFilialName, setNewFilialName] = useState('');
+  const [newFilialCnpj, setNewFilialCnpj] = useState('');
   const [newFilialCity, setNewFilialCity] = useState('');
   const [newFilialState, setNewFilialState] = useState('SP');
   const [newFilialCnae, setNewFilialCnae] = useState(CNAE_DATABASE[10].code);
@@ -243,6 +244,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     const newUnit: CompanyUnit = {
       id: `unit-${Date.now()}`,
       name: newFilialName.trim(),
+      cnpj: newFilialCnpj.trim() || undefined,
       city: newFilialCity.trim(),
       state: newFilialState.trim().toUpperCase(),
       headcount: 0,
@@ -269,6 +271,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     // Persiste no PostgreSQL
     ApiService.createUnit(targetCompanyIdForFilial, {
       name: newUnit.name,
+      cnpj: newUnit.cnpj,
       city: newUnit.city,
       state: newUnit.state,
       headcount: newUnit.headcount,
@@ -276,10 +279,11 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       cnaeCode: newUnit.cnaeCode,
       cnaeDesc: newUnit.cnaeDesc,
       gestorName: newUnit.gestorName
-    }).catch(err => console.log('Aviso ao persistir filial no backend:', err));
+    } as any).catch(err => console.log('Aviso ao persistir filial no backend:', err));
 
     const targetCompName = companies.find(c => c.id === targetCompanyIdForFilial)?.nomeFantasia || 'Empresa';
     setNewFilialName('');
+    setNewFilialCnpj('');
     setNewFilialCity('');
     setNewFilialGestor('');
 
@@ -825,7 +829,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       </h3>
                     </div>
                     <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/90 text-slate-700 border border-slate-200 shrink-0">
-                      GR {item.filial.grauDeRisco}
+                      {item.filial.cnpj ? item.filial.cnpj : `GR ${item.filial.grauDeRisco}`}
                     </span>
                   </div>
 
@@ -835,6 +839,11 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
                         <span className="text-[10px] font-bold text-slate-400 block uppercase">Empresa Vinculada</span>
                         <strong className="text-slate-800 text-xs block truncate">{item.companyName}</strong>
+                        {item.filial.cnpj && (
+                          <span className="text-[11px] font-mono font-semibold text-emerald-800 block mt-0.5">
+                            CNPJ: {item.filial.cnpj}
+                          </span>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
@@ -851,7 +860,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
                         <span className="text-[10px] font-bold text-slate-400 block uppercase">CNAE da Unidade</span>
                         <span className="text-slate-700 text-xs font-mono font-semibold block">
-                          {item.filial.cnaeCode} · {item.filial.cnaeDesc}
+                          {item.filial.cnaeCode} · {item.filial.cnaeDesc} (Grau {item.filial.grauDeRisco})
                         </span>
                       </div>
                     </div>
@@ -902,6 +911,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   <thead>
                     <tr className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 border-b border-emerald-200/80 text-emerald-950 font-bold text-[11px] uppercase tracking-wider">
                       <th className="py-3.5 px-4">Filial / Unidade</th>
+                      <th className="py-3.5 px-4">CNPJ da Filial</th>
                       <th className="py-3.5 px-4">Empresa Vinculada</th>
                       <th className="py-3.5 px-4">Cidade / UF</th>
                       <th className="py-3.5 px-4">Grau de Risco</th>
@@ -915,6 +925,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <td className="py-4 px-4">
                           <strong className="text-slate-900 font-bold block">{item.filial.name}</strong>
                           <span className="text-[11px] text-slate-500 font-mono block">CNAE: {item.filial.cnaeCode}</span>
+                        </td>
+                        <td className="py-4 px-4 font-mono font-bold text-slate-800 whitespace-nowrap">
+                          {item.filial.cnpj || <span className="text-slate-400 font-normal">Mesmo da Matriz</span>}
                         </td>
                         <td className="py-4 px-4 font-bold text-emerald-800 whitespace-nowrap">
                           {item.companyName}
@@ -1109,18 +1122,32 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  Nome da Filial / Identificação <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Planta de Fundição Betim ou CD Cajamar"
-                  value={newFilialName}
-                  onChange={e => setNewFilialName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    Nome da Filial / Identificação <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Planta de Fundição Betim ou CD Cajamar"
+                    value={newFilialName}
+                    onChange={e => setNewFilialName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    CNPJ da Filial <span className="text-slate-400 font-normal">(caso possua CNPJ próprio)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="00.000.000/0002-00"
+                    value={newFilialCnpj}
+                    onChange={e => setNewFilialCnpj(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1226,18 +1253,35 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
             </div>
 
             <form onSubmit={handleSaveEditFilial} className="p-6 space-y-4 text-xs">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Nome da Filial</label>
-                <input
-                  type="text"
-                  required
-                  value={editingFilial.filial.name}
-                  onChange={e => setEditingFilial({
-                    ...editingFilial,
-                    filial: { ...editingFilial.filial, name: e.target.value }
-                  })}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">Nome da Filial</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingFilial.filial.name}
+                    onChange={e => setEditingFilial({
+                      ...editingFilial,
+                      filial: { ...editingFilial.filial, name: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    CNPJ da Filial <span className="text-slate-400 font-normal">(específico da unidade)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="00.000.000/0002-00"
+                    value={editingFilial.filial.cnpj || ''}
+                    onChange={e => setEditingFilial({
+                      ...editingFilial,
+                      filial: { ...editingFilial.filial, cnpj: e.target.value }
+                    })}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1353,6 +1397,9 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estabelecimento</span>
                 <strong className="text-base font-extrabold text-slate-900 block">{viewingFilial.filial.name}</strong>
                 <span className="text-xs font-bold text-emerald-700 block">Empresa: {viewingFilial.companyName}</span>
+                <span className="text-xs font-mono font-bold text-slate-800 block">
+                  CNPJ: {viewingFilial.filial.cnpj || 'Mesmo da Matriz'}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -1363,6 +1410,12 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   <span className="text-[10px] font-bold text-slate-400 block uppercase">Grau de Risco</span>
                   <strong className="text-slate-800 text-xs block font-mono">Grau {viewingFilial.filial.grauDeRisco}</strong>
                 </div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">CNAE da Filial</span>
+                <strong className="text-slate-800 text-xs block font-mono">
+                  {viewingFilial.filial.cnaeCode} · {viewingFilial.filial.cnaeDesc}
+                </strong>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 block uppercase">Gestor Local</span>
