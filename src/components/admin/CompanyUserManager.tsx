@@ -29,7 +29,8 @@ import {
   EyeOff,
   ShieldAlert,
   Check,
-  FileText
+  FileText,
+  Sparkles
 } from 'lucide-react';
 import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
 import { DEMO_USERS, INITIAL_COMPANIES } from '../../data/multiCompanyData';
@@ -48,6 +49,24 @@ import {
 // Reexporta para manter compatibilidade com quaisquer outros componentes
 export { validateCPF, validateCNPJ, formatCPF, formatCNPJ, formatCNAE, maskCPFLGPD };
 
+// Formata texto com a primeira letra de cada palavra em maiúsculo (Title Case)
+export const formatCapitalizeName = (text?: string): string => {
+  if (!text) return '';
+  const lowerExceptions = ['de', 'da', 'do', 'das', 'dos', 'e'];
+  const upperKeep = ['SST', 'NR-5', 'CLT', 'CPF', 'CNPJ', 'LGPD', 'S.A.', 'LTDA', 'ME', 'EPP'];
+  return text
+    .trim()
+    .split(/\s+/)
+    .map((word, idx) => {
+      const upper = word.toUpperCase();
+      if (upperKeep.includes(upper)) return upper;
+      const lower = word.toLowerCase();
+      if (idx > 0 && lowerExceptions.includes(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+};
+
 // Hierarquia oficial de permissões para isolamento e proteção de visualização
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   master: 100,
@@ -59,98 +78,138 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
 };
 
 export const AVAILABLE_ROLES: { role: UserRole; label: string }[] = [
-  { role: 'master', label: 'Usuário Master (Super Admin Global)' },
+  { role: 'master', label: 'Master' },
   { role: 'admin_empresa', label: 'Administrador da Empresa' },
   { role: 'gestor_unidade', label: 'Gestor de Unidade' },
-  { role: 'tecnico_sst', label: 'Técnico de Segurança do Trabalho (SST)' },
-  { role: 'cipeiro', label: 'Cipeiro (Eleito/Indicado)' },
-  { role: 'eleitor', label: 'Eleitor (Colaborador CLT Votante)' }
+  { role: 'tecnico_sst', label: 'Técnico de SST' },
+  { role: 'cipeiro', label: 'Cipeiro' },
+  { role: 'eleitor', label: 'Eleitor' }
 ];
 
+// Catálogo completo de permissões operacionais do sistema
+export interface SystemPermissionDef {
+  id: string;
+  name: string;
+  desc: string;
+  category: string;
+}
+
+export const SYSTEM_PERMISSIONS: SystemPermissionDef[] = [
+  {
+    id: 'perm_view_full_cpf',
+    name: 'Visualização Completa de CPF (LGPD)',
+    desc: 'Visualização de todos os números de CPF sem a máscara protetora de 3 dígitos.',
+    category: 'Privacidade & Dados'
+  },
+  {
+    id: 'perm_dimensionamento_full',
+    name: 'Cálculo e Dimensionamento NR-5',
+    desc: 'Calcular dimensionamento da CIPA e emitir os quadros oficiais I e II.',
+    category: 'NR-5 & Segurança'
+  },
+  {
+    id: 'perm_election_manager',
+    name: 'Condução do Processo Eleitoral',
+    desc: 'Publicar editais, homologar candidaturas, conduzir votação e apurar atas.',
+    category: 'Processo Eleitoral'
+  },
+  {
+    id: 'perm_digital_signatures',
+    name: 'Portal de Assinaturas Digitais',
+    desc: 'Criar envelopes, posicionar signatários e despachar atas para assinatura.',
+    category: 'Assinaturas Digitais'
+  },
+  {
+    id: 'perm_manage_companies',
+    name: 'Gestão Cadastral de Empresas & Filiais',
+    desc: 'Criar e atualizar cadastros de matrizes, filiais e estabelecimentos.',
+    category: 'Administração Geral'
+  },
+  {
+    id: 'perm_manage_users',
+    name: 'Gestão de Usuários & Contas',
+    desc: 'Cadastrar novos colaboradores e redefinir senhas e perfis.',
+    category: 'Administração Geral'
+  },
+  {
+    id: 'perm_audit_logs',
+    name: 'Auditoria & Logs de Segurança',
+    desc: 'Consultar histórico de ações, IPs e registros de conformidade legal.',
+    category: 'Segurança & Auditoria'
+  },
+  {
+    id: 'perm_delete_records',
+    name: 'Exclusão de Registros do Sistema',
+    desc: 'Permissão para excluir registros, históricos e documentos.',
+    category: 'Segurança & Auditoria'
+  }
+];
+
+// Permissões que já vêm por padrão em cada cargo
+export const ROLE_DEFAULT_PERMISSIONS: Record<UserRole, string[]> = {
+  master: [
+    'perm_view_full_cpf',
+    'perm_dimensionamento_full',
+    'perm_election_manager',
+    'perm_digital_signatures',
+    'perm_manage_companies',
+    'perm_manage_users',
+    'perm_audit_logs',
+    'perm_delete_records'
+  ],
+  admin_empresa: [
+    'perm_dimensionamento_full',
+    'perm_election_manager',
+    'perm_digital_signatures',
+    'perm_manage_companies',
+    'perm_manage_users'
+  ],
+  gestor_unidade: [
+    'perm_election_manager',
+    'perm_digital_signatures'
+  ],
+  tecnico_sst: [
+    'perm_dimensionamento_full',
+    'perm_election_manager',
+    'perm_digital_signatures'
+  ],
+  cipeiro: [
+    'perm_digital_signatures'
+  ],
+  eleitor: []
+};
+
+// Detalhes textuais dos cargos (SEM fundo colorido, tipografia limpa e elegante)
 export const ROLE_PERMISSIONS_DETAILS: Record<UserRole, {
   label: string;
-  badgeClass: string;
   description: string;
-  permissions: { name: string; desc: string; allowed: boolean }[];
 }> = {
   master: {
-    label: 'Usuário Master (Super Admin Global)',
-    badgeClass: 'bg-purple-100 text-purple-900 border-purple-200',
-    description: 'Acesso pleno e soberano a todas as empresas, filiais, banco de dados e configurações globais de segurança da plataforma.',
-    permissions: [
-      { name: 'Gestão Multiempresas & Filiais', desc: 'Criar, editar e excluir cadastros de empresas e filiais', allowed: true },
-      { name: 'Gestão Global de Usuários', desc: 'Gerenciar todos os usuários e atribuir quaisquer níveis', allowed: true },
-      { name: 'Acesso Irrestrito LGPD', desc: 'Visualização irrestrita de CPFs completos e dados sensíveis', allowed: true },
-      { name: 'Dimensionamento NR-5', desc: 'Cálculos de dimensionamento e emissão de quadros técnicos', allowed: true },
-      { name: 'Processo Eleitoral CIPA', desc: 'Configuração integral, atas, editais e apuração da urna', allowed: true },
-      { name: 'Portal de Assinaturas Digitais', desc: 'Criação de envelopes, posicionamento e auditoria', allowed: true },
-      { name: 'Auditoria & Logs de Segurança', desc: 'Visualização das trilhas de auditoria e operações de banco', allowed: true }
-    ]
+    label: 'Master',
+    description: 'Acesso pleno e soberano a todas as empresas, filiais, banco de dados e configurações globais de segurança da plataforma.'
   },
   admin_empresa: {
     label: 'Administrador da Empresa',
-    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-200',
-    description: 'Gestão administrativa da empresa e filiais vinculadas, com governança sobre técnicos, cipeiros e colaboradores.',
-    permissions: [
-      { name: 'Gestão de Filiais da Empresa', desc: 'Cadastrar e editar filiais/unidades vinculadas à sua empresa', allowed: true },
-      { name: 'Gestão de Usuários da Organização', desc: 'Cadastrar e editar usuários de nível igual ou inferior ao seu', allowed: true },
-      { name: 'Visualização de Dados LGPD', desc: 'CPFs e dados sensíveis protegidos por máscara de sigilo (***.***.**9-01)', allowed: false },
-      { name: 'Dimensionamento NR-5', desc: 'Cálculo de dimensionamento e relatórios do quadro I e II', allowed: true },
-      { name: 'Processo Eleitoral CIPA', desc: 'Abertura de editais, acompanhamento e homologação', allowed: true },
-      { name: 'Portal de Assinaturas Digitais', desc: 'Envio de atas e documentos para coleta de assinaturas', allowed: true },
-      { name: 'Acesso a Outras Empresas / Master', desc: 'Restrito exclusivamente à sua organização cadastrada', allowed: false }
-    ]
+    description: 'Gestão administrativa da empresa e filiais vinculadas, com autoridade sobre técnicos, cipeiros e colaboradores.'
   },
   gestor_unidade: {
-    label: 'Gestor de Unidade / Filial',
-    badgeClass: 'bg-blue-100 text-blue-900 border-blue-200',
-    description: 'Responsável pelo monitoramento operacional da CIPA em sua unidade/filial designada.',
-    permissions: [
-      { name: 'Gestão da Unidade Designada', desc: 'Visualização operacional e relatórios da sua filial', allowed: true },
-      { name: 'Acompanhamento Eleitoral', desc: 'Consultar quórum e andamento da votação na sua unidade', allowed: true },
-      { name: 'Reuniões Ordinárias e Atas', desc: 'Acompanhar o cronograma de reuniões mensais', allowed: true },
-      { name: 'Assinaturas Digitais de Atas', desc: 'Validar e assinar documentos da comissão local', allowed: true },
-      { name: 'Gestão de Outras Filiais', desc: 'Acesso bloqueado a dados de filiais não autorizadas', allowed: false },
-      { name: 'Administração Geral de Usuários', desc: 'Sem permissão para cadastrar administradores', allowed: false }
-    ]
+    label: 'Gestor de Unidade',
+    description: 'Responsável pelo monitoramento operacional da CIPA em sua unidade/filial designada.'
   },
   tecnico_sst: {
-    label: 'Técnico de Segurança do Trabalho (SST)',
-    badgeClass: 'bg-amber-100 text-amber-900 border-amber-200',
-    description: 'Operador técnico oficial: realiza dimensionamento NR-5, conduz eleições, emite editais e recolhe assinaturas.',
-    permissions: [
-      { name: 'Dimensionamento NR-5', desc: 'Cálculo técnico conforme CNAE e número de colaboradores', allowed: true },
-      { name: 'Condução do Processo Eleitoral', desc: 'Configurar cronograma, cadastrar candidatos e apurar votos', allowed: true },
-      { name: 'Gestão de Atas & Planos 5W2H', desc: 'Elaborar atas de instalação, posse e planos de ação', allowed: true },
-      { name: 'Coleta de Assinaturas Digitais', desc: 'Submeter envelopes de atas aos membros da CIPA', allowed: true },
-      { name: 'Exclusão de Registros Mestres', desc: 'Sem permissão para excluir empresas ou filiais matrizes', allowed: false },
-      { name: 'Visualização Desprotegida LGPD', desc: 'Dados protegidos com máscara de sigilo para votantes', allowed: false }
-    ]
+    label: 'Técnico de SST',
+    description: 'Operador técnico oficial: realiza dimensionamento NR-5, conduz eleições, emite editais e recolhe assinaturas.'
   },
   cipeiro: {
-    label: 'Cipeiro (Eleito / Indicado)',
-    badgeClass: 'bg-teal-100 text-teal-900 border-teal-200',
-    description: 'Membro integrante da CIPA: participa das reuniões ordinárias, elabora planos de ação e assina atas eletronicamente.',
-    permissions: [
-      { name: 'Assinatura Eletrônica de Atas', desc: 'Apor assinatura digital com certificado nas atas da CIPA', allowed: true },
-      { name: 'Participação em Reuniões & Pautas', desc: 'Acesso às convocações e atas das reuniões ordinárias', allowed: true },
-      { name: 'Plano de Trabalho NR-5', desc: 'Acompanhar cronograma e ações preventivas 5W2H', allowed: true },
-      { name: 'Módulos Administrativos', desc: 'Sem permissão de alteração de configurações e parâmetros', allowed: false },
-      { name: 'Gestão de Usuários e Empresas', desc: 'Acesso estritamente bloqueado', allowed: false }
-    ]
+    label: 'Cipeiro',
+    description: 'Membro integrante da CIPA: participa das reuniões ordinárias, elabora planos de ação e assina atas eletronicamente.'
   },
   eleitor: {
-    label: 'Eleitor (Colaborador Votante)',
-    badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
-    description: 'Colaborador com acesso para registro de candidatura no prazo legal e votação na urna eletrônica segura.',
-    permissions: [
-      { name: 'Candidatura Eleitoral CIPA', desc: 'Inscrever-se para a eleição dentro do prazo do edital', allowed: true },
-      { name: 'Votação Secreta Online', desc: 'Votar nos candidatos com protocolo criptográfico e sigilo', allowed: true },
-      { name: 'Comprovante Eleitoral Criptografado', desc: 'Download do comprovante com hash SHA-256 de auditoria', allowed: true },
-      { name: 'Módulos de Gestão e Administrativos', desc: 'Acesso estritamente bloqueado a telas administrativas', allowed: false }
-    ]
+    label: 'Eleitor',
+    description: 'Colaborador com acesso para registro de candidatura no prazo legal e votação na urna eletrônica segura.'
   }
 };
+
 
 
 // Componente inteligente de busca e digitação de CNAE com largura contida
@@ -423,16 +482,19 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const [newUserCompanyId, setNewUserCompanyId] = useState(companies[0]?.id || 'emp-1');
   const [newUserCompanyIds, setNewUserCompanyIds] = useState<string[]>([companies[0]?.id || 'emp-1']);
   const [newUserUnitIds, setNewUserUnitIds] = useState<string[]>([]);
+  const [newUserCustomPermissions, setNewUserCustomPermissions] = useState<string[]>([]);
   const [newUserAvatarUrl, setNewUserAvatarUrl] = useState('');
   const [showFullCpfInModal, setShowFullCpfInModal] = useState(false);
 
-  // Determina se o usuário conectado pode ver o CPF completo sem máscara (Master ou titular)
+  // Determina se o usuário conectado pode ver o CPF completo sem máscara (Master, titular ou liberado pelo Master)
   const canCurrentUserViewFullCpf = (targetUser?: AuthUser | null): boolean => {
     if (!targetUser) return false;
     if (currentUser?.role === 'master') return true;
     if (currentUser?.id && currentUser.id === targetUser.id) return true;
+    if (currentUser?.customPermissions?.includes('perm_view_full_cpf')) return true;
     return false;
   };
+
 
 
   const handleFileToDataUrl = (file: File, onLoaded: (url: string) => void) => {
@@ -723,16 +785,18 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
       const updated = usersList.map(u => u.id === editingUser.id ? {
         ...editingUser,
+        name: formatCapitalizeName(editingUser.name),
         companyIds: effectiveCompanyIds,
         companyId: effectiveCompanyIds[0],
         unitIds: effectiveUnitIds,
         unitId: effectiveUnitIds[0] || undefined,
+        customPermissions: editingUser.customPermissions || [],
         roleLabel: ROLE_PERMISSIONS_DETAILS[editingUser.role]?.label || roleLabels[editingUser.role] || editingUser.roleLabel,
         roleDescription: ROLE_PERMISSIONS_DETAILS[editingUser.role]?.description || `Usuário cadastrado com privilégios de ${roleLabels[editingUser.role] || editingUser.roleLabel}.`,
         avatarInitials: editingUser.name.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
       } : u);
       setUsersList(updated);
-      const name = editingUser.name;
+      const name = formatCapitalizeName(editingUser.name);
       setEditingUser(null);
       showFeedback('Usuário Atualizado!', `As alterações cadastrais do usuário "${name}" foram salvas.`);
     } finally {
@@ -788,21 +852,22 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     }
 
     const effectiveCompanyIds = newUserCompanyIds.length > 0 ? newUserCompanyIds : [newUserCompanyId];
+    const capitalizedName = formatCapitalizeName(newUserName);
 
     setIsSubmitting(true);
     try {
       const roleLabels: Record<UserRole, string> = {
-        master: 'Usuário Master (Super Admin)',
+        master: 'Master',
         admin_empresa: 'Administrador da Empresa',
         gestor_unidade: 'Gestor de Unidade',
-        tecnico_sst: 'Técnico de Segurança do Trabalho',
-        cipeiro: 'Cipeiro (Eleito)',
-        eleitor: 'Eleitor (Colaborador CLT)'
+        tecnico_sst: 'Técnico de SST',
+        cipeiro: 'Cipeiro',
+        eleitor: 'Eleitor'
       };
 
       const newUser: AuthUser = {
         id: `usr-${Date.now()}`,
-        name: newUserName.trim(),
+        name: capitalizedName,
         email: newUserEmail.trim(),
         cpf: newUserCpf.trim() ? formatCPF(newUserCpf) : undefined,
         role: newUserRole,
@@ -812,7 +877,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         companyIds: effectiveCompanyIds,
         unitId: newUserUnitIds[0] || undefined,
         unitIds: newUserUnitIds,
-        avatarInitials: newUserName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
+        customPermissions: currentUser?.role === 'master' ? newUserCustomPermissions : [],
+        avatarInitials: capitalizedName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
         avatarUrl: newUserAvatarUrl.trim() || undefined
       };
 
@@ -824,6 +890,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       setNewUserAvatarUrl('');
       setNewUserCompanyIds([companies[0]?.id || 'emp-1']);
       setNewUserUnitIds([]);
+      setNewUserCustomPermissions([]);
+
 
       // Persiste no PostgreSQL
       await ApiService.createUser({
@@ -1540,7 +1608,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <strong className="text-sm font-bold text-slate-900 block truncate">{user.name}</strong>
+                            <strong className="text-sm font-bold text-slate-900 block truncate">{formatCapitalizeName(user.name)}</strong>
                             {currentUser?.id && user.id === currentUser.id && (
                               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
                                 Sua Sessão
@@ -1591,9 +1659,20 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
                       <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                         <div className="text-left sm:text-right">
-                          <span className={`text-xs font-bold block ${ROLE_PERMISSIONS_DETAILS[user.role]?.badgeClass || 'text-emerald-700'}`}>
-                            {user.roleLabel || user.role}
-                          </span>
+                          <div className="flex items-center sm:justify-end gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-slate-800 block">
+                              {formatCapitalizeName(ROLE_PERMISSIONS_DETAILS[user.role]?.label || user.roleLabel || user.role)}
+                            </span>
+                            {user.customPermissions && user.customPermissions.length > 0 && (
+                              <span 
+                                className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200 font-bold inline-flex items-center gap-0.5"
+                                title={`Possui ${user.customPermissions.length} acesso(s) especial(is) liberado(s) pelo Master`}
+                              >
+                                <Sparkles className="w-2.5 h-2.5" />
+                                +{user.customPermissions.length} extra{user.customPermissions.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-slate-500 block truncate max-w-[220px]" title={user.roleDescription}>
                             {user.roleDescription || 'Usuário do sistema'}
                           </span>
@@ -2697,7 +2776,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-base font-extrabold text-slate-900">{viewingUser.name}</h4>
+                      <h4 className="text-base font-extrabold text-slate-900">{formatCapitalizeName(viewingUser.name)}</h4>
                       {currentUser?.id && viewingUser.id === currentUser.id && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
                           Sua Conta
@@ -2741,9 +2820,10 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       </div>
                     )}
 
-                    <div className="mt-2">
-                      <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-lg border shadow-2xs ${roleInfo.badgeClass}`}>
-                        {roleInfo.label}
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Função:</span>
+                      <span className="text-xs font-bold text-slate-800">
+                        {formatCapitalizeName(roleInfo.label)}
                       </span>
                     </div>
                   </div>
@@ -2818,45 +2898,74 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   </p>
 
                   <div className="space-y-1.5 pt-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Matriz de Acessos Operacionais
-                    </span>
-                    <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-1">
-                      {roleInfo.permissions.map((perm, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`p-2 rounded-xl border flex items-start gap-2.5 transition-colors ${
-                            perm.allowed 
-                              ? 'bg-white border-slate-200 text-slate-800' 
-                              : 'bg-slate-100/70 border-slate-200/60 text-slate-500'
-                          }`}
-                        >
-                          <div className="mt-0.5 shrink-0">
-                            {perm.allowed ? (
-                              <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                                <Check className="w-2.5 h-2.5" />
-                              </div>
-                            ) : (
-                              <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center">
-                                <Lock className="w-2.5 h-2.5" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-bold text-xs">{perm.name}</span>
-                              <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
-                                perm.allowed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                              }`}>
-                                {perm.allowed ? 'Permitido' : 'Restrito'}
-                              </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Matriz de Acessos Operacionais
+                      </span>
+                      {viewingUser.customPermissions && viewingUser.customPermissions.length > 0 && viewingUser.role !== 'master' && (
+                        <span className="text-[10px] text-purple-700 font-bold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          {viewingUser.customPermissions.length} liberado(s) pelo Master
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                      {SYSTEM_PERMISSIONS.map((perm) => {
+                        const isDefault = (ROLE_DEFAULT_PERMISSIONS[viewingUser.role] || []).includes(perm.id) || viewingUser.role === 'master';
+                        const isCustom = !isDefault && (viewingUser.customPermissions || []).includes(perm.id);
+                        const isAllowed = isDefault || isCustom;
+
+                        return (
+                          <div 
+                            key={perm.id} 
+                            className={`p-2.5 rounded-xl border flex items-start gap-2.5 transition-colors ${
+                              isCustom
+                                ? 'bg-purple-50/70 border-purple-200 text-purple-950'
+                                : isDefault
+                                  ? 'bg-white border-slate-200 text-slate-800'
+                                  : 'bg-slate-100/70 border-slate-200/60 text-slate-500'
+                            }`}
+                          >
+                            <div className="mt-0.5 shrink-0">
+                              {isCustom ? (
+                                <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+                                  <Sparkles className="w-2.5 h-2.5" />
+                                </div>
+                              ) : isDefault ? (
+                                <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5" />
+                                </div>
+                              ) : (
+                                <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center">
+                                  <Lock className="w-2.5 h-2.5" />
+                                </div>
+                              )}
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                              {perm.desc}
-                            </p>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-bold text-xs">{perm.name}</span>
+                                {isCustom ? (
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-0.5">
+                                    <Sparkles className="w-2.5 h-2.5" /> Liberado pelo Master
+                                  </span>
+                                ) : isDefault ? (
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                                    Padrão da Função
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-slate-200 text-slate-600">
+                                    Restrito
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                                {perm.desc}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -3197,6 +3306,84 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       ))}
                   </select>
                 </div>
+
+                {/* Liberação de Acessos Adicionais pelo Usuário Master */}
+                {currentUser?.role === 'master' && editingUser.role !== 'master' && (
+                  <div className="space-y-2 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Acessos Adicionais (Liberação pelo Master)</span>
+                      </label>
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        {(editingUser.customPermissions || []).length} concedido(s)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Como usuário Master, você pode liberar acessos operacionais adicionais para este usuário além dos privilégios padrão do cargo dele:
+                    </p>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pt-1">
+                      {SYSTEM_PERMISSIONS.map(perm => {
+                        const isDefault = (ROLE_DEFAULT_PERMISSIONS[editingUser.role] || []).includes(perm.id);
+                        const isCustomGranted = (editingUser.customPermissions || []).includes(perm.id);
+                        const isChecked = isDefault || isCustomGranted;
+
+                        return (
+                          <label
+                            key={perm.id}
+                            className={`flex items-start gap-2.5 p-2 rounded-lg border text-xs transition-colors ${
+                              isDefault 
+                                ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed'
+                                : isCustomGranted
+                                  ? 'bg-purple-50/60 border-purple-200 text-slate-900 font-semibold cursor-pointer'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100/50 cursor-pointer'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={isDefault}
+                              onChange={(e) => {
+                                const current = editingUser.customPermissions || [];
+                                const next = e.target.checked
+                                  ? Array.from(new Set([...current, perm.id]))
+                                  : current.filter(id => id !== perm.id);
+                                setEditingUser({
+                                  ...editingUser,
+                                  customPermissions: next
+                                });
+                              }}
+                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-3.5 h-3.5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-bold text-[11px]">{perm.name}</span>
+                                {isDefault ? (
+                                  <span className="text-[9px] text-slate-500 font-bold bg-slate-200 px-1.5 py-0.2 rounded">
+                                    Padrão da Função
+                                  </span>
+                                ) : isCustomGranted ? (
+                                  <span className="text-[9px] text-purple-700 font-bold bg-purple-100 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                                    <Sparkles className="w-2.5 h-2.5" /> Liberado
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-slate-400 font-normal">
+                                    Restrito
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                {perm.desc}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Rodapé Fixo */}
@@ -3509,7 +3696,13 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   </div>
                   <select
                     value={newUserRole}
-                    onChange={e => setNewUserRole(e.target.value as UserRole)}
+                    onChange={e => {
+                      const nextRole = e.target.value as UserRole;
+                      setNewUserRole(nextRole);
+                      // Limpa permissões extras que já pertençam ao novo cargo
+                      const defaultPerms = ROLE_DEFAULT_PERMISSIONS[nextRole] || [];
+                      setNewUserCustomPermissions(prev => prev.filter(p => !defaultPerms.includes(p)));
+                    }}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   >
                     {AVAILABLE_ROLES
@@ -3523,6 +3716,81 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       ))}
                   </select>
                 </div>
+
+                {/* Liberação de Acessos Adicionais pelo Usuário Master */}
+                {currentUser?.role === 'master' && newUserRole !== 'master' && (
+                  <div className="space-y-2 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>Acessos Adicionais (Liberação pelo Master)</span>
+                      </label>
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        {newUserCustomPermissions.length} concedido(s)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Como usuário Master, você pode liberar acessos operacionais adicionais para este usuário além dos privilégios padrão do cargo dele:
+                    </p>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pt-1">
+                      {SYSTEM_PERMISSIONS.map(perm => {
+                        const isDefault = (ROLE_DEFAULT_PERMISSIONS[newUserRole] || []).includes(perm.id);
+                        const isCustomGranted = newUserCustomPermissions.includes(perm.id);
+                        const isChecked = isDefault || isCustomGranted;
+
+                        return (
+                          <label
+                            key={perm.id}
+                            className={`flex items-start gap-2.5 p-2 rounded-lg border text-xs transition-colors ${
+                              isDefault 
+                                ? 'bg-slate-100/80 border-slate-200 text-slate-500 cursor-not-allowed'
+                                : isCustomGranted
+                                  ? 'bg-purple-50/60 border-purple-200 text-slate-900 font-semibold cursor-pointer'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100/50 cursor-pointer'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={isDefault}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewUserCustomPermissions(prev => Array.from(new Set([...prev, perm.id])));
+                                } else {
+                                  setNewUserCustomPermissions(prev => prev.filter(p => p !== perm.id));
+                                }
+                              }}
+                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500 w-3.5 h-3.5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="font-bold text-[11px]">{perm.name}</span>
+                                {isDefault ? (
+                                  <span className="text-[9px] text-slate-500 font-bold bg-slate-200 px-1.5 py-0.2 rounded">
+                                    Padrão da Função
+                                  </span>
+                                ) : isCustomGranted ? (
+                                  <span className="text-[9px] text-purple-700 font-bold bg-purple-100 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                                    <Sparkles className="w-2.5 h-2.5" /> Liberado
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-slate-400 font-normal">
+                                    Restrito
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                {perm.desc}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Rodapé fixo */}

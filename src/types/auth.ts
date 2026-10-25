@@ -52,4 +52,6 @@ export interface AuthUser {
   cpf?: string;             // CPF do usuário formatado 000.000.000-00
   avatarInitials: string;
   avatarUrl?: string;       // Foto de perfil do usuário
+  customPermissions?: string[]; // Permissões especiais concedidas adicionalmente pelo usuário Master
 }
+
