@@ -144,13 +144,6 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const [newUserCompanyId, setNewUserCompanyId] = useState(companies[0]?.id || 'emp-1');
   const [newUserAvatarUrl, setNewUserAvatarUrl] = useState('');
 
-  const avatarPresets = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&h=160&q=80',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&h=160&q=80',
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&h=160&q=80',
-    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&h=160&q=80'
-  ];
-
   const logoPresets = [
     'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=160&h=160&q=80',
     'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=160&h=160&q=80',
@@ -410,7 +403,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[newUserRole]}.`,
       companyId: newUserCompanyId,
       avatarInitials: newUserName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
-      avatarUrl: newUserAvatarUrl.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80'
+      avatarUrl: newUserAvatarUrl.trim() || undefined
     };
 
     setUsersList([...usersList, newUser]);
@@ -2019,18 +2012,23 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
                 <div className="min-w-0 flex-1 space-y-1">
                   <span className="text-[11px] font-bold text-slate-700 block">Foto de Perfil</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] text-slate-400">Sugestões:</span>
-                    {avatarPresets.map((preset, idx) => (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => editUserPhotoInputRef.current?.click()}
+                      className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                    >
+                      Selecionar foto do computador
+                    </button>
+                    {editingUser.avatarUrl && (
                       <button
-                        key={idx}
                         type="button"
-                        onClick={() => setEditingUser({ ...editingUser, avatarUrl: preset })}
-                        className="w-5 h-5 rounded-full overflow-hidden border border-slate-300 hover:scale-110 transition-transform cursor-pointer"
+                        onClick={() => setEditingUser({ ...editingUser, avatarUrl: undefined })}
+                        className="text-xs text-rose-600 hover:text-rose-700 underline cursor-pointer"
                       >
-                        <img src={preset} alt="preset" className="w-full h-full object-cover" />
+                        Remover foto
                       </button>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
@@ -2164,18 +2162,23 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
                 <div className="min-w-0 flex-1 space-y-1">
                   <span className="text-[11px] font-bold text-slate-700 block">Foto de Perfil</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] text-slate-400">Modelos:</span>
-                    {avatarPresets.map((preset, idx) => (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => userPhotoInputRef.current?.click()}
+                      className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline cursor-pointer"
+                    >
+                      Selecionar foto do computador
+                    </button>
+                    {newUserAvatarUrl && (
                       <button
-                        key={idx}
                         type="button"
-                        onClick={() => setNewUserAvatarUrl(preset)}
-                        className="w-5 h-5 rounded-full overflow-hidden border border-slate-300 hover:scale-110 transition-transform cursor-pointer"
+                        onClick={() => setNewUserAvatarUrl('')}
+                        className="text-xs text-rose-600 hover:text-rose-700 underline cursor-pointer"
                       >
-                        <img src={preset} alt="preset" className="w-full h-full object-cover" />
+                        Remover foto
                       </button>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>

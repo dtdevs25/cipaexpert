@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, User, Camera, Mail, KeyRound, CheckCircle2, AlertCircle, Loader2, Database, Cloud } from 'lucide-react';
 import { AuthUser } from '../types/auth';
 import { ApiService } from '../services/apiService';
@@ -16,14 +16,35 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   currentUser,
   onUserUpdated
 }) => {
+  const isRealPhoto = (url?: string | null): boolean => {
+    if (!url) return false;
+    if (url.includes('unsplash.com')) return false;
+    return true;
+  };
+
+  const getInitials = (fullName: string): string => {
+    const parts = fullName.replace(/\s*\(.*?\)\s*/g, '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'US';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   const [name, setName] = useState(currentUser?.name?.replace(/\s*\(.*?\)\s*/g, '').trim() || '');
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.avatarUrl || '');
+  const [avatarUrl, setAvatarUrl] = useState(isRealPhoto(currentUser?.avatarUrl) ? currentUser!.avatarUrl! : '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sincroniza sempre que abrir o modal com o usuário ativo mais recente
+  useEffect(() => {
+    if (currentUser && isOpen) {
+      setName(currentUser.name?.replace(/\s*\(.*?\)\s*/g, '').trim() || '');
+      setAvatarUrl(isRealPhoto(currentUser.avatarUrl) ? currentUser.avatarUrl! : '');
+    }
+  }, [currentUser, isOpen]);
 
   if (!isOpen || !currentUser) return null;
 
@@ -184,15 +205,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             {/* Seção da Foto / Avatar com MinIO */}
             <div className="flex flex-col items-center justify-center pb-2">
               <div className="relative group cursor-pointer" onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}>
-                {avatarUrl ? (
+                {isRealPhoto(avatarUrl) ? (
                   <img
                     src={avatarUrl}
                     alt={name}
                     className="w-24 h-24 rounded-full object-cover ring-4 ring-emerald-500/30 shadow-md transition-opacity group-hover:opacity-80"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-slate-900 text-white font-bold text-2xl flex items-center justify-center shadow-md ring-4 ring-emerald-500/30 transition-opacity group-hover:opacity-80">
-                    {name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'US'}
+                  <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-slate-700 text-white font-bold text-2xl flex flex-col items-center justify-center shadow-md ring-4 ring-emerald-500/30 transition-opacity group-hover:opacity-80">
+                    <span className="tracking-wider">{getInitials(name || currentUser.name)}</span>
                   </div>
                 )}
                 
@@ -232,7 +253,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 >
                   {isUploadingPhoto ? 'Enviando para MinIO...' : 'Enviar foto para o MinIO'}
                 </button>
-                {avatarUrl && (
+                {isRealPhoto(avatarUrl) && (
                   <button
                     type="button"
                     disabled={isUploadingPhoto}

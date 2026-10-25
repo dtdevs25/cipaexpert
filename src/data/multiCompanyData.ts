@@ -125,8 +125,7 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     role: 'master',
     roleLabel: 'Usuário Master',
     roleDescription: 'Acesso total: visualiza e gerencia todas as empresas, filiais, contratos de módulos e auditoria global do SaaS.',
-    avatarInitials: 'DS',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80'
+    avatarInitials: 'DS'
   },
   admin_empresa: {
     id: 'usr-admin-empresa',
@@ -136,8 +135,7 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     roleLabel: 'Administrador da Empresa',
     roleDescription: 'Responsável pela empresa e todas as suas unidades/filiais (SP, Betim, Cajamar). Gerencia módulos e gestores.',
     companyId: 'emp-1',
-    avatarInitials: 'RA',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&h=150&q=80'
+    avatarInitials: 'RA'
   },
   gestor_unidade: {
     id: 'usr-gestor-unidade',
@@ -148,8 +146,7 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     roleDescription: 'Acesso restrito à sua filial específica: monitora os processos da CIPA e indicadores locais desta unidade.',
     companyId: 'emp-1',
     unitId: 'unit-1-matriz',
-    avatarInitials: 'JP',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&h=150&q=80'
+    avatarInitials: 'JP'
   },
   tecnico_sst: {
     id: 'usr-tecnico-sst',
@@ -160,8 +157,7 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     roleDescription: 'Operador técnico: sobe os dados da eleição, cadastra candidatos, emite atas e editais oficiais e envia para assinaturas.',
     companyId: 'emp-1',
     unitId: 'unit-1-matriz',
-    avatarInitials: 'CM',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&h=150&q=80'
+    avatarInitials: 'CM'
   },
   cipeiro: {
     id: 'usr-cipeiro',
@@ -172,8 +168,7 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     roleDescription: 'Membro eleito da CIPA: assina atas digitalmente, inclui e atualiza planos de ações preventivas (5W2H) e acompanha reuniões.',
     companyId: 'emp-1',
     unitId: 'unit-1-matriz',
-    avatarInitials: 'RV',
-    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&h=150&q=80'
+    avatarInitials: 'RV'
   },
   eleitor: {
     id: 'usr-eleitor',
@@ -184,8 +179,7 @@ export const DEMO_USERS: Record<string, AuthUser> = {
     roleDescription: 'Acesso pontual para época de eleição: visualiza candidatos, vota na urna segura com sigilo e obtém comprovante com hash.',
     companyId: 'emp-1',
     unitId: 'unit-1-matriz',
-    avatarInitials: 'LS',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&h=150&q=80'
+    avatarInitials: 'LS'
   }
 };
 

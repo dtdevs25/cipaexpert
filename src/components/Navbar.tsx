@@ -78,15 +78,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   {/* Aquela bolinha com foto */}
                   <div className="relative shrink-0">
-                    {currentUser?.avatarUrl ? (
+                    {currentUser?.avatarUrl && !currentUser.avatarUrl.includes('unsplash.com') ? (
                       <img
                         src={currentUser.avatarUrl}
                         alt={currentUser.name}
                         className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/40 shadow-xs"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-emerald-500/40">
-                        {currentUser?.avatarInitials || 'US'}
+                      <div className="w-10 h-10 rounded-full bg-slate-900 border border-slate-700 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-emerald-500/40">
+                        {currentUser?.name 
+                          ? currentUser.name.replace(/\s*\(.*?\)\s*/g, '').trim().split(/\s+/).filter(Boolean).map(n => n[0]).slice(0, 2).join('').toUpperCase()
+                          : (currentUser?.avatarInitials || 'US')}
                       </div>
                     )}
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white absolute bottom-0 right-0"></span>

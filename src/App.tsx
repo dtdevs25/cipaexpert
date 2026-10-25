@@ -10,13 +10,28 @@ import { ResetPasswordModal } from './components/ResetPasswordModal';
 import { GeneratedDocument } from './data/documentTemplates';
 import { AuthUser } from './types/auth';
 import { DEMO_USERS } from './data/multiCompanyData';
+import { ApiService } from './services/apiService';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'login' | 'admin'>('landing');
   const [activeAdminTab, setActiveAdminTab] = useState<string>('menu');
   
-  // Auth state
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(DEMO_USERS.master);
+  // Auth state - lê usuário real do PostgreSQL armazenado localmente
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const stored = localStorage.getItem('cipaexpert_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.avatarUrl && parsed.avatarUrl.includes('unsplash.com')) {
+          delete parsed.avatarUrl;
+        }
+        return parsed;
+      }
+    } catch {}
+    const defaultMaster = { ...DEMO_USERS.master };
+    delete defaultMaster.avatarUrl;
+    return defaultMaster;
+  });
 
   // Profile modal state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -30,6 +45,19 @@ export default function App() {
     const token = urlParams.get('resetToken');
     if (token) {
       setResetToken(token);
+    }
+
+    // Sincroniza dados e foto real do PostgreSQL / MinIO se houver token ativo
+    if (ApiService.getToken()) {
+      ApiService.getMe().then(me => {
+        if (me) {
+          if (me.avatarUrl && me.avatarUrl.includes('unsplash.com')) {
+            me.avatarUrl = undefined;
+          }
+          setCurrentUser(me);
+          ApiService.setStoredUser(me);
+        }
+      }).catch(() => {});
     }
   }, []);
 
