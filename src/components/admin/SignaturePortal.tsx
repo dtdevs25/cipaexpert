@@ -229,7 +229,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
           className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Envelope</span>
+          <span>Envelope</span>
         </button>
       </div>
 
@@ -302,7 +302,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
               filter === 'concluidos' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Assinados 100% ({concluidosCount})
+            Concluídos ({concluidosCount})
           </button>
         </div>
 
@@ -330,9 +330,10 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
             <button
               type="button"
               onClick={() => setIsNewEnvelopeModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm cursor-pointer inline-flex items-center gap-1.5"
             >
-              + Envelope
+              <Plus className="w-4 h-4" />
+              <span>Envelope</span>
             </button>
           </div>
         ) : (
@@ -360,16 +361,14 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                     <React.Fragment key={env.id}>
                       <tr className="hover:bg-slate-50/70 transition-colors">
                         
-                        {/* 1. Documento */}
+                        {/* 1. Documento (Apenas o nome) */}
                         <td className="py-3.5 px-4 align-top">
-                          <div className="font-extrabold text-slate-900 text-xs hover:text-emerald-800 transition-colors cursor-pointer" onClick={() => handleViewDocument(env)}>
+                          <div 
+                            className="font-extrabold text-slate-900 text-xs hover:text-emerald-800 transition-colors cursor-pointer" 
+                            onClick={() => handleViewDocument(env)}
+                            title="Clique para visualizar o documento"
+                          >
                             {env.title}
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                            {env.category} {env.normativeCode ? `· ${env.normativeCode}` : ''}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                            Criado em: {env.createdAt}
                           </div>
                         </td>
 
@@ -413,18 +412,28 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                           </div>
                         </td>
 
-                        {/* 4. Status */}
+                        {/* 4. Status (Ícone que expande texto no hover) */}
                         <td className="py-3.5 px-3 align-top">
                           {isCompleted ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase tracking-wider">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Homologado
-                            </span>
+                            <div 
+                              className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
+                              title="Documento Concluído"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold text-emerald-800 transition-opacity duration-300">
+                                Concluído
+                              </span>
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px] uppercase tracking-wider">
-                              <Clock className="w-3 h-3 text-amber-600" />
-                              Pendente
-                            </span>
+                            <div 
+                              className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
+                              title="Documento Pendente"
+                            >
+                              <Clock className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold text-amber-800 transition-opacity duration-300">
+                                Pendente
+                              </span>
+                            </div>
                           )}
                         </td>
 
