@@ -48,11 +48,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // KPI Calculations
   const totalEmpresas = companies.length;
-  const totalUnidades = companies.reduce((acc, c) => acc + c.units.length, 0);
+  const totalUnidades = companies.reduce((acc, c) => acc + (c?.units?.length || 0), 0);
 
   // CIPAs ativas & em andamento
   const cipasAtivasCount = companies.reduce(
-    (acc, c) => acc + c.units.filter(u => u.cipaAtiva).length, 
+    (acc, c) => acc + (c?.units ? c.units.filter(u => u.cipaAtiva).length : 0), 
     0
   );
   const eleicoesEmAndamentoCount = 3; // Processos eleitorais abertos
@@ -86,143 +86,135 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. CARDS DE KPIS PRINCIPAIS (DESIGN COMPACTO, ÍCONES MAIORES E EFEITO HOVER) */}
+      {/* 1. CARDS DE KPIS PRINCIPAIS (DESIGN LIMPO, ÍCONES MAIORES SEM FUNDO E ALTURA COMPACTA) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 w-full">
         
         {/* KPI 1: CIPAs Ativas */}
         <div 
           onClick={() => onNavigateTab('cadastros')}
-          className="bg-white px-3.5 py-3 rounded-xl border border-slate-200 border-l-[6px] border-l-emerald-500 shadow-xs hover:shadow-xl hover:shadow-emerald-950/10 hover:-translate-y-1.5 hover:border-slate-300 hover:bg-emerald-50/20 transition-all duration-300 ease-out cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-emerald-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
         >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">CIPAs Ativas</span>
-              <div className="w-9 h-9 rounded-xl bg-emerald-100/70 text-emerald-700 border border-emerald-200/80 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 group-hover:shadow-md group-hover:shadow-emerald-600/30 transition-all duration-300">
-                <ShieldCheck className="w-5 h-5 transition-transform" />
-              </div>
-            </div>
-            <div className="my-1">
-              <span className="text-3xl sm:text-[32px] font-black text-slate-900 tracking-tight font-mono group-hover:text-emerald-700 transition-colors leading-none">
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              CIPAs Ativas
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-mono group-hover:text-emerald-600 transition-colors leading-none block">
                 {cipasAtivasCount}
               </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">comissões regulares</span>
+              <span className="text-xs text-slate-400 block mt-1 font-medium truncate">
+                comissões regulares
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 px-2 py-0.5 rounded-md mt-1.5">
-            <CheckCircle2 className="w-3 h-3 shrink-0" />
-            <span className="truncate">100% Conforme NR-5</span>
-          </div>
+          <ShieldCheck className="w-8 h-8 text-emerald-600 group-hover:scale-110 group-hover:text-emerald-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
         {/* KPI 2: Eleições em Andamento */}
         <div 
           onClick={() => onNavigateTab('eleicao')}
-          className="bg-white px-3.5 py-3 rounded-xl border border-slate-200 border-l-[6px] border-l-purple-500 shadow-xs hover:shadow-xl hover:shadow-purple-950/10 hover:-translate-y-1.5 hover:border-slate-300 hover:bg-purple-50/20 transition-all duration-300 ease-out cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-purple-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
         >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Em Andamento</span>
-              <div className="w-9 h-9 rounded-xl bg-purple-100/70 text-purple-700 border border-purple-200/80 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600 group-hover:shadow-md group-hover:shadow-purple-600/30 transition-all duration-300">
-                <Vote className="w-5 h-5 transition-transform" />
-              </div>
-            </div>
-            <div className="my-1">
-              <span className="text-3xl sm:text-[32px] font-black text-purple-900 tracking-tight font-mono group-hover:text-purple-700 transition-colors leading-none">
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Em Andamento
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-purple-900 tracking-tight font-mono group-hover:text-purple-600 transition-colors leading-none block">
                 {eleicoesEmAndamentoCount}
               </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">processos eleitorais</span>
+              <span className="text-xs text-slate-400 block mt-1 font-medium truncate">
+                processos eleitorais
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-purple-700 bg-purple-50/80 border border-purple-200/80 px-2 py-0.5 rounded-md mt-1.5">
-            <Clock className="w-3 h-3 shrink-0" />
-            <span className="truncate">Urna digital ativa</span>
-          </div>
+          <Vote className="w-8 h-8 text-purple-600 group-hover:scale-110 group-hover:text-purple-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
-        {/* KPI 3: Reuniões em Dia vs em Atraso */}
+        {/* KPI 3: Reuniões CIPA */}
         <div 
           onClick={() => onNavigateTab('gestao')}
-          className="bg-white px-3.5 py-3 rounded-xl border border-slate-200 border-l-[6px] border-l-blue-500 shadow-xs hover:shadow-xl hover:shadow-blue-950/10 hover:-translate-y-1.5 hover:border-slate-300 hover:bg-blue-50/20 transition-all duration-300 ease-out cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-blue-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
         >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Reuniões CIPA</span>
-              <div className="w-9 h-9 rounded-xl bg-blue-100/70 text-blue-700 border border-blue-200/80 flex items-center justify-center group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 group-hover:shadow-md group-hover:shadow-blue-600/30 transition-all duration-300">
-                <Calendar className="w-5 h-5 transition-transform" />
-              </div>
-            </div>
-            <div className="my-1 flex items-baseline gap-2">
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Reuniões CIPA
+            </span>
+            <div className="mt-1.5 flex items-baseline gap-2.5">
               <div>
-                <span className="text-2xl sm:text-[28px] font-black text-slate-900 font-mono group-hover:text-blue-700 transition-colors leading-none">{reunioesEmDia}</span>
-                <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">em dia</span>
+                <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono group-hover:text-blue-600 transition-colors leading-none block">
+                  {reunioesEmDia}
+                </span>
+                <span className="text-[10px] text-emerald-600 font-bold block mt-1">
+                  em dia
+                </span>
               </div>
-              <div className="h-5 w-px bg-slate-200"></div>
+              <div className="h-6 w-px bg-slate-200"></div>
               <div>
-                <span className="text-2xl sm:text-[28px] font-black text-rose-600 font-mono leading-none">{reunioesEmAtraso}</span>
-                <span className="text-[10px] text-rose-600 font-bold block mt-0.5">em atraso</span>
+                <span className="text-2xl sm:text-3xl font-black text-rose-600 font-mono leading-none block">
+                  {reunioesEmAtraso}
+                </span>
+                <span className="text-[10px] text-rose-600 font-bold block mt-1">
+                  em atraso
+                </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-700 bg-slate-100/90 border border-slate-200 px-2 py-0.5 rounded-md mt-1.5">
-            <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
-            <span className="truncate">1 pendente de pauta</span>
-          </div>
+          <Calendar className="w-8 h-8 text-blue-600 group-hover:scale-110 group-hover:text-blue-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
         {/* KPI 4: Documentos Pendentes de Assinatura */}
         <div 
           onClick={() => onNavigateTab('assinaturas')}
-          className="bg-white px-3.5 py-3 rounded-xl border border-slate-200 border-l-[6px] border-l-amber-500 shadow-xs hover:shadow-xl hover:shadow-amber-950/10 hover:-translate-y-1.5 hover:border-slate-300 hover:bg-amber-50/20 transition-all duration-300 ease-out cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-amber-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
         >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Assinaturas</span>
-              <div className="w-9 h-9 rounded-xl bg-amber-100/70 text-amber-700 border border-amber-200/80 flex items-center justify-center group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white group-hover:border-amber-600 group-hover:shadow-md group-hover:shadow-amber-600/30 transition-all duration-300">
-                <PenTool className="w-5 h-5 transition-transform" />
-              </div>
-            </div>
-            <div className="my-1">
-              <span className="text-3xl sm:text-[32px] font-black text-amber-900 tracking-tight font-mono group-hover:text-amber-700 transition-colors leading-none">
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Assinaturas
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-amber-900 tracking-tight font-mono group-hover:text-amber-600 transition-colors leading-none block">
                 {totalDocPendentes}
               </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">documentos aguardando</span>
+              <span className="text-xs text-slate-400 block mt-1 font-medium truncate">
+                documentos aguardando
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-800 bg-amber-50/80 border border-amber-200/80 px-2 py-0.5 rounded-md mt-1.5">
-            <Clock className="w-3 h-3 shrink-0" />
-            <span className="truncate">Atas mensais / posse</span>
-          </div>
+          <PenTool className="w-8 h-8 text-amber-600 group-hover:scale-110 group-hover:text-amber-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
         {/* KPI 5: Ações Vencidas e a Vencer */}
         <div 
           onClick={() => onNavigateTab('gestao')}
-          className="bg-white px-3.5 py-3 rounded-xl border border-slate-200 border-l-[6px] border-l-rose-500 shadow-xs hover:shadow-xl hover:shadow-rose-950/10 hover:-translate-y-1.5 hover:border-slate-300 hover:bg-rose-50/20 transition-all duration-300 ease-out cursor-pointer group flex flex-col justify-between"
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-rose-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
         >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Ações 5W2H</span>
-              <div className="w-9 h-9 rounded-xl bg-rose-100/70 text-rose-700 border border-rose-200/80 flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-600 group-hover:shadow-md group-hover:shadow-rose-600/30 transition-all duration-300">
-                <AlertTriangle className="w-5 h-5 transition-transform" />
-              </div>
-            </div>
-            <div className="my-1 flex items-baseline gap-2">
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Ações 5W2H
+            </span>
+            <div className="mt-1.5 flex items-baseline gap-2.5">
               <div>
-                <span className="text-2xl sm:text-[28px] font-black text-rose-600 font-mono leading-none">{acoesVencidas}</span>
-                <span className="text-[10px] text-rose-600 font-bold block mt-0.5">vencidas</span>
+                <span className="text-2xl sm:text-3xl font-black text-rose-600 font-mono leading-none block">
+                  {acoesVencidas}
+                </span>
+                <span className="text-[10px] text-rose-600 font-bold block mt-1">
+                  vencidas
+                </span>
               </div>
-              <div className="h-5 w-px bg-slate-200"></div>
+              <div className="h-6 w-px bg-slate-200"></div>
               <div>
-                <span className="text-2xl sm:text-[28px] font-black text-slate-800 font-mono leading-none">{acoesAVencer}</span>
-                <span className="text-[10px] text-slate-500 font-bold block mt-0.5">a vencer</span>
+                <span className="text-2xl sm:text-3xl font-black text-slate-800 font-mono leading-none block">
+                  {acoesAVencer}
+                </span>
+                <span className="text-[10px] text-slate-500 font-bold block mt-1">
+                  a vencer
+                </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-800 bg-rose-50/80 border border-rose-200/80 px-2 py-0.5 rounded-md mt-1.5">
-            <AlertTriangle className="w-3 h-3 shrink-0" />
-            <span className="truncate">2 ações requerem ação</span>
-          </div>
+          <AlertTriangle className="w-8 h-8 text-rose-600 group-hover:scale-110 group-hover:text-rose-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
       </div>

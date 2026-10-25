@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Building2, 
   Users, 
@@ -24,7 +24,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
-import { DEMO_USERS } from '../../data/multiCompanyData';
+import { DEMO_USERS, INITIAL_COMPANIES } from '../../data/multiCompanyData';
 import { CNAE_DATABASE } from '../../data/cnaeData';
 import { StandardModal } from '../common/StandardModal';
 import { ApiService } from '../../services/apiService';
@@ -432,9 +432,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     );
   };
 
+  // Garante que a lista de empresas e unidades seja sempre um array válido
+  const safeCompanies = (companies && companies.length > 0 ? companies : INITIAL_COMPANIES).map(c => ({
+    ...c,
+    units: Array.isArray(c?.units) ? c.units : []
+  }));
+
   // All Filiais flat array for the Filiais Tab
-  const allFiliaisWithCompany = companies.flatMap(comp => 
-    comp.units.map(unit => ({
+  const allFiliaisWithCompany = safeCompanies.flatMap(comp => 
+    (comp?.units || []).map(unit => ({
       filial: unit,
       companyId: comp.id,
       companyName: comp.nomeFantasia,
@@ -513,7 +519,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Empresas ({companies.length})
+            Empresas ({safeCompanies.length})
           </button>
           
           <button
@@ -608,7 +614,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         <div className="w-full">
           {companyViewMode === 'cards' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 w-full animate-in fade-in duration-150">
-              {companies.map((company) => (
+              {safeCompanies.map((company) => (
                 <div
                   key={company.id}
                   className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group"
@@ -658,7 +664,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs flex items-center justify-between">
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 block uppercase">Filiais Cadastradas</span>
-                          <strong className="text-slate-800 text-xs block">{company.units.length} estabelecimentos</strong>
+                          <strong className="text-slate-800 text-xs block">{(company.units || []).length} estabelecimentos</strong>
                         </div>
                         <button
                           type="button"
@@ -728,7 +734,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {companies.map((company) => (
+                    {safeCompanies.map((company) => (
                       <tr key={company.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
@@ -765,7 +771,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                           {company.responsavelAdmin}
                         </td>
                         <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="font-bold text-slate-900 block">{company.units.length} estabelecimentos</span>
+                          <span className="font-bold text-slate-900 block">{(company.units || []).length} estabelecimentos</span>
                         </td>
                         <td className="py-4 px-4 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5 justify-center">
@@ -980,7 +986,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
           <div className="divide-y divide-slate-100 w-full">
             {usersList.map((user) => {
-              const userComp = companies.find(c => c.id === user.companyId);
+              const userComp = safeCompanies.find(c => c.id === user.companyId);
 
               return (
                 <div key={user.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors">
@@ -994,7 +1000,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         />
                       ) : (
                         <div className="w-11 h-11 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
-                          {user.avatarInitials}
+                          {user.avatarInitials || (user.name ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'U')}
                         </div>
                       )}
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white absolute bottom-0 right-0"></span>
@@ -1003,7 +1009,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <strong className="text-sm font-bold text-slate-900 block truncate">{user.name}</strong>
-                        {user.id === currentUser.id && (
+                        {currentUser?.id && user.id === currentUser.id && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
                             Sua Sessão
                           </span>
@@ -1022,10 +1028,10 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                     <div className="text-left sm:text-right">
                       <span className="text-xs font-bold text-emerald-700 block">
-                        {user.roleLabel}
+                        {user.roleLabel || user.role}
                       </span>
                       <span className="text-[10px] text-slate-500 block truncate max-w-[200px]">
-                        {user.roleDescription}
+                        {user.roleDescription || 'Usuário do sistema'}
                       </span>
                     </div>
 

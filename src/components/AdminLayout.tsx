@@ -29,6 +29,7 @@ import { RemindersManager } from './admin/RemindersManager';
 import { SignaturePortal } from './admin/SignaturePortal';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { ApiService } from '../services/apiService';
+import { ErrorBoundary } from './common/ErrorBoundary';
 
 interface AdminLayoutProps {
   currentUser: AuthUser;
@@ -56,12 +57,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           // Ajusta formato das unidades caso necessário
           const mappedCompanies = data.map(c => ({
             ...c,
+            cnaeCode: c.cnaeCode || (c as any).cnaePrincipalCode || '2511-0/00',
+            cnaeDesc: c.cnaeDesc || (c as any).cnaePrincipalDesc || 'Atividade Principal',
             modulosContratados: {
               dimensionamento: c.moduloDimensionamento ?? true,
               eleicao: c.moduloEleicao ?? true,
               gestao: c.moduloGestao ?? true
             },
-            units: (c.units || []).map(u => ({
+            units: Array.isArray(c.units) ? c.units.map(u => ({
               id: u.id,
               name: u.name,
               city: u.city,
@@ -72,7 +75,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               cnaeDesc: u.cnaeDesc,
               cipaAtiva: u.cipaAtiva,
               gestorName: u.gestorName
-            }))
+            })) : []
           }));
           setCompanies(mappedCompanies as any);
         }
@@ -83,13 +86,14 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   // Selected Company for operations
   const initialCompany = companies.find(c => c.id === currentUser.companyId) || companies[0];
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompany?.id || 'emp-1');
-  const activeCompany = companies.find(c => c.id === selectedCompanyId) || companies[0];
+  const activeCompany = companies.find(c => c.id === selectedCompanyId) || companies[0] || INITIAL_COMPANIES[0];
   
   // Selected Unit for operations
+  const safeActiveUnits = Array.isArray(activeCompany?.units) ? activeCompany.units : [];
   const [selectedUnitId, setSelectedUnitId] = useState<string>(
-    currentUser.unitId || activeCompany.units[0]?.id || ''
+    currentUser.unitId || safeActiveUnits[0]?.id || ''
   );
-  const activeUnit = activeCompany.units.find(u => u.id === selectedUnitId) || activeCompany.units[0];
+  const activeUnit = safeActiveUnits.find(u => u.id === selectedUnitId) || safeActiveUnits[0];
 
   // Active Tab State: 'dashboard' | 'cadastros' | 'dimensionamento' | 'eleicao' | 'gestao' | 'assinaturas' | 'lembretes'
   const [activeTab, setActiveTab] = useState<string>(
@@ -332,7 +336,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     onChange={(e) => {
                       setSelectedCompanyId(e.target.value);
                       const comp = companies.find(c => c.id === e.target.value);
-                      if (comp && comp.units[0]) setSelectedUnitId(comp.units[0].id);
+                      if (comp && Array.isArray(comp.units) && comp.units[0]) {
+                        setSelectedUnitId(comp.units[0].id);
+                      }
                     }}
                     className="font-bold text-slate-800 bg-transparent border-b border-slate-300 focus:outline-none cursor-pointer py-0.5"
                   >
@@ -357,7 +363,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     onChange={(e) => setSelectedUnitId(e.target.value)}
                     className="font-medium text-slate-700 bg-transparent border-b border-slate-200 focus:outline-none cursor-pointer py-0.5"
                   >
-                    {activeCompany.units.map((u) => (
+                    {(activeCompany.units || []).map((u) => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
@@ -386,11 +392,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           {/* 2. CADASTROS GERAIS (COM GUIAS DE EMPRESAS, FILIAIS E USUÁRIOS) */}
           {activeTab === 'cadastros' && (
-            <CompanyUserManager
-              companies={companies}
-              onUpdateCompanies={setCompanies}
-              currentUser={currentUser}
-            />
+            <ErrorBoundary fallbackTitle="Erro ao carregar Cadastros Gerais">
+              <CompanyUserManager
+                companies={companies}
+                onUpdateCompanies={setCompanies}
+                currentUser={currentUser}
+              />
+            </ErrorBoundary>
           )}
 
           {/* 3. MÓDULO 1: DIMENSIONAMENTO & CRONOGRAMA */}
