@@ -342,7 +342,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
                   <th className="py-3 px-4">Documento</th>
-                  <th className="py-3 px-3">Origem & Fluxo</th>
+                  <th className="py-3 px-3">Fluxo</th>
                   <th className="py-3 px-4">Signatários</th>
                   <th className="py-3 px-3">Status</th>
                   <th className="py-3 px-4 text-right">Ações</th>
@@ -372,43 +372,34 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                           </div>
                         </td>
 
-                        {/* 2. Origem & Fluxo */}
+                        {/* 2. Fluxo (Apenas o tipo de fluxo) */}
                         <td className="py-3.5 px-3 align-top">
-                          <div className="space-y-1">
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
-                              {env.sourceType === 'sistema' ? 'Sistema CIPA' : 'Arquivo Externo'}
-                            </span>
-                            <span className="block text-[10px] text-slate-500 font-medium">
-                              {env.sendSequence === 'sequencial' ? 'Sequencial (1 a 1)' : 'Simultâneo'}
-                            </span>
-                          </div>
+                          <span className="inline-block px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
+                            {env.sendSequence === 'sequencial' ? 'Sequencial (1 a 1)' : 'Simultâneo'}
+                          </span>
                         </td>
 
-                        {/* 3. Signatários & Progresso */}
+                        {/* 3. Signatários & Progresso (Clicável na própria barra para abrir) */}
                         <td className="py-3.5 px-4 align-top">
-                          <div className="space-y-1.5 min-w-[150px]">
+                          <div 
+                            onClick={() => setExpandedEnvelopeId(isExpanded ? null : env.id)}
+                            className="space-y-1.5 min-w-[150px] cursor-pointer group/bar select-none"
+                            title="Clique para ver ou ocultar os signatários"
+                          >
                             <div className="flex items-center justify-between text-[11px]">
-                              <span className="font-bold text-slate-700 font-mono">
+                              <span className="font-bold text-slate-700 font-mono group-hover/bar:text-emerald-700 transition-colors">
                                 {signedCount} de {totalSigners} assinados
                               </span>
                               <span className="text-[10px] font-mono font-bold text-emerald-800">
                                 {percent}%
                               </span>
                             </div>
-                            <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden ring-1 ring-slate-300/40 group-hover/bar:ring-emerald-400 transition-all">
                               <div
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-300 group-hover/bar:bg-emerald-600"
                                 style={{ width: `${percent}%` }}
                               />
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => setExpandedEnvelopeId(isExpanded ? null : env.id)}
-                              className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer pt-0.5"
-                            >
-                              <span>{isExpanded ? 'Ocultar signatários' : 'Ver signatários'}</span>
-                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                            </button>
                           </div>
                         </td>
 
