@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
 import { LoginPage } from './components/LoginPage';
 import { AdminLayout } from './components/AdminLayout';
 import { DocumentViewerModal } from './components/DocumentViewerModal';
 import { DigitalSignatureModal } from './components/DigitalSignatureModal';
+import { UserProfileModal } from './components/UserProfileModal';
+import { ResetPasswordModal } from './components/ResetPasswordModal';
 import { GeneratedDocument } from './data/documentTemplates';
 import { AuthUser } from './types/auth';
 import { DEMO_USERS } from './data/multiCompanyData';
@@ -15,6 +17,21 @@ export default function App() {
   
   // Auth state
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(DEMO_USERS.master);
+
+  // Profile modal state
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Password reset via token link state
+  const [resetToken, setResetToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if user clicked email reset link with ?resetToken=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('resetToken');
+    if (token) {
+      setResetToken(token);
+    }
+  }, []);
 
   // Active document for modal viewer
   const [viewingDocument, setViewingDocument] = useState<GeneratedDocument | null>(null);
@@ -100,6 +117,7 @@ export default function App() {
         currentView={currentView}
         onNavigate={handleNavigate}
         onOpenLogin={handleOpenLogin}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
         currentUser={currentUser}
         onLogout={handleLogout}
         activeAdminTab={activeAdminTab}
@@ -128,6 +146,31 @@ export default function App() {
         )}
       </main>
 
+      {/* Modal de Perfil do Usuário (Trocar foto, nome ou solicitar redefinição de senha) */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        onUserUpdated={(updated) => {
+          setCurrentUser((prev) => (prev ? { ...prev, ...updated } : prev));
+        }}
+      />
+
+      {/* Modal de Redefinição de Senha via Link de 24h recebido por E-mail */}
+      <ResetPasswordModal
+        isOpen={!!resetToken}
+        token={resetToken || ''}
+        onSuccess={() => {
+          setResetToken(null);
+          window.history.replaceState({}, '', window.location.pathname);
+          handleOpenLogin();
+        }}
+        onCancel={() => {
+          setResetToken(null);
+          window.history.replaceState({}, '', window.location.pathname);
+        }}
+      />
+
       {/* Document Viewer Modal for Official Legal Documents */}
       <DocumentViewerModal
         document={viewingDocument}
@@ -153,4 +196,4 @@ export default function App() {
 
     </div>
   );
-}
+};

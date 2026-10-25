@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from './db';
 import { SecurityService, AuthenticatedRequest } from './security';
 import { calcularDimensionamentoNR5Backend, calcularPrazosCronogramaNR5 } from './nr5Rules';
+import { MailerService } from './mailer';
 
 export const apiRouter = Router();
 
@@ -108,6 +109,149 @@ apiRouter.get('/auth/me', SecurityService.authenticate, async (req: Authenticate
     });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao carregar perfil do usuário.' });
+  }
+});
+
+// Atualizar Nome e Foto de Perfil
+apiRouter.put('/auth/profile', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, avatarUrl } = req.body;
+    const userId = req.user!.userId;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name ? { name: name.trim() } : {}),
+        ...(avatarUrl !== undefined ? { avatarUrl } : {})
+      },
+      include: { company: true, unit: true }
+    });
+
+    res.json({
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      companyId: updatedUser.companyId,
+      unitId: updatedUser.unitId,
+      companyName: updatedUser.company?.nomeFantasia,
+      unitName: updatedUser.unit?.name,
+      avatarUrl: updatedUser.avatarUrl
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    res.status(500).json({ error: 'Erro ao atualizar dados do perfil.' });
+  }
+});
+
+// Esqueci a Senha - Valida se o usuário existe e envia e-mail com token de 24h
+apiRouter.post('/auth/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      res.status(400).json({ error: 'Informe um e-mail válido.' });
+      return;
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'E-mail não encontrado no cadastro do sistema.' });
+      return;
+    }
+
+    // Gera token criptografado JWT com validade estrita de 24 horas
+    const resetToken = SecurityService.generateResetToken(user.id, user.email);
+
+    // Monta a URL de redefinição
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    const resetLink = `${origin}/?resetToken=${resetToken}`;
+
+    // Envia e-mail
+    await MailerService.sendPasswordResetEmail({
+      to: user.email,
+      userName: user.name,
+      resetLink
+    });
+
+    res.json({
+      success: true,
+      message: 'Link de redefinição de senha enviado com sucesso para o seu e-mail! Válido por 24 horas.'
+    });
+  } catch (error) {
+    console.error('Erro ao processar esqueci a senha:', error);
+    res.status(500).json({ error: 'Erro interno ao processar a solicitação.' });
+  }
+});
+
+// Solicitar link de redefinição para o próprio usuário logado
+apiRouter.post('/auth/request-reset-my-password', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      res.status(404).json({ error: 'Usuário não encontrado.' });
+      return;
+    }
+
+    const resetToken = SecurityService.generateResetToken(user.id, user.email);
+    const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+    const resetLink = `${origin}/?resetToken=${resetToken}`;
+
+    await MailerService.sendPasswordResetEmail({
+      to: user.email,
+      userName: user.name,
+      resetLink
+    });
+
+    res.json({
+      success: true,
+      message: `Link de redefinição enviado com sucesso para seu e-mail cadastrado (${user.email}). Válido por 24 horas.`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao solicitar redefinição de senha.' });
+  }
+});
+
+// Redefinir Senha utilizando o token de 24h
+apiRouter.post('/auth/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: 'A nova senha deve possuir pelo menos 8 caracteres.' });
+      return;
+    }
+
+    let decoded: { userId: string; email: string };
+    try {
+      decoded = SecurityService.verifyResetToken(token);
+    } catch {
+      res.status(400).json({ error: 'Link de redefinição expirado ou inválido (prazo de 24 horas excedido).' });
+      return;
+    }
+
+    const passwordHash = await SecurityService.hashPassword(newPassword);
+
+    await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { passwordHash }
+    });
+
+    res.json({
+      success: true,
+      message: 'Sua senha foi redefinida com sucesso! Você já pode acessar a plataforma.'
+    });
+  } catch (error) {
+    console.error('Erro ao redefinir senha:', error);
+    res.status(500).json({ error: 'Erro ao redefinir senha.' });
   }
 });
 

@@ -6,6 +6,7 @@ interface NavbarProps {
   currentView: 'landing' | 'login' | 'admin';
   onNavigate: (view: 'landing' | 'admin' | 'login') => void;
   onOpenLogin: () => void;
+  onOpenProfile?: () => void;
   currentUser?: AuthUser | null;
   onLogout?: () => void;
   activeAdminTab?: string;
@@ -16,6 +17,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView,
   onNavigate,
   onOpenLogin,
+  onOpenProfile,
   currentUser,
   onLogout
 }) => {
@@ -37,16 +39,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Header Principal */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200">
-        <div className={`${currentView === 'admin' ? 'w-full px-4 sm:px-6 lg:px-8 xl:px-10' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} h-16 flex items-center justify-between`}>
+        <div className={`${currentView === 'admin' ? 'w-full pl-2 sm:pl-4 lg:pl-4 pr-4 sm:pr-6 lg:pr-8' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'} h-16 flex items-center justify-between`}>
           
           {/* Logo CIPA Expert à Esquerda */}
           <button
             onClick={() => onNavigate(currentView === 'admin' ? 'admin' : 'landing')}
-            className="flex items-center gap-2.5 text-left group transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1 cursor-pointer"
+            className="flex items-center gap-2 text-left group transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-0 sm:p-0.5 cursor-pointer"
           >
             <img 
               src="/logocompleto.png" 
-              alt="CIPA Expert - Gestão de CIPA" 
+              alt="CIPA Expert - CIPA Digital Inteligente" 
               className="h-10 sm:h-11 w-auto max-w-[220px] object-contain transition-transform group-hover:scale-[1.02]" 
             />
           </button>
@@ -70,8 +72,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Bloco do Usuário: Bolinha com foto + Nome + Função abaixo */}
                 <button
                   type="button"
-                  onClick={onOpenLogin}
-                  title="Clique para alternar perfil de demonstração"
+                  onClick={onOpenProfile || onOpenLogin}
+                  title="Meu Perfil: clique para alterar foto, nome ou solicitar redefinição de senha"
                   className="flex items-center gap-2.5 sm:gap-3 p-1.5 rounded-xl hover:bg-slate-50 transition-colors text-left group cursor-pointer border border-transparent hover:border-slate-200"
                 >
                   {/* Aquela bolinha com foto */}

@@ -50,6 +50,20 @@ export const SecurityService = {
     return jwt.verify(token, JWT_SECRET) as AuthPayload;
   },
 
+  // Geração de Token Criptografado para Redefinição de Senha (prazo de 24 horas)
+  generateResetToken(userId: string, email: string): string {
+    return jwt.sign({ userId, email, purpose: 'pwd_reset' }, JWT_SECRET, { expiresIn: '24h' });
+  },
+
+  // Validação de Token de Redefinição
+  verifyResetToken(token: string): { userId: string; email: string; purpose: string } {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (decoded.purpose !== 'pwd_reset') {
+      throw new Error('Token inválido para redefinição de senha.');
+    }
+    return decoded;
+  },
+
   // Geração de Hash Criptográfico SHA-256 para Auditoria e Votação
   generateSha256(data: string): string {
     return crypto.createHash('sha256').update(data).digest('hex').toUpperCase();

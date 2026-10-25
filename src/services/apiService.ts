@@ -111,6 +111,46 @@ export const ApiService = {
     return this.request<AuthUser>('/api/auth/me');
   },
 
+  async updateProfile(profileData: { name?: string; avatarUrl?: string }): Promise<AuthUser> {
+    const data = await this.request<any>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData)
+    });
+    const current = this.getStoredUser();
+    const updated: AuthUser = {
+      ...(current || {}),
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      avatarUrl: data.avatarUrl,
+      companyId: data.companyId,
+      unitId: data.unitId
+    } as AuthUser;
+    this.setStoredUser(updated);
+    return updated;
+  },
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  },
+
+  async requestResetMyPassword(): Promise<{ success: boolean; message: string }> {
+    return this.request('/api/auth/request-reset-my-password', {
+      method: 'POST'
+    });
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return this.request('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword })
+    });
+  },
+
   // 2. Empresas e Filiais do PostgreSQL
   async getCompanies(): Promise<Company[]> {
     return this.request<Company[]>('/api/companies');

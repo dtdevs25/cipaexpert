@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 import { DEMO_USERS } from '../data/multiCompanyData';
 import { AuthUser } from '../types/auth';
-
 import { ApiService } from '../services/apiService';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 interface LoginPageProps {
   onLoginSuccess: (user: AuthUser) => void;
@@ -25,7 +25,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [forgotPasswordNotice, setForgotPasswordNotice] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -139,20 +139,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             <div className="flex justify-end pt-0.5">
               <button
                 type="button"
-                onClick={() => setForgotPasswordNotice(!forgotPasswordNotice)}
+                onClick={() => setIsForgotPasswordOpen(true)}
                 className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 transition-colors cursor-pointer"
               >
                 Esqueci a senha
               </button>
             </div>
           </div>
-
-          {/* Aviso Esqueci a Senha */}
-          {forgotPasswordNotice && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 leading-relaxed animate-in fade-in duration-150">
-              Entre em contato com o <strong>Administrador do Sistema</strong> ou com o <strong>SESMT/RH</strong> de sua empresa para redefinir suas credenciais de acesso.
-            </div>
-          )}
 
           {/* Erro de autenticação */}
           {errorMessage && (
@@ -179,6 +172,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         </form>
 
       </div>
+
+      {/* Modal Esqueci a Senha */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={email}
+      />
 
     </div>
   );
