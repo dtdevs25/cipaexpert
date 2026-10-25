@@ -181,10 +181,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 flex flex-row font-sans w-full relative">
       
-      {/* ESPAÇADOR NO FLUXO (Mantém o conteúdo da página 100% estável sem tremulações ou pulos) */}
+      {/* ESPAÇADOR NO FLUXO (Acompanha a largura do menu para nunca cobrir o conteúdo nem os seletores) */}
       <div 
         className={`shrink-0 transition-all duration-300 ease-in-out ${
-          isPinned ? 'w-64' : 'w-20'
+          isExpanded ? 'w-64' : 'w-20'
         }`}
       />
 
@@ -323,14 +323,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* ========================================================================= */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         
-        {/* Seletor de Empresa/Unidade em Operação:
-            Disponível no Dashboard e nos Módulos Operacionais */}
+        {/* Seletor de Empresa/Unidade em Operação: Fundo verdinho claro e layout responsivo */}
         {activeTab !== 'cadastros' && (
-          <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 xl:px-10 py-2.5 flex items-center justify-between text-xs w-full">
-            <div className="flex items-center gap-3">
+          <div className="bg-emerald-50/90 border-b border-emerald-200/80 px-4 sm:px-6 lg:px-8 xl:px-10 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs w-full transition-all duration-300">
+            <div className="flex items-center gap-3 flex-wrap">
               {isMaster ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 font-medium">Empresa em Operação:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-950/80 font-bold">Empresa em Operação:</span>
                   <select
                     value={selectedCompanyId}
                     onChange={(e) => {
@@ -340,7 +339,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                         setSelectedUnitId(comp.units[0].id);
                       }
                     }}
-                    className="font-bold text-slate-800 bg-transparent border-b border-slate-300 focus:outline-none cursor-pointer py-0.5"
+                    className="font-bold text-emerald-950 bg-white/90 hover:bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer shadow-2xs transition-colors"
                   >
                     {companies.map((c) => (
                       <option key={c.id} value={c.id}>{c.razaoSocial}</option>
@@ -348,20 +347,20 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </select>
                 </div>
               ) : (
-                <div className="font-bold text-slate-800">
+                <div className="font-bold text-emerald-950 bg-white/90 px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs">
                   {activeCompany.razaoSocial}
                 </div>
               )}
 
-              <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
+              <div className="h-4 w-px bg-emerald-300 hidden sm:block"></div>
 
-              <div className="flex items-center gap-1 text-slate-500">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              <div className="flex items-center gap-1.5 text-emerald-900">
+                <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                 {isMaster || isAdminEmpresa ? (
                   <select
                     value={selectedUnitId}
                     onChange={(e) => setSelectedUnitId(e.target.value)}
-                    className="font-medium text-slate-700 bg-transparent border-b border-slate-200 focus:outline-none cursor-pointer py-0.5"
+                    className="font-semibold text-emerald-950 bg-white/90 hover:bg-white px-2.5 py-1 rounded-lg border border-emerald-300/80 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer shadow-2xs transition-colors"
                   >
                     <option value="todas">Todas as Unidades (Visão Consolidada)</option>
                     {(activeCompany.units || []).map((u) => (
@@ -369,7 +368,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     ))}
                   </select>
                 ) : (
-                  <span className="font-semibold text-slate-700">{activeUnit?.name}</span>
+                  <span className="font-semibold text-emerald-950 bg-white/90 px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs">
+                    {activeUnit?.name}
+                  </span>
                 )}
               </div>
             </div>
