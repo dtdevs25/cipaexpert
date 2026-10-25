@@ -451,7 +451,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           {activeTab === 'assinaturas' && (
             <SignaturePortal
               currentUser={currentUser}
+              companyId={activeCompany.id}
               companyName={activeCompany.razaoSocial}
+              unitId={activeUnit?.id}
+              unitName={activeUnit?.name}
               cnpj={activeCompany.cnpj}
               onOpenDocument={onOpenDocument}
               onOpenSignatureModal={onOpenSignatureModal}

@@ -27,7 +27,10 @@ import { SignaturePlacementEditor } from './SignaturePlacementEditor';
 interface NewEnvelopeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  companyId?: string;
   companyName: string;
+  unitId?: string;
+  unitName?: string;
   cnpj: string;
   creatorName: string;
   creatorEmail: string;
@@ -37,7 +40,10 @@ interface NewEnvelopeModalProps {
 export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
   isOpen,
   onClose,
+  companyId,
   companyName,
+  unitId,
+  unitName,
   cnpj,
   creatorName,
   creatorEmail,
@@ -217,7 +223,10 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
         fileName: uploadedFileName,
         fileUrl: uploadedFileUrl || undefined,
         content: finalContent,
+        companyId,
         companyName,
+        unitId,
+        unitName,
         cnpj,
         signers,
         sendSequence,
@@ -248,9 +257,16 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               <Upload className="w-4 h-4 text-emerald-700" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
-                Novo Envelope · Upload de Documento
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
+                  Novo Envelope · Upload de Documento
+                </h3>
+                {unitName && (
+                  <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300">
+                    {unitName}
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-slate-600 font-mono">
                 {currentStep === 1 && 'Etapa 1 de 3: Upload do documento e dados do envelope'}
                 {currentStep === 2 && 'Etapa 2 de 3: Signatários e ordem de assinatura'}

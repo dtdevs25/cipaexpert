@@ -31,7 +31,10 @@ import { StandardModal } from '../common/StandardModal';
 
 interface SignaturePortalProps {
   currentUser?: any;
+  companyId?: string;
   companyName: string;
+  unitId?: string;
+  unitName?: string;
   cnpj: string;
   onOpenDocument: (doc: GeneratedDocument) => void;
   onOpenSignatureModal?: (ataId: string, title: string) => void;
@@ -41,7 +44,10 @@ interface SignaturePortalProps {
 
 export const SignaturePortal: React.FC<SignaturePortalProps> = ({
   currentUser,
+  companyId,
   companyName,
+  unitId,
+  unitName,
   cnpj,
   onOpenDocument,
   onBackToMenu
@@ -75,15 +81,15 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
     type: 'info'
   });
 
-  // Carrega envelopes do SignatureService
+  // Carrega envelopes do SignatureService respeitando rigorosamente a Empresa e a Filial ativa
   const loadEnvelopes = () => {
-    const data = SignatureService.getEnvelopes();
+    const data = SignatureService.getEnvelopes(companyId, unitId, companyName, cnpj);
     setEnvelopes(data);
   };
 
   useEffect(() => {
     loadEnvelopes();
-  }, []);
+  }, [companyId, unitId, companyName, cnpj]);
 
   // Métricas Globais
   const totalEnvelopes = envelopes.length;
@@ -233,9 +239,19 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
             <PenTool className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight leading-tight">
-              CIPASign
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight leading-tight">
+                CIPASign
+              </h2>
+              {unitName && (
+                <span className="text-[11px] font-bold font-mono px-2.5 py-0.5 rounded-full bg-emerald-200/90 text-emerald-950 border border-emerald-300 shadow-2xs">
+                  {unitName}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-emerald-800 font-medium">
+              {companyName} {cnpj ? `· CNPJ ${cnpj}` : ''}
+            </p>
           </div>
         </div>
 
@@ -660,7 +676,10 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
       <NewEnvelopeModal
         isOpen={isNewEnvelopeModalOpen}
         onClose={() => setIsNewEnvelopeModalOpen(false)}
+        companyId={companyId}
         companyName={companyName}
+        unitId={unitId}
+        unitName={unitName}
         cnpj={cnpj}
         creatorName={currentUser?.name || 'Administrador'}
         creatorEmail={currentUser?.email || 'admin@empresa.com.br'}

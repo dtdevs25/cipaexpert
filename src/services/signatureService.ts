@@ -53,8 +53,11 @@ export interface SignatureEnvelope {
   fileName?: string;
   fileUrl?: string;
   fileType?: string;
+  companyId?: string; // ID da empresa (ex: emp-1, emp-2)
   companyName: string;
   cnpj: string;
+  unitId?: string; // ID da filial ativa (ex: unit-1-matriz, unit-1-betim, unit-1-cajamar)
+  unitName?: string; // Nome da filial
   createdAt: string;
   updatedAt: string;
   content: string[];
@@ -68,7 +71,7 @@ export interface SignatureEnvelope {
   signaturePositions?: SignatureTagPosition[];
 }
 
-const STORAGE_KEY = 'cipa_expert_signature_envelopes_v1';
+const STORAGE_KEY = 'cipa_expert_signature_envelopes_v2';
 
 // Cálculo nativo e seguro de SHA-256
 export async function computeSha256(text: string): Promise<string> {
@@ -82,7 +85,6 @@ export async function computeSha256(text: string): Promise<string> {
   } catch (err) {
     console.warn('Fallback SHA-256:', err);
   }
-  // Fallback determinístico
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     const char = text.charCodeAt(i);
@@ -92,72 +94,32 @@ export async function computeSha256(text: string): Promise<string> {
   return 'SHA256-' + Math.abs(hash).toString(16).padStart(16, '0').toUpperCase() + Date.now().toString(16).toUpperCase();
 }
 
-// Modelos nativos integrados do sistema para envelopes automáticos
-export function getAvailableSystemTemplates() {
+// Sementes iniciais estruturadas por empresa e filial para demonstração realista
+function getInitialEnvelopes(): SignatureEnvelope[] {
   return [
+    // =========================================================================
+    // FILIAL 1: MATRIZ SÃO PAULO (emp-1 · unit-1-matriz)
+    // =========================================================================
     {
-      docType: 'ata_reuniao',
-      title: 'Ata de Reunião Ordinária da CIPA (Mês Atual)',
-      category: 'Atas Mensais Obrigatórias',
-      normativeCode: 'NR-5 Item 5.6.1 · Lei 14.457/2022',
-      defaultRoles: ['Presidente da CIPA', 'Vice-Presidente da CIPA', 'Secretário(a) da CIPA', 'Técnico de Segurança (SESMT)']
-    },
-    {
-      docType: 'edital_convocacao',
-      title: 'Edital de Convocação da Eleição CIPA',
-      category: 'Processo Eleitoral',
-      normativeCode: 'NR-5 Item 5.5.1 · Antecedência de 60 Dias',
-      defaultRoles: ['Representante Legal do Empregador', 'Coordenador do SESMT']
-    },
-    {
-      docType: 'comunicado_sindicato',
-      title: 'Comunicação ao Sindicato da Categoria (Início de Eleição)',
-      category: 'Comunicação Sindical',
-      normativeCode: 'NR-5 Item 5.5.1, "c"',
-      defaultRoles: ['Representante Legal da Empresa', 'Protocolo do Sindicato']
-    },
-    {
-      docType: 'comissao_eleitoral',
-      title: 'Portaria de Constituição da Comissão Eleitoral',
-      category: 'Comissão Eleitoral',
-      normativeCode: 'NR-5 Item 5.5.2',
-      defaultRoles: ['Representante Legal do Empregador', 'Coordenador da Comissão Eleitoral', 'Secretária da Comissão']
-    },
-    {
-      docType: 'ata_eleicao',
-      title: 'Ata de Eleição e Apuração dos Votos da CIPA',
-      category: 'Ata Eleitoral',
-      normativeCode: 'NR-5 Itens 5.5.4 a 5.5.9',
-      defaultRoles: ['Presidente da Comissão Eleitoral', 'Representante dos Empregados Mais Votado', 'Auditor Interno']
-    },
-    {
-      docType: 'ata_posse',
-      title: 'Ata de Instalação e Posse dos Novos Cipeiros',
-      category: 'Posse e Mandato',
-      normativeCode: 'NR-5 Item 5.5.10',
-      defaultRoles: ['Diretor Geral / Empregador', 'Presidente Empossado', 'Vice-Presidente Empossado', 'Secretário(a)']
-    }
-  ];
-}
-
-// Sementes iniciais para a empresa já iniciar com envelopes prontos e realistas
-function getInitialEnvelopes(companyName: string = 'Indústrias Alfa Brasil S.A.', cnpj: string = '12.345.678/0001-90'): SignatureEnvelope[] {
-  const ataDoc = generateCipaDocument('ata_reuniao', companyName, cnpj);
-  const editalDoc = generateCipaDocument('edital_convocacao', companyName, cnpj);
-
-  return [
-    {
-      id: 'env-ata-10',
+      id: 'env-matriz-ata10',
       title: 'Ata da 10ª Reunião Ordinária da CIPA (Outubro/2026)',
       category: 'Atas Mensais Obrigatórias',
       normativeCode: 'NR-5 Item 5.6.1 · Lei 14.457/2022',
       sourceType: 'sistema',
       docType: 'ata_reuniao',
-      companyName,
-      cnpj,
+      companyId: 'emp-1',
+      companyName: 'Indústrias Metalmecânicas Alfa Brasil S.A.',
+      cnpj: '12.345.678/0001-90',
+      unitId: 'unit-1-matriz',
+      unitName: 'Matriz Corporativa & Linha 01 (São Paulo - SP)',
       createdAt: '05/10/2026 14:30',
       updatedAt: '05/10/2026 15:45',
-      content: ataDoc.content,
+      content: [
+        'Aos cinco dias do mês de outubro de 2026, reuniu-se ordinariamente a Comissão Interna de Prevenção de Acidentes e Assédio - CIPA da Matriz Corporativa.',
+        'Pauta: Avaliação das medidas de proteção coletiva na Linha de Montagem 01 e fiscalização dos registros de quase-acidentes.',
+        'Deliberações: Aprovado o cronograma de inspeções setoriais e confirmada a realização das palestras da SIPAT.',
+        'Nada mais havendo a constar, lavrou-se a presente ata que vai devidamente assinada por todos os presentes com fé pública e validade jurídica.'
+      ],
       documentHash: 'B82C9854A2D4092E21B9FA5D9E22019A82D16279E4582AA5D9088198592318B4',
       sendSequence: 'todos_juntos',
       status: 'concluido',
@@ -165,10 +127,9 @@ function getInitialEnvelopes(companyName: string = 'Indústrias Alfa Brasil S.A.
       completedAt: '05/10/2026 15:45',
       signers: [
         {
-          id: 'sig-1',
+          id: 'sig-m1',
           name: 'Carlos Alberto Mendes',
-          email: 'carlos.mendes@empresa.com.br',
-          cpf: '123.456.789-01',
+          email: 'carlos.mendes@alfabrasil.com.br',
           role: 'Presidente da CIPA',
           order: 1,
           status: 'assinado',
@@ -176,15 +137,13 @@ function getInitialEnvelopes(companyName: string = 'Indústrias Alfa Brasil S.A.
           signatureType: 'padrao_cursiva',
           hash: '4A1B892C7812903847BAC091823901482019482810982AB1982701928347AC12',
           ipAddress: '189.40.12.88',
-          userAgent: 'Chrome/124.0 Windows 10',
           emailSentAt: '05/10/2026 14:30',
           emailCount: 1
         },
         {
-          id: 'sig-2',
+          id: 'sig-m2',
           name: 'Mariana Fonseca de Souza',
-          email: 'mariana.fonseca@empresa.com.br',
-          cpf: '987.654.321-09',
+          email: 'mariana.fonseca@alfabrasil.com.br',
           role: 'Vice-Presidente da CIPA',
           order: 2,
           status: 'assinado',
@@ -192,146 +151,63 @@ function getInitialEnvelopes(companyName: string = 'Indústrias Alfa Brasil S.A.
           signatureType: 'desenhada',
           hash: '7C129084BAC901823901482019482810982AB1982701928347AC124A1B892CD9',
           ipAddress: '177.18.99.14',
-          userAgent: 'Safari/17.4 macOS Sonoma',
-          emailSentAt: '05/10/2026 14:30',
-          emailCount: 1
-        },
-        {
-          id: 'sig-3',
-          name: 'Fernanda Rocha Lima',
-          email: 'fernanda.rocha@empresa.com.br',
-          cpf: '456.789.123-55',
-          role: 'Secretária da CIPA',
-          order: 3,
-          status: 'assinado',
-          signedAt: '05/10/2026 15:30',
-          signatureType: 'padrao_cursiva',
-          hash: '992389DCB019284AC182019482810982AB1982701928347AC1F5910A2B49129E',
-          ipAddress: '187.63.10.45',
-          userAgent: 'Firefox/125.0 Windows 11',
-          emailSentAt: '05/10/2026 14:30',
-          emailCount: 1
-        },
-        {
-          id: 'sig-4',
-          name: 'Daniele Santos',
-          email: 'daniele.santos@empresa.com.br',
-          cpf: '333.222.111-00',
-          role: 'Técnico de Segurança (SESMT)',
-          order: 4,
-          status: 'assinado',
-          signedAt: '05/10/2026 15:45',
-          signatureType: 'desenhada',
-          hash: '82019482810982AB1982701928347AC124A1B892CD97C129084BAC9018239014',
-          ipAddress: '179.184.20.12',
-          userAgent: 'Chrome/124.0 Android 14',
           emailSentAt: '05/10/2026 14:30',
           emailCount: 1
         }
       ],
       auditEvents: [
         {
-          id: 'aud-1',
+          id: 'aud-m1',
           timestamp: '05/10/2026 14:30:10',
           action: 'ENVELOPE_CRIADO',
-          description: 'Envelope gerado automaticamente a partir da Ata Ordinária nº 10 da CIPA.',
-          actorName: 'Daniele Santos',
-          actorEmail: 'daniele.santos@empresa.com.br',
-          ipAddress: '179.184.20.12'
-        },
-        {
-          id: 'aud-2',
-          timestamp: '05/10/2026 14:30:15',
-          action: 'DISPARO_NOTIFICACOES',
-          description: 'Convites enviados para 4 signatários via e-mail transacional auditado.',
-          ipAddress: '127.0.0.1'
-        },
-        {
-          id: 'aud-3',
-          timestamp: '05/10/2026 14:40:02',
-          action: 'ASSINATURA_REGISTRADA',
-          description: 'Carlos Alberto Mendes assinou digitalmente com termo de conformidade MP 2.200-2/2001.',
+          description: 'Ata da 10ª Reunião da Matriz homologada para coleta de assinaturas.',
           actorName: 'Carlos Alberto Mendes',
-          actorEmail: 'carlos.mendes@empresa.com.br',
-          ipAddress: '189.40.12.88',
-          hash: '4A1B892C7812903847BAC091823901482019482810982AB1982701928347AC12'
-        },
-        {
-          id: 'aud-4',
-          timestamp: '05/10/2026 15:10:45',
-          action: 'ASSINATURA_REGISTRADA',
-          description: 'Mariana Fonseca de Souza assinou digitalmente via caneta digital manuscrita.',
-          actorName: 'Mariana Fonseca de Souza',
-          actorEmail: 'mariana.fonseca@empresa.com.br',
-          ipAddress: '177.18.99.14',
-          hash: '7C129084BAC901823901482019482810982AB1982701928347AC124A1B892CD9'
-        },
-        {
-          id: 'aud-5',
-          timestamp: '05/10/2026 15:30:12',
-          action: 'ASSINATURA_REGISTRADA',
-          description: 'Fernanda Rocha Lima assinou digitalmente.',
-          actorName: 'Fernanda Rocha Lima',
-          actorEmail: 'fernanda.rocha@empresa.com.br',
-          ipAddress: '187.63.10.45',
-          hash: '992389DCB019284AC182019482810982AB1982701928347AC1F5910A2B49129E'
-        },
-        {
-          id: 'aud-6',
-          timestamp: '05/10/2026 15:45:00',
-          action: 'ASSINATURA_REGISTRADA',
-          description: 'Daniele Santos assinou digitalmente e homologou o envelope.',
-          actorName: 'Daniele Santos',
-          actorEmail: 'daniele.santos@empresa.com.br',
-          ipAddress: '179.184.20.12',
-          hash: '82019482810982AB1982701928347AC124A1B892CD97C129084BAC9018239014'
-        },
-        {
-          id: 'aud-7',
-          timestamp: '05/10/2026 15:45:01',
-          action: 'ENVELOPE_HOMOLOGADO',
-          description: 'Todas as assinaturas coletadas com sucesso. Documento 100% chancelado e inviolável.',
-          hash: 'F5910A2B49129E992389DCB019284AC182019482810982AB1982701928347AC1'
+          actorEmail: 'carlos.mendes@alfabrasil.com.br'
         }
       ]
     },
     {
-      id: 'env-edital-2026',
+      id: 'env-matriz-edital',
       title: 'Edital de Convocação da Eleição CIPA Mandato 2026/2027',
       category: 'Processo Eleitoral',
-      normativeCode: 'NR-5 Item 5.5.1 · Antecedência de 60 Dias',
+      normativeCode: 'NR-5 Item 5.5.1 · Antecedência Obrigatória de 60 Dias',
       sourceType: 'sistema',
       docType: 'edital_convocacao',
-      companyName,
-      cnpj,
+      companyId: 'emp-1',
+      companyName: 'Indústrias Metalmecânicas Alfa Brasil S.A.',
+      cnpj: '12.345.678/0001-90',
+      unitId: 'unit-1-matriz',
+      unitName: 'Matriz Corporativa & Linha 01 (São Paulo - SP)',
       createdAt: '15/10/2026 09:00',
       updatedAt: '15/10/2026 10:15',
-      content: editalDoc.content,
+      content: [
+        'A empresa convoca todos os colaboradores da Matriz Corporativa para a eleição dos representantes dos empregados na CIPA.',
+        'Período de Inscrição: de 20 a 30 de outubro de 2026, pelo portal do colaborador.',
+        'Data da Votação Eletrônica: 10 de novembro de 2026, com escrutínio em tempo real.',
+        'Garantias: Estabilidade provisória assegurada nos termos do art. 10, II, "a" do ADCT.'
+      ],
       documentHash: 'A1B2C3D4E5F60718293A4B5C6D7E8F90123456789ABCDEF0123456789ABCDEF0',
       sendSequence: 'sequencial',
       status: 'em_andamento',
       signers: [
         {
-          id: 'sig-ed-1',
-          name: 'Roberto Silveira Lima',
-          email: 'roberto.silveira@empresa.com.br',
-          cpf: '777.888.999-11',
-          role: 'Representante Legal da Empresa',
+          id: 'sig-me-1',
+          name: 'Roberto Alcântara',
+          email: 'roberto.alcantara@alfabrasil.com.br',
+          role: 'Diretor / Representante do Empregador',
           order: 1,
           status: 'assinado',
           signedAt: '15/10/2026 10:15',
           signatureType: 'padrao_cursiva',
           hash: '5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F',
           ipAddress: '189.40.12.88',
-          userAgent: 'Chrome/124.0 Windows 11',
           emailSentAt: '15/10/2026 09:00',
           emailCount: 1
         },
         {
-          id: 'sig-ed-2',
-          name: 'Daniele Santos',
-          email: 'daniele.santos@empresa.com.br',
-          cpf: '333.222.111-00',
+          id: 'sig-me-2',
+          name: 'Carlos Alberto Mendes',
+          email: 'carlos.mendes@alfabrasil.com.br',
           role: 'Coordenador do SESMT / SST',
           order: 2,
           status: 'pendente',
@@ -341,37 +217,249 @@ function getInitialEnvelopes(companyName: string = 'Indústrias Alfa Brasil S.A.
       ],
       auditEvents: [
         {
-          id: 'aud-ed-1',
+          id: 'aud-me-1',
           timestamp: '15/10/2026 09:00:00',
           action: 'ENVELOPE_CRIADO',
-          description: 'Edital oficial de eleição CIPA gerado pelo sistema para coleta sequencial de assinaturas.',
-          actorName: 'Roberto Silveira Lima',
-          actorEmail: 'roberto.silveira@empresa.com.br',
-          ipAddress: '189.40.12.88'
+          description: 'Edital oficial de eleição CIPA gerado na Matriz SP.',
+          actorName: 'Roberto Alcântara',
+          actorEmail: 'roberto.alcantara@alfabrasil.com.br'
+        }
+      ]
+    },
+
+    // =========================================================================
+    // FILIAL 2: PLANTA DE BETIM - MG (emp-1 · unit-1-betim)
+    // =========================================================================
+    {
+      id: 'env-betim-inspecao',
+      title: 'Ata de Inspeção Extraordinária de Fundição e Ruído (NR-15/NR-5)',
+      category: 'Inspeções de Segurança',
+      normativeCode: 'NR-5 Item 5.3.1 · NR-15 Anexo 01',
+      sourceType: 'sistema',
+      companyId: 'emp-1',
+      companyName: 'Indústrias Metalmecânicas Alfa Brasil S.A.',
+      cnpj: '12.345.678/0001-90',
+      unitId: 'unit-1-betim',
+      unitName: 'Planta de Fundição & Usinagem (Betim - MG)',
+      createdAt: '18/10/2026 11:20',
+      updatedAt: '18/10/2026 11:20',
+      content: [
+        'Realizada vistoria técnica no setor de Fornos e Fundição Contínua da Unidade Betim - MG.',
+        'Constatações: Identificada necessidade de reforço no enclausuramento acústico do compressor de ar da Linha 03.',
+        'Plano 5W2H: Manutenção corretiva agendada para 28/10 com troca das mantas isolantes térmicas e acústicas.',
+        'Documento emitido para homologação formal da CIPA Betim e gerência industrial local.'
+      ],
+      documentHash: 'D9088198592318B4B82C9854A2D4092E21B9FA5D9E22019A82D16279E4582AA5',
+      sendSequence: 'todos_juntos',
+      status: 'em_andamento',
+      signers: [
+        {
+          id: 'sig-b1',
+          name: 'Marcos Vinicius',
+          email: 'marcos.vinicius@alfabrasil.com.br',
+          role: 'Gerente Industrial (Betim)',
+          order: 1,
+          status: 'pendente',
+          emailSentAt: '18/10/2026 11:20',
+          emailCount: 1
         },
         {
-          id: 'aud-ed-2',
-          timestamp: '15/10/2026 09:00:05',
-          action: 'NOTIFICACAO_ENVIADA',
-          description: 'Convite de assinatura enviado por e-mail para o primeiro signatário da sequência: Roberto Silveira Lima.',
-          actorEmail: 'roberto.silveira@empresa.com.br'
+          id: 'sig-b2',
+          name: 'Fernanda Lima Ribeiro',
+          email: 'fernanda.ribeiro@alfabrasil.com.br',
+          role: 'Membro CIPA / Soldador TIG',
+          order: 2,
+          status: 'pendente',
+          emailSentAt: '18/10/2026 11:20',
+          emailCount: 1
+        }
+      ],
+      auditEvents: [
+        {
+          id: 'aud-b1',
+          timestamp: '18/10/2026 11:20:00',
+          action: 'ENVELOPE_CRIADO',
+          description: 'Ata de inspeção setorial gerada para a Planta de Betim.',
+          actorName: 'Marcos Vinicius',
+          actorEmail: 'marcos.vinicius@alfabrasil.com.br'
+        }
+      ]
+    },
+    {
+      id: 'env-betim-posse',
+      title: 'Termo de Posse da Comissão CIPA Betim Mandato Atual',
+      category: 'Posse e Mandato',
+      normativeCode: 'NR-5 Item 5.5.10',
+      sourceType: 'sistema',
+      companyId: 'emp-1',
+      companyName: 'Indústrias Metalmecânicas Alfa Brasil S.A.',
+      cnpj: '12.345.678/0001-90',
+      unitId: 'unit-1-betim',
+      unitName: 'Planta de Fundição & Usinagem (Betim - MG)',
+      createdAt: '01/09/2026 09:30',
+      updatedAt: '01/09/2026 10:45',
+      content: [
+        'Aos primeiro dias do mês de setembro de 2026, foram empossados os membros eleitos e indicados da CIPA da Planta Betim.',
+        'Mandato oficial: Vigência 2026/2027 com garantia legal de estabilidade aos cipeiros titulares e suplentes.',
+        'Compromissos firmados para a redução do índice de frequência e gravidade de acidentes de trabalho.'
+      ],
+      documentHash: '7AC1F5910A2B49129E992389DCB019284AC182019482810982AB198270192834',
+      sendSequence: 'todos_juntos',
+      status: 'concluido',
+      finalHash: '9E0F1A2B3C4D5E6F5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D',
+      completedAt: '01/09/2026 10:45',
+      signers: [
+        {
+          id: 'sig-bp1',
+          name: 'Marcos Vinicius',
+          email: 'marcos.vinicius@alfabrasil.com.br',
+          role: 'Gerente Industrial (Betim)',
+          order: 1,
+          status: 'assinado',
+          signedAt: '01/09/2026 10:00',
+          signatureType: 'padrao_cursiva',
+          hash: '6F5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E',
+          ipAddress: '189.40.12.90'
         },
         {
-          id: 'aud-ed-3',
-          timestamp: '15/10/2026 10:15:20',
-          action: 'ASSINATURA_REGISTRADA',
-          description: 'Roberto Silveira Lima assinou digitalmente. Turno avançado automaticamente para o 2º signatário da fila.',
-          actorName: 'Roberto Silveira Lima',
-          actorEmail: 'roberto.silveira@empresa.com.br',
-          ipAddress: '189.40.12.88',
-          hash: '5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F'
+          id: 'sig-bp2',
+          name: 'Diego Henrique Silveira',
+          email: 'diego.silveira@alfabrasil.com.br',
+          role: 'Presidente da CIPA Betim',
+          order: 2,
+          status: 'assinado',
+          signedAt: '01/09/2026 10:45',
+          signatureType: 'desenhada',
+          hash: 'B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0',
+          ipAddress: '189.40.12.92'
+        }
+      ],
+      auditEvents: [
+        {
+          id: 'aud-bp1',
+          timestamp: '01/09/2026 09:30:00',
+          action: 'ENVELOPE_HOMOLOGADO',
+          description: 'Termo de posse 100% assinado para a Planta Betim.',
+          actorName: 'Marcos Vinicius'
+        }
+      ]
+    },
+
+    // =========================================================================
+    // FILIAL 3: CENTRO LOGÍSTICO CAJAMAR (emp-1 · unit-1-cajamar)
+    // =========================================================================
+    {
+      id: 'env-cajamar-logistica',
+      title: 'Procedimento Operacional Padrão de Movimentação de Cargas (NR-11)',
+      category: 'Procedimentos de Segurança',
+      normativeCode: 'NR-11 · Armazenamento e Transporte de Materiais',
+      sourceType: 'sistema',
+      companyId: 'emp-1',
+      companyName: 'Indústrias Metalmecânicas Alfa Brasil S.A.',
+      cnpj: '12.345.678/0001-90',
+      unitId: 'unit-1-cajamar',
+      unitName: 'Centro Logístico e Distribuição (Cajamar - SP)',
+      createdAt: '21/10/2026 16:00',
+      updatedAt: '21/10/2026 16:00',
+      content: [
+        'Instrução formal de segurança sobre operação de empilhadeiras e transpaleteiras elétricas no armazém central.',
+        'Obrigatória a inspeção de checklist diário e velocidade máxima de 10 km/h nas vias internas de expedição.',
+        'Homologação com ciência do gestor da unidade e comissão da CIPA Cajamar.'
+      ],
+      documentHash: '4BAC901823901482019482810982AB1982701928347AC124A1B892CD97C12908',
+      sendSequence: 'todos_juntos',
+      status: 'em_andamento',
+      signers: [
+        {
+          id: 'sig-c1',
+          name: 'Fernanda Lima',
+          email: 'fernanda.lima@alfabrasil.com.br',
+          role: 'Supervisora Logística (Cajamar)',
+          order: 1,
+          status: 'pendente',
+          emailSentAt: '21/10/2026 16:00',
+          emailCount: 1
         },
         {
-          id: 'aud-ed-4',
-          timestamp: '15/10/2026 10:15:25',
-          action: 'NOTIFICACAO_SEQUENCIAL',
-          description: 'E-mail disparado automaticamente para o próximo signatário da ordem: Daniele Santos (SESMT).',
-          actorEmail: 'daniele.santos@empresa.com.br'
+          id: 'sig-c2',
+          name: 'Sabrina Vilela Matos',
+          email: 'sabrina.matos@alfabrasil.com.br',
+          role: 'Encarregada / Cipeira Cajamar',
+          order: 2,
+          status: 'pendente',
+          emailSentAt: '21/10/2026 16:00',
+          emailCount: 1
+        }
+      ],
+      auditEvents: [
+        {
+          id: 'aud-c1',
+          timestamp: '21/10/2026 16:00:00',
+          action: 'ENVELOPE_CRIADO',
+          description: 'Documento criado para o Centro Logístico Cajamar.',
+          actorName: 'Fernanda Lima'
+        }
+      ]
+    },
+
+    // =========================================================================
+    // EMPRESA 2: HOSPITAL SÃO LUCAS (emp-2 · unit-2-central)
+    // =========================================================================
+    {
+      id: 'env-hospital-biosseguranca',
+      title: 'Plano Anual de Prevenção de Riscos Biológicos NR-32',
+      category: 'Biossegurança Hospitalar',
+      normativeCode: 'NR-32 · Segurança e Saúde no Trabalho em Serviços de Saúde',
+      sourceType: 'sistema',
+      companyId: 'emp-2',
+      companyName: 'Rede Hospitalar e Cuidados Médicos São Lucas S.A.',
+      cnpj: '98.765.432/0001-10',
+      unitId: 'unit-2-central',
+      unitName: 'Hospital Geral Central (Curitiba - PR)',
+      createdAt: '10/10/2026 08:30',
+      updatedAt: '10/10/2026 09:15',
+      content: [
+        'Diretrizes obrigatórias de descarte de perfurocortantes, uso de EPIs com proteção biológica e fluxo de vacinação ocupacional.',
+        'Homologação formal pelo Diretor Clínico e pela Comissão da CIPA do Hospital São Lucas.'
+      ],
+      documentHash: 'E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F5E6F7A8B9C0D1',
+      sendSequence: 'todos_juntos',
+      status: 'concluido',
+      finalHash: 'F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F5E6F7A8B9C0D1E2F3A4B5C6D7E8',
+      completedAt: '10/10/2026 09:15',
+      signers: [
+        {
+          id: 'sig-h1',
+          name: 'Dra. Cristina Medeiros',
+          email: 'cristina.medeiros@saolucas.com.br',
+          role: 'Diretora Geral',
+          order: 1,
+          status: 'assinado',
+          signedAt: '10/10/2026 09:00',
+          signatureType: 'padrao_cursiva',
+          hash: 'A6B7C8D9E0F1A2B3C4D5E6F5E6F7A8B9C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5',
+          ipAddress: '201.55.12.44'
+        },
+        {
+          id: 'sig-h2',
+          name: 'Dr. Paulo Siqueira',
+          email: 'paulo.siqueira@saolucas.com.br',
+          role: 'Gestor da Unidade Central',
+          order: 2,
+          status: 'assinado',
+          signedAt: '10/10/2026 09:15',
+          signatureType: 'desenhada',
+          hash: 'C0D1E2F3A4B5C6D7E8F9A0B1C2D3E4F5A6B7C8D9E0F1A2B3C4D5E6F5E6F7A8B9',
+          ipAddress: '201.55.12.46'
+        }
+      ],
+      auditEvents: [
+        {
+          id: 'aud-h1',
+          timestamp: '10/10/2026 08:30:00',
+          action: 'ENVELOPE_HOMOLOGADO',
+          description: 'Documento homologado para o Hospital Geral Central.',
+          actorName: 'Dra. Cristina Medeiros'
         }
       ]
     }
@@ -379,7 +467,8 @@ function getInitialEnvelopes(companyName: string = 'Indústrias Alfa Brasil S.A.
 }
 
 export const SignatureService = {
-  getEnvelopes(companyName?: string, cnpj?: string): SignatureEnvelope[] {
+  // Retorna TODO o acervo sem filtros para operações internas de persistência
+  getAllRawEnvelopes(): SignatureEnvelope[] {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -391,9 +480,35 @@ export const SignatureService = {
     } catch (e) {
       console.warn('Erro ao ler envelopes do storage:', e);
     }
-    const initial = getInitialEnvelopes(companyName, cnpj);
+    const initial = getInitialEnvelopes();
     this.saveAllEnvelopes(initial);
     return initial;
+  },
+
+  // Retorna envelopes com isolamento estrito por Empresa e por Filial
+  getEnvelopes(companyId?: string, unitId?: string, companyName?: string, cnpj?: string): SignatureEnvelope[] {
+    const all = this.getAllRawEnvelopes();
+
+    return all.filter(env => {
+      // 1. Isolamento por Empresa (Multiempresas)
+      if (companyId) {
+        const matchCompany = env.companyId === companyId || (!env.companyId && (env.cnpj === cnpj || env.companyName === companyName));
+        if (!matchCompany) return false;
+      } else if (cnpj) {
+        if (env.cnpj !== cnpj) return false;
+      }
+
+      // 2. Isolamento por Filial (Multifiliais)
+      if (unitId) {
+        if (env.unitId) {
+          return env.unitId === unitId;
+        }
+        // Legados associam-se à matriz
+        return unitId === 'unit-1-matriz' || unitId.includes('matriz');
+      }
+
+      return true;
+    });
   },
 
   saveAllEnvelopes(envelopes: SignatureEnvelope[]) {
@@ -414,8 +529,11 @@ export const SignatureService = {
     fileUrl?: string;
     fileType?: string;
     content: string[];
+    companyId?: string;
     companyName: string;
     cnpj: string;
+    unitId?: string;
+    unitName?: string;
     signers: Array<{ name: string; email: string; cpf?: string; role: string }>;
     sendSequence: 'todos_juntos' | 'sequencial';
     creatorName: string;
@@ -432,7 +550,6 @@ export const SignatureService = {
       cpf: s.cpf?.trim(),
       role: s.role.trim(),
       order: idx + 1,
-      // Se sequencial, apenas o primeiro começa pendente; os demais aguardam seu turno
       status: params.sendSequence === 'sequencial' && idx > 0 ? 'aguardando_turno' : 'pendente',
       emailSentAt: params.sendSequence === 'sequencial' && idx > 0 ? undefined : now,
       emailCount: params.sendSequence === 'sequencial' && idx > 0 ? 0 : 1
@@ -448,8 +565,11 @@ export const SignatureService = {
       fileName: params.fileName,
       fileUrl: params.fileUrl,
       fileType: params.fileType,
+      companyId: params.companyId,
       companyName: params.companyName,
       cnpj: params.cnpj,
+      unitId: params.unitId,
+      unitName: params.unitName,
       createdAt: now,
       updatedAt: now,
       content: params.content,
@@ -463,7 +583,7 @@ export const SignatureService = {
           id: `aud-${Date.now()}-1`,
           timestamp: now,
           action: 'ENVELOPE_CRIADO',
-          description: `Envelope criado por ${params.creatorName}. Modo de envio: ${params.sendSequence === 'sequencial' ? 'Sequência Definida (1 a 1)' : 'Todos Simultaneamente'}.`,
+          description: `Envelope criado por ${params.creatorName} na filial ${params.unitName || 'Principal'}.`,
           actorName: params.creatorName,
           actorEmail: params.creatorEmail
         },
@@ -497,8 +617,8 @@ export const SignatureService = {
       }
     }
 
-    const current = this.getEnvelopes(params.companyName, params.cnpj);
-    const updated = [newEnvelope, ...current];
+    const all = this.getAllRawEnvelopes();
+    const updated = [newEnvelope, ...all];
     this.saveAllEnvelopes(updated);
     return newEnvelope;
   },
@@ -515,7 +635,7 @@ export const SignatureService = {
       ipAddress?: string;
     }
   ): Promise<SignatureEnvelope> {
-    const envelopes = this.getEnvelopes();
+    const envelopes = this.getAllRawEnvelopes();
     const envIndex = envelopes.findIndex(e => e.id === envelopeId);
     if (envIndex === -1) {
       throw new Error('Envelope não encontrado.');
@@ -528,73 +648,55 @@ export const SignatureService = {
       throw new Error('Signatário não encontrado neste envelope.');
     }
 
-    const currentSigner = env.signers[signerIndex];
-    if (currentSigner.status === 'assinado') {
-      return env; // Já assinado
-    }
+    const signer = { ...env.signers[signerIndex] };
+    signer.status = 'assinado';
+    signer.signedAt = now;
+    signer.signatureType = signatureDetails.signatureType;
+    signer.signatureDataUrl = signatureDetails.signatureDataUrl;
+    signer.ipAddress = signatureDetails.ipAddress || '189.40.12.88';
+    signer.userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Web Browser';
 
-    // Calcula Hash da Assinatura
-    const sigPayload = `${env.id}-${currentSigner.id}-${signatureDetails.signerName}-${signatureDetails.signerCpf}-${now}`;
-    const sigHash = await computeSha256(sigPayload);
+    const textToHash = `${env.id}|${signer.id}|${signer.name}|${signer.email}|${now}|${env.documentHash}`;
+    signer.hash = await computeSha256(textToHash);
+    env.signers[signerIndex] = signer;
 
-    // Atualiza dados do signatário
-    env.signers[signerIndex] = {
-      ...currentSigner,
-      status: 'assinado',
-      name: signatureDetails.signerName,
-      cpf: signatureDetails.signerCpf || currentSigner.cpf,
-      role: signatureDetails.signerRole || currentSigner.role,
-      signedAt: now,
-      signatureType: signatureDetails.signatureType,
-      signatureDataUrl: signatureDetails.signatureDataUrl,
-      hash: sigHash,
-      ipAddress: signatureDetails.ipAddress || '189.40.12.88',
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Navegador Web Seguro'
-    };
-
-    // Adiciona evento de auditoria
     env.auditEvents.push({
-      id: `aud-${Date.now()}-sig`,
+      id: `aud-${Date.now()}-signed`,
       timestamp: now,
       action: 'ASSINATURA_REGISTRADA',
-      description: `${signatureDetails.signerName} (${currentSigner.role}) assinou digitalmente com termo de conformidade legal.`,
-      actorName: signatureDetails.signerName,
-      actorEmail: currentSigner.email,
-      ipAddress: signatureDetails.ipAddress || '189.40.12.88',
-      hash: sigHash
+      description: `${signer.name} assinou digitalmente com validade jurídica (MP 2.200-2/2001 e Lei 14.063/2020).`,
+      actorName: signer.name,
+      actorEmail: signer.email,
+      ipAddress: signer.ipAddress,
+      hash: signer.hash
     });
 
-    // Se for sequencial, avança o próximo da fila
+    // Se fluxo for sequencial, acorda o próximo
     if (env.sendSequence === 'sequencial') {
       const nextSignerIndex = env.signers.findIndex(s => s.status === 'aguardando_turno');
       if (nextSignerIndex !== -1) {
-        const nextSigner = env.signers[nextSignerIndex];
-        env.signers[nextSignerIndex] = {
-          ...nextSigner,
-          status: 'pendente',
-          emailSentAt: now,
-          emailCount: (nextSigner.emailCount || 0) + 1
-        };
+        env.signers[nextSignerIndex].status = 'pendente';
+        env.signers[nextSignerIndex].emailSentAt = now;
+        env.signers[nextSignerIndex].emailCount = 1;
 
         env.auditEvents.push({
           id: `aud-${Date.now()}-next`,
           timestamp: now,
           action: 'NOTIFICACAO_SEQUENCIAL',
-          description: `Turno avançado. E-mail de assinatura enviado para o próximo signatário: ${nextSigner.name} (${nextSigner.email}).`,
-          actorEmail: nextSigner.email
+          description: `Turno avançado para ${env.signers[nextSignerIndex].name} (${env.signers[nextSignerIndex].email}).`,
+          actorEmail: env.signers[nextSignerIndex].email
         });
 
-        // Dispara e-mail para o próximo
         try {
           const origin = typeof window !== 'undefined' ? window.location.origin : 'https://cipaexpert.com.br';
-          const signLink = `${origin}/?envelopeId=${env.id}&signerId=${nextSigner.id}`;
+          const nextSignLink = `${origin}/?envelopeId=${env.id}&signerId=${env.signers[nextSignerIndex].id}`;
           await ApiService.sendSignatureInvitation({
-            to: nextSigner.email,
-            signerName: nextSigner.name,
+            to: env.signers[nextSignerIndex].email,
+            signerName: env.signers[nextSignerIndex].name,
             documentTitle: env.title,
             companyName: env.companyName,
-            signLink,
-            roleDescription: nextSigner.role
+            signLink: nextSignLink,
+            roleDescription: env.signers[nextSignerIndex].role
           });
         } catch (err) {
           console.warn('Erro ao notificar próximo signatário sequencial:', err);
@@ -614,7 +716,7 @@ export const SignatureService = {
         id: `aud-${Date.now()}-done`,
         timestamp: now,
         action: 'ENVELOPE_HOMOLOGADO',
-        description: `Todas as ${env.signers.length} assinaturas foram devidamente coletadas. Documento final 100% homologado e criptografado com carimbo de tempo.`,
+        description: `Todas as ${env.signers.length} assinaturas foram devidamente coletadas. Documento final 100% homologado.`,
         hash: env.finalHash
       });
     }
@@ -626,7 +728,7 @@ export const SignatureService = {
   },
 
   async resendInvitation(envelopeId: string, signerId?: string): Promise<{ success: boolean; count: number; message: string }> {
-    const envelopes = this.getEnvelopes();
+    const envelopes = this.getAllRawEnvelopes();
     const envIndex = envelopes.findIndex(e => e.id === envelopeId);
     if (envIndex === -1) {
       throw new Error('Envelope não encontrado.');
@@ -693,7 +795,7 @@ export const SignatureService = {
   },
 
   updateEnvelopeSigners(envelopeId: string, updatedSigners: SignatureSigner[]): SignatureEnvelope {
-    const envelopes = this.getEnvelopes();
+    const envelopes = this.getAllRawEnvelopes();
     const index = envelopes.findIndex(e => e.id === envelopeId);
     if (index === -1) {
       throw new Error('Envelope não encontrado.');
@@ -727,7 +829,7 @@ export const SignatureService = {
   },
 
   updateSignaturePositions(envelopeId: string, positions: SignatureTagPosition[]): boolean {
-    const envelopes = this.getEnvelopes();
+    const envelopes = this.getAllRawEnvelopes();
     const index = envelopes.findIndex(e => e.id === envelopeId);
     if (index === -1) return false;
     envelopes[index].signaturePositions = positions;
@@ -737,7 +839,7 @@ export const SignatureService = {
   },
 
   deleteEnvelope(envelopeId: string): void {
-    const envelopes = this.getEnvelopes();
+    const envelopes = this.getAllRawEnvelopes();
     const env = envelopes.find(e => e.id === envelopeId);
     if (env && env.status === 'concluido') {
       throw new Error('Documentos 100% assinados possuem fé pública e não podem ser excluídos.');
