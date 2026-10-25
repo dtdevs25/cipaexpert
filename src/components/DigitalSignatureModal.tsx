@@ -111,22 +111,24 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+        {/* Header Verde Padronizado */}
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-emerald-800 to-emerald-700 text-white">
           <div className="flex items-center gap-2.5">
-            <img src="/icone.png" alt="CIPA Expert" className="w-8 h-8 rounded-lg object-contain shadow-xs" />
+            <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center ring-1 ring-white/30">
+              <FileCheck className="w-4 h-4" />
+            </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 leading-tight">
+              <h3 className="text-sm font-bold text-white leading-tight">
                 Assinatura Digital Integrada
               </h3>
-              <p className="text-xs text-slate-500 font-mono">
+              <p className="text-xs text-emerald-200 font-mono">
                 Conformidade MP 2.200-2/2001 & NR-5
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+            className="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

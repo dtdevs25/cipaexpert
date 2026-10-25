@@ -57,15 +57,12 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         
-        {/* Cabeçalho */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-5 text-white flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center ring-1 ring-emerald-500/40">
-            <KeyRound className="w-5 h-5" />
+        {/* Cabeçalho Verde Padronizado */}
+        <div className="bg-gradient-to-r from-emerald-800 to-emerald-700 px-5 py-4 text-white flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center ring-1 ring-white/30">
+            <KeyRound className="w-4 h-4" />
           </div>
-          <div>
-            <h3 className="text-base font-bold text-white leading-tight">Definir Nova Senha</h3>
-            <p className="text-xs text-slate-300">Link seguro de validação em 24 horas</p>
-          </div>
+          <h3 className="text-base font-bold text-white leading-tight">Definir Nova Senha</h3>
         </div>
 
         {/* Corpo */}

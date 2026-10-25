@@ -54,20 +54,17 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         
-        {/* Cabeçalho */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-5 text-white flex items-center justify-between">
+        {/* Cabeçalho Verde Padronizado */}
+        <div className="bg-gradient-to-r from-emerald-800 to-emerald-700 px-5 py-4 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center ring-1 ring-emerald-500/40">
-              <KeyRound className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center ring-1 ring-white/30">
+              <KeyRound className="w-4 h-4" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-white leading-tight">Redefinir Senha</h3>
-              <p className="text-xs text-slate-300">Recuperação de acesso à plataforma</p>
-            </div>
+            <h3 className="text-base font-bold text-white leading-tight">Redefinir Senha</h3>
           </div>
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
