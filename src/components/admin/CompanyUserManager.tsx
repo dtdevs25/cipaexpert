@@ -74,15 +74,38 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Busca adicional na API se o usuário digitar algo específico que não esteja na lista inicial
+  useEffect(() => {
+    const term = searchTerm.trim();
+    if (!term || term.length < 2) return;
+
+    const timeout = setTimeout(() => {
+      ApiService.getCnaes(term)
+        .then((data) => {
+          if (data && data.length > 0) {
+            // Mescla resultados novos na lista sem duplicar
+            setCnaesList(prev => {
+              const existingCodes = new Set(prev.map(p => p.code));
+              const newItems = data.filter(d => !existingCodes.has(d.code));
+              return newItems.length > 0 ? [...prev, ...newItems] : prev;
+            });
+          }
+        })
+        .catch(err => console.log('Aviso ao consultar CNAEs na API:', err));
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
   const filteredCnaes = cnaesList.filter(c => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true;
-    const cleanCode = c.code.replace(/\D/g, '');
+    const cleanCode = (c.code || '').replace(/\D/g, '');
     const cleanTerm = term.replace(/\D/g, '');
-    return c.code.toLowerCase().includes(term) ||
+    return (c.code || '').toLowerCase().includes(term) ||
       (cleanTerm && cleanCode.includes(cleanTerm)) ||
       (c.description && c.description.toLowerCase().includes(term));
-  }).slice(0, 30);
+  }).slice(0, 100);
 
   return (
     <div className="space-y-1 relative w-full" ref={wrapperRef}>
@@ -100,8 +123,8 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
       <div className="relative">
         <input
           type="text"
-          placeholder="Digite o código (ex: 2511) ou nome..."
-          value={isOpen ? searchTerm : (selectedCnae ? `${selectedCnae.code} - ${selectedCnae.description.slice(0, 36)}...` : value)}
+          placeholder="Digite o código (ex: 2511) ou atividade..."
+          value={isOpen ? searchTerm : (selectedCnae ? `${selectedCnae.code} - ${selectedCnae.description.slice(0, 42)}...` : value)}
           onFocus={() => {
             setSearchTerm('');
             setIsOpen(true);
@@ -128,7 +151,11 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 max-h-52 overflow-y-auto w-full divide-y divide-slate-100 animate-in fade-in duration-100">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-xl border border-slate-200 max-h-56 overflow-y-auto w-full divide-y divide-slate-100 animate-in fade-in duration-100">
+          <div className="px-3 py-1.5 bg-slate-50 text-[10px] text-slate-500 font-medium border-b border-slate-100 flex items-center justify-between">
+            <span>Base Oficial (cnaes_referencia)</span>
+            <span>{filteredCnaes.length} exibidos</span>
+          </div>
           {filteredCnaes.length === 0 ? (
             <div className="p-3 text-[11px] text-slate-400 text-center">
               Nenhum CNAE encontrado para "{searchTerm}"
@@ -144,13 +171,14 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
                     setIsOpen(false);
                     setSearchTerm('');
                   }}
+                  title={c.description}
                   className={`p-2.5 text-xs hover:bg-emerald-50 cursor-pointer flex items-center justify-between gap-2 transition-colors ${
                     isSelected ? 'bg-emerald-50/80 font-bold text-emerald-950' : 'text-slate-700'
                   }`}
                 >
                   <div className="min-w-0 flex-1 truncate">
                     <span className="font-mono text-emerald-800 font-bold mr-1.5">{c.code}</span>
-                    <span className="text-slate-600 truncate">{c.description ? c.description.slice(0, 36) : ''}...</span>
+                    <span className="text-slate-600 truncate">{c.description ? c.description.slice(0, 48) : ''}...</span>
                   </div>
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0 font-bold">
                     GR {c.grauDeRisco}

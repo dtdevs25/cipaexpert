@@ -983,12 +983,51 @@ apiRouter.post('/admin/seed', async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// 9. CONSULTA DE CNAEs OFICIAIS (NR-4 / NR-5)
+// 9. CONSULTA DE CNAEs OFICIAIS (TABELA cnaes_referencia DO POSTGRESQL)
 // ─────────────────────────────────────────────────────────────
 apiRouter.get('/cnaes', async (req: Request, res: Response) => {
   try {
+    const q = (req.query.q as string || '').trim();
+
+    // 1. Busca prioritária na tabela 'cnaes_referencia' do PostgreSQL via Prisma
+    try {
+      if (process.env.DATABASE_URL) {
+        if (q) {
+          const cleanQ = q.replace(/\D/g, '');
+          const dbCnaes = await prisma.cnaeReference.findMany({
+            where: {
+              OR: [
+                { code: { contains: q, mode: 'insensitive' } },
+                { description: { contains: q, mode: 'insensitive' } },
+                ...(cleanQ ? [{ code: { contains: cleanQ } }] : [])
+              ]
+            },
+            orderBy: { code: 'asc' },
+            take: 500
+          });
+
+          if (dbCnaes && dbCnaes.length > 0) {
+            res.json(dbCnaes);
+            return;
+          }
+        } else {
+          // Retorna todos os CNAEs cadastrados na tabela cnaes_referencia
+          const dbCnaes = await prisma.cnaeReference.findMany({
+            orderBy: { code: 'asc' }
+          });
+
+          if (dbCnaes && dbCnaes.length > 0) {
+            res.json(dbCnaes);
+            return;
+          }
+        }
+      }
+    } catch (dbErr: any) {
+      console.warn('⚠️ [API] Aviso ao consultar tabela cnaes_referencia do PostgreSQL:', dbErr?.message || dbErr);
+    }
+
+    // 2. Fallback caso a tabela no banco esteja temporariamente vazia ou sem DATABASE_URL
     const { CNAE_DATABASE } = await import('../data/cnaeData');
-    const q = (req.query.q as string || '').toLowerCase().trim();
     if (!q) {
       res.json(CNAE_DATABASE);
       return;
@@ -996,9 +1035,9 @@ apiRouter.get('/cnaes', async (req: Request, res: Response) => {
     const cleanQ = q.replace(/\D/g, '');
     const filtered = CNAE_DATABASE.filter(c => {
       const cleanCode = c.code.replace(/\D/g, '');
-      return c.code.toLowerCase().includes(q) ||
+      return c.code.toLowerCase().includes(q.toLowerCase()) ||
         (cleanQ && cleanCode.includes(cleanQ)) ||
-        (c.description && c.description.toLowerCase().includes(q));
+        (c.description && c.description.toLowerCase().includes(q.toLowerCase()));
     });
     res.json(filtered);
   } catch (error) {
