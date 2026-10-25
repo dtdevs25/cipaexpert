@@ -626,99 +626,100 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
                   }`}
                   title="Clique e arraste para reposicionar ou use o botão de olho para voltar ao modo de edição"
                 >
-                  {/* Botão Flutuante no Hover para Voltar ao Marcador e Ajustar Tamanho */}
-                  {!readOnly && !isGlobalPreview && (
-                    <div className="absolute -top-7 left-0 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white rounded-lg px-2 py-0.5 text-[9px] flex items-center gap-1.5 shadow-md z-30 pointer-events-auto">
-                      <button
-                        type="button"
-                        onClick={(e) => toggleTagPreview(pos.id, e)}
-                        className="hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer"
-                        title="Voltar aos controles do marcador"
+                    {/* Barra de Ação Superior do Modo Simulado (Visível, Clara e Fácil de Clicar) */}
+                    {!readOnly && !isGlobalPreview && (
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => toggleTagPreview(pos.id, e)}
+                          className="bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white font-bold text-[11px] px-3 py-1 rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+                          title="Voltar para o card de posicionamento e edição"
+                        >
+                          <EyeOff className="w-3.5 h-3.5 text-white" />
+                          <span>Voltar ao Marcador</span>
+                        </button>
+
+                        {/* Controles de Tamanho [-] [+] */}
+                        <div className="flex items-center bg-white border border-slate-300 rounded-lg px-1.5 py-0.5 shadow-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => updateTagScale(pos.id, -0.15, e)}
+                            className="text-slate-600 hover:text-slate-900 font-bold px-1 cursor-pointer"
+                            title="Diminuir assinatura"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-[10px] font-mono font-bold text-slate-800 px-1">
+                            {Math.round(tagScale * 100)}%
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => updateTagScale(pos.id, 0.15, e)}
+                            className="text-slate-600 hover:text-slate-900 font-bold px-1 cursor-pointer"
+                            title="Aumentar assinatura"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Assinatura Mínima e Direta (Apenas o essencial) */}
+                    {pos.type === 'assinatura' && (
+                      <div 
+                        onClick={() => !readOnly && toggleTagPreview(pos.id)}
+                        className="bg-white/95 border border-slate-300/90 hover:border-emerald-500 rounded-xl p-2.5 shadow-sm hover:shadow-md transition-all min-w-[200px] max-w-[250px] text-left cursor-pointer group/stamp"
+                        title="Clique para voltar ao marcador de edição"
                       >
-                        <EyeOff className="w-3 h-3 text-emerald-400" />
-                        <span>Editar</span>
-                      </button>
-                      <span className="text-slate-500">|</span>
-                      <button
-                        type="button"
-                        onClick={(e) => updateTagScale(pos.id, -0.15, e)}
-                        className="hover:text-amber-300 p-0.5 cursor-pointer font-bold"
-                        title="Diminuir assinatura"
+                        {/* 1. Nome em caligrafia cursiva azul */}
+                        <div className="pb-1 border-b border-slate-400 flex items-center justify-between">
+                          <span className="font-serif italic text-base text-blue-900 font-bold tracking-wide select-none pr-2">
+                            {pos.signerName}
+                          </span>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        </div>
+
+                        {/* 2. Mínimo necessário: Nome e Data/Hora da assinatura */}
+                        <div className="mt-1 flex items-center justify-between text-[9px] font-mono text-slate-600">
+                          <span className="font-bold text-slate-800 truncate mr-2">{pos.signerName}</span>
+                          <span className="text-slate-500 whitespace-nowrap">25/10/2026 14:35</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rubrica Mínima */}
+                    {pos.type === 'rubrica' && (
+                      <div 
+                        onClick={() => !readOnly && toggleTagPreview(pos.id)}
+                        className="bg-white/95 border border-slate-300/90 hover:border-blue-500 rounded-xl p-2 shadow-sm hover:shadow-md transition-all min-w-[120px] text-left cursor-pointer"
+                        title="Clique para voltar ao marcador de edição"
                       >
-                        -
-                      </button>
-                      <span className="font-mono text-[9px]">{Math.round(tagScale * 100)}%</span>
-                      <button
-                        type="button"
-                        onClick={(e) => updateTagScale(pos.id, 0.15, e)}
-                        className="hover:text-emerald-400 p-0.5 cursor-pointer font-bold"
-                        title="Aumentar assinatura"
+                        <div className="flex items-center justify-between border-b border-slate-300 pb-0.5">
+                          <span className="font-serif italic text-base text-blue-900 font-bold">
+                            {pos.signerName.split(' ').map(n => n[0]).join('')}.
+                          </span>
+                          <FileCheck2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        </div>
+                        <p className="text-[8px] text-slate-500 font-mono mt-0.5">
+                          25/10/2026 14:35
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Data Mínima */}
+                    {pos.type === 'data' && (
+                      <div 
+                        onClick={() => !readOnly && toggleTagPreview(pos.id)}
+                        className="bg-white/95 border border-slate-300/90 hover:border-emerald-500 rounded-lg px-2.5 py-1.5 shadow-sm text-[10px] font-mono text-slate-800 flex items-center gap-1.5 cursor-pointer"
+                        title="Clique para voltar ao marcador de edição"
                       >
-                        +
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Visual Real: Assinatura Completa com Carimbo e Estampa de Data e Hora */}
-                  {pos.type === 'assinatura' && (
-                    <div className="bg-white/95 border-2 border-emerald-600/90 rounded-lg p-2.5 shadow-lg min-w-[230px] max-w-[280px] text-left ring-1 ring-emerald-500/20 backdrop-blur-xs">
-                      {/* Assinatura Manuscrita Cursiva Azul */}
-                      <div className="pb-1 border-b border-emerald-300 flex items-center justify-between">
-                        <span className="font-serif italic text-base text-blue-900 font-bold tracking-wider select-none pr-2">
-                          {pos.signerName}
-                        </span>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                        <span className="font-bold">25/10/2026 14:35</span>
                       </div>
-
-                      {/* Estampa Criptográfica com Data, Hora e Norma */}
-                      <div className="mt-1 text-[8px] text-slate-700 leading-tight space-y-0.5 font-mono">
-                        <p className="font-bold text-emerald-800 uppercase flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          Assinado Digitalmente · CIPASign
-                        </p>
-                        <p className="truncate"><strong>Nome:</strong> {pos.signerName}</p>
-                        <p className="truncate"><strong>E-mail:</strong> {pos.signerEmail}</p>
-                        <p className="text-emerald-950 font-bold bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 inline-block">
-                          📅 25/10/2026 às 14:35:12 BRT (Horário de Brasília)
-                        </p>
-                        <p className="text-[7.5px] text-slate-500 truncate">
-                          🔒 SHA256: 4e8f1b...c92a · MP 2.200-2 / Lei 14.063
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Visual Real: Rubrica com Iniciais e Carimbo */}
-                  {pos.type === 'rubrica' && (
-                    <div className="bg-white/95 border-2 border-blue-500 rounded-lg p-2 shadow-md text-left min-w-[140px] ring-1 ring-blue-400/20 backdrop-blur-xs">
-                      <div className="flex items-center justify-between border-b border-blue-200 pb-1">
-                        <span className="font-serif italic text-base text-blue-900 font-bold">
-                          {pos.signerName.split(' ').map(n => n[0]).join('')}.
-                        </span>
-                        <FileCheck2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      </div>
-                      <p className="text-[8px] text-slate-700 font-mono mt-0.5 truncate">
-                        Rubrica Digital · {pos.signerName.split(' ')[0]}
-                      </p>
-                      <p className="text-[7.5px] text-slate-500 font-mono">
-                        25/10/2026 14:35:12 BRT
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Visual Real: Data e Hora Estampada */}
-                  {pos.type === 'data' && (
-                    <div className="bg-white/95 border border-slate-300 rounded p-1.5 shadow-sm text-[9px] font-mono text-slate-700">
-                      <div className="flex items-center gap-1 text-emerald-700 font-bold">
-                        <Calendar className="w-3 h-3" />
-                        <span>25/10/2026 14:35:12 BRT</span>
-                      </div>
-                      <p className="text-[8px] text-slate-500">Data e Hora Certificada</p>
-                    </div>
-                  )}
-                </div>
-              );
-            }
+                    )}
+                  </div>
+                );
+              }
 
             // -------------------------------------------------------------
             // CASO 2: MODO MARCADOR COM CONTROLES DE ARRASTE, LISTA E TAMANHO
