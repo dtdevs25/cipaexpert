@@ -103,3 +103,19 @@ export const formatCNAE = (val: string): string => {
   if (digits.length <= 5) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
   return `${digits.slice(0, 4)}-${digits.slice(4, 5)}/${digits.slice(5, 7)}`;
 };
+
+/**
+ * Mascara CPF conforme regras da LGPD, exibindo apenas os 3 últimos dígitos numéricos.
+ * Exemplo: 123.456.789-01 -> ***.***.**9-01
+ */
+export const maskCPFLGPD = (cpf?: string | null): string => {
+  if (!cpf) return '';
+  const clean = cpf.replace(/\D/g, '');
+  if (clean.length < 3) return '***.***.***-**';
+  if (clean.length !== 11) {
+    const last3 = clean.slice(-3);
+    return `***.***.**${last3[0] || '*'}-${last3.slice(1)}`;
+  }
+  return `***.***.**${clean.charAt(8)}-${clean.slice(9, 11)}`;
+};
+

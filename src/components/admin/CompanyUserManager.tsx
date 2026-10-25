@@ -24,7 +24,12 @@ import {
   KeyRound,
   Search,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  EyeOff,
+  ShieldAlert,
+  Check,
+  FileText
 } from 'lucide-react';
 import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
 import { DEMO_USERS, INITIAL_COMPANIES } from '../../data/multiCompanyData';
@@ -36,11 +41,117 @@ import {
   validateCNPJ, 
   formatCPF, 
   formatCNPJ, 
-  formatCNAE 
+  formatCNAE,
+  maskCPFLGPD
 } from '../../utils/documentValidators';
 
 // Reexporta para manter compatibilidade com quaisquer outros componentes
-export { validateCPF, validateCNPJ, formatCPF, formatCNPJ, formatCNAE };
+export { validateCPF, validateCNPJ, formatCPF, formatCNPJ, formatCNAE, maskCPFLGPD };
+
+// Hierarquia oficial de permissões para isolamento e proteção de visualização
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  master: 100,
+  admin_empresa: 80,
+  gestor_unidade: 60,
+  tecnico_sst: 40,
+  cipeiro: 20,
+  eleitor: 10
+};
+
+export const AVAILABLE_ROLES: { role: UserRole; label: string }[] = [
+  { role: 'master', label: 'Usuário Master (Super Admin Global)' },
+  { role: 'admin_empresa', label: 'Administrador da Empresa' },
+  { role: 'gestor_unidade', label: 'Gestor de Unidade' },
+  { role: 'tecnico_sst', label: 'Técnico de Segurança do Trabalho (SST)' },
+  { role: 'cipeiro', label: 'Cipeiro (Eleito/Indicado)' },
+  { role: 'eleitor', label: 'Eleitor (Colaborador CLT Votante)' }
+];
+
+export const ROLE_PERMISSIONS_DETAILS: Record<UserRole, {
+  label: string;
+  badgeClass: string;
+  description: string;
+  permissions: { name: string; desc: string; allowed: boolean }[];
+}> = {
+  master: {
+    label: 'Usuário Master (Super Admin Global)',
+    badgeClass: 'bg-purple-100 text-purple-900 border-purple-200',
+    description: 'Acesso pleno e soberano a todas as empresas, filiais, banco de dados e configurações globais de segurança da plataforma.',
+    permissions: [
+      { name: 'Gestão Multiempresas & Filiais', desc: 'Criar, editar e excluir cadastros de empresas e filiais', allowed: true },
+      { name: 'Gestão Global de Usuários', desc: 'Gerenciar todos os usuários e atribuir quaisquer níveis', allowed: true },
+      { name: 'Acesso Irrestrito LGPD', desc: 'Visualização irrestrita de CPFs completos e dados sensíveis', allowed: true },
+      { name: 'Dimensionamento NR-5', desc: 'Cálculos de dimensionamento e emissão de quadros técnicos', allowed: true },
+      { name: 'Processo Eleitoral CIPA', desc: 'Configuração integral, atas, editais e apuração da urna', allowed: true },
+      { name: 'Portal de Assinaturas Digitais', desc: 'Criação de envelopes, posicionamento e auditoria', allowed: true },
+      { name: 'Auditoria & Logs de Segurança', desc: 'Visualização das trilhas de auditoria e operações de banco', allowed: true }
+    ]
+  },
+  admin_empresa: {
+    label: 'Administrador da Empresa',
+    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-200',
+    description: 'Gestão administrativa da empresa e filiais vinculadas, com governança sobre técnicos, cipeiros e colaboradores.',
+    permissions: [
+      { name: 'Gestão de Filiais da Empresa', desc: 'Cadastrar e editar filiais/unidades vinculadas à sua empresa', allowed: true },
+      { name: 'Gestão de Usuários da Organização', desc: 'Cadastrar e editar usuários de nível igual ou inferior ao seu', allowed: true },
+      { name: 'Visualização de Dados LGPD', desc: 'CPFs e dados sensíveis protegidos por máscara de sigilo (***.***.**9-01)', allowed: false },
+      { name: 'Dimensionamento NR-5', desc: 'Cálculo de dimensionamento e relatórios do quadro I e II', allowed: true },
+      { name: 'Processo Eleitoral CIPA', desc: 'Abertura de editais, acompanhamento e homologação', allowed: true },
+      { name: 'Portal de Assinaturas Digitais', desc: 'Envio de atas e documentos para coleta de assinaturas', allowed: true },
+      { name: 'Acesso a Outras Empresas / Master', desc: 'Restrito exclusivamente à sua organização cadastrada', allowed: false }
+    ]
+  },
+  gestor_unidade: {
+    label: 'Gestor de Unidade / Filial',
+    badgeClass: 'bg-blue-100 text-blue-900 border-blue-200',
+    description: 'Responsável pelo monitoramento operacional da CIPA em sua unidade/filial designada.',
+    permissions: [
+      { name: 'Gestão da Unidade Designada', desc: 'Visualização operacional e relatórios da sua filial', allowed: true },
+      { name: 'Acompanhamento Eleitoral', desc: 'Consultar quórum e andamento da votação na sua unidade', allowed: true },
+      { name: 'Reuniões Ordinárias e Atas', desc: 'Acompanhar o cronograma de reuniões mensais', allowed: true },
+      { name: 'Assinaturas Digitais de Atas', desc: 'Validar e assinar documentos da comissão local', allowed: true },
+      { name: 'Gestão de Outras Filiais', desc: 'Acesso bloqueado a dados de filiais não autorizadas', allowed: false },
+      { name: 'Administração Geral de Usuários', desc: 'Sem permissão para cadastrar administradores', allowed: false }
+    ]
+  },
+  tecnico_sst: {
+    label: 'Técnico de Segurança do Trabalho (SST)',
+    badgeClass: 'bg-amber-100 text-amber-900 border-amber-200',
+    description: 'Operador técnico oficial: realiza dimensionamento NR-5, conduz eleições, emite editais e recolhe assinaturas.',
+    permissions: [
+      { name: 'Dimensionamento NR-5', desc: 'Cálculo técnico conforme CNAE e número de colaboradores', allowed: true },
+      { name: 'Condução do Processo Eleitoral', desc: 'Configurar cronograma, cadastrar candidatos e apurar votos', allowed: true },
+      { name: 'Gestão de Atas & Planos 5W2H', desc: 'Elaborar atas de instalação, posse e planos de ação', allowed: true },
+      { name: 'Coleta de Assinaturas Digitais', desc: 'Submeter envelopes de atas aos membros da CIPA', allowed: true },
+      { name: 'Exclusão de Registros Mestres', desc: 'Sem permissão para excluir empresas ou filiais matrizes', allowed: false },
+      { name: 'Visualização Desprotegida LGPD', desc: 'Dados protegidos com máscara de sigilo para votantes', allowed: false }
+    ]
+  },
+  cipeiro: {
+    label: 'Cipeiro (Eleito / Indicado)',
+    badgeClass: 'bg-teal-100 text-teal-900 border-teal-200',
+    description: 'Membro integrante da CIPA: participa das reuniões ordinárias, elabora planos de ação e assina atas eletronicamente.',
+    permissions: [
+      { name: 'Assinatura Eletrônica de Atas', desc: 'Apor assinatura digital com certificado nas atas da CIPA', allowed: true },
+      { name: 'Participação em Reuniões & Pautas', desc: 'Acesso às convocações e atas das reuniões ordinárias', allowed: true },
+      { name: 'Plano de Trabalho NR-5', desc: 'Acompanhar cronograma e ações preventivas 5W2H', allowed: true },
+      { name: 'Módulos Administrativos', desc: 'Sem permissão de alteração de configurações e parâmetros', allowed: false },
+      { name: 'Gestão de Usuários e Empresas', desc: 'Acesso estritamente bloqueado', allowed: false }
+    ]
+  },
+  eleitor: {
+    label: 'Eleitor (Colaborador Votante)',
+    badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
+    description: 'Colaborador com acesso para registro de candidatura no prazo legal e votação na urna eletrônica segura.',
+    permissions: [
+      { name: 'Candidatura Eleitoral CIPA', desc: 'Inscrever-se para a eleição dentro do prazo do edital', allowed: true },
+      { name: 'Votação Secreta Online', desc: 'Votar nos candidatos com protocolo criptográfico e sigilo', allowed: true },
+      { name: 'Comprovante Eleitoral Criptografado', desc: 'Download do comprovante com hash SHA-256 de auditoria', allowed: true },
+      { name: 'Módulos de Gestão e Administrativos', desc: 'Acesso estritamente bloqueado a telas administrativas', allowed: false }
+    ]
+  }
+};
+
 
 // Componente inteligente de busca e digitação de CNAE com largura contida
 interface CnaeSearchSelectProps {
@@ -303,14 +414,26 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const editUserPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   // ==========================================
-  // New User Form State
+  // New User Form State (Suporte a Multiempresas e Multifiliais)
   // ==========================================
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserCpf, setNewUserCpf] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>('tecnico_sst');
   const [newUserCompanyId, setNewUserCompanyId] = useState(companies[0]?.id || 'emp-1');
+  const [newUserCompanyIds, setNewUserCompanyIds] = useState<string[]>([companies[0]?.id || 'emp-1']);
+  const [newUserUnitIds, setNewUserUnitIds] = useState<string[]>([]);
   const [newUserAvatarUrl, setNewUserAvatarUrl] = useState('');
+  const [showFullCpfInModal, setShowFullCpfInModal] = useState(false);
+
+  // Determina se o usuário conectado pode ver o CPF completo sem máscara (Master ou titular)
+  const canCurrentUserViewFullCpf = (targetUser?: AuthUser | null): boolean => {
+    if (!targetUser) return false;
+    if (currentUser?.role === 'master') return true;
+    if (currentUser?.id && currentUser.id === targetUser.id) return true;
+    return false;
+  };
+
 
   const handleFileToDataUrl = (file: File, onLoaded: (url: string) => void) => {
     if (!file) return;
@@ -593,10 +716,19 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         eleitor: 'Eleitor (Colaborador CLT)'
       };
 
+      const effectiveCompanyIds = (editingUser.companyIds && editingUser.companyIds.length > 0)
+        ? editingUser.companyIds
+        : (editingUser.companyId ? [editingUser.companyId] : [companies[0]?.id || 'emp-1']);
+      const effectiveUnitIds = editingUser.unitIds || (editingUser.unitId ? [editingUser.unitId] : []);
+
       const updated = usersList.map(u => u.id === editingUser.id ? {
         ...editingUser,
-        roleLabel: roleLabels[editingUser.role] || editingUser.roleLabel,
-        roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[editingUser.role] || editingUser.roleLabel}.`,
+        companyIds: effectiveCompanyIds,
+        companyId: effectiveCompanyIds[0],
+        unitIds: effectiveUnitIds,
+        unitId: effectiveUnitIds[0] || undefined,
+        roleLabel: ROLE_PERMISSIONS_DETAILS[editingUser.role]?.label || roleLabels[editingUser.role] || editingUser.roleLabel,
+        roleDescription: ROLE_PERMISSIONS_DETAILS[editingUser.role]?.description || `Usuário cadastrado com privilégios de ${roleLabels[editingUser.role] || editingUser.roleLabel}.`,
         avatarInitials: editingUser.name.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
       } : u);
       setUsersList(updated);
@@ -648,6 +780,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       return;
     }
 
+    const currentRank = ROLE_HIERARCHY[currentUser?.role || 'eleitor'] || 10;
+    const selectedRoleRank = ROLE_HIERARCHY[newUserRole] || 10;
+    if (currentUser?.role !== 'master' && (newUserRole === 'master' || selectedRoleRank > currentRank)) {
+      showFeedback('Operação Não Permitida', 'Você não pode criar um usuário com privilégios superiores ao seu perfil.', 'error');
+      return;
+    }
+
+    const effectiveCompanyIds = newUserCompanyIds.length > 0 ? newUserCompanyIds : [newUserCompanyId];
+
     setIsSubmitting(true);
     try {
       const roleLabels: Record<UserRole, string> = {
@@ -665,9 +806,12 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         email: newUserEmail.trim(),
         cpf: newUserCpf.trim() ? formatCPF(newUserCpf) : undefined,
         role: newUserRole,
-        roleLabel: roleLabels[newUserRole],
-        roleDescription: `Usuário cadastrado com privilégios de ${roleLabels[newUserRole]}.`,
-        companyId: newUserCompanyId,
+        roleLabel: ROLE_PERMISSIONS_DETAILS[newUserRole]?.label || roleLabels[newUserRole],
+        roleDescription: ROLE_PERMISSIONS_DETAILS[newUserRole]?.description || `Usuário cadastrado com privilégios de ${roleLabels[newUserRole]}.`,
+        companyId: effectiveCompanyIds[0],
+        companyIds: effectiveCompanyIds,
+        unitId: newUserUnitIds[0] || undefined,
+        unitIds: newUserUnitIds,
         avatarInitials: newUserName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase(),
         avatarUrl: newUserAvatarUrl.trim() || undefined
       };
@@ -678,6 +822,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       setNewUserEmail('');
       setNewUserCpf('');
       setNewUserAvatarUrl('');
+      setNewUserCompanyIds([companies[0]?.id || 'emp-1']);
+      setNewUserUnitIds([]);
 
       // Persiste no PostgreSQL
       await ApiService.createUser({
@@ -694,14 +840,22 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     }
   };
 
-  // Reenviar email de redefinição de senha
+  // Reenviar email de redefinição de senha com controle de hierarquia
   const handleResetUserPassword = (user: AuthUser) => {
+    const currentRank = ROLE_HIERARCHY[currentUser?.role || 'eleitor'] || 10;
+    const targetRank = ROLE_HIERARCHY[user.role] || 10;
+    if (currentUser?.role !== 'master' && (user.role === 'master' || targetRank > currentRank)) {
+      showFeedback('Operação Bloqueada', 'Você não possui permissão para redefinir a senha de um usuário com nível hierárquico superior.', 'error');
+      return;
+    }
+
     showFeedback(
       'E-mail Enviado!',
       `Um link seguro para redefinição de senha foi enviado com sucesso para ${user.email}. O link possui validade de 24 horas.`,
       'success'
     );
   };
+
 
   // Garante que a lista de empresas e unidades seja sempre um array válido
   const safeCompanies = (companies && companies.length > 0 ? companies : INITIAL_COMPANIES).map(c => ({
@@ -1322,132 +1476,196 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {/* GUIA 3: USUÁRIOS                                                          */}
       {/* ========================================================================= */}
-      {activeTab === 'usuarios' && (
-        <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden w-full">
-          <div className="p-4 sm:p-5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-2">
-              <Users className="w-4 h-4 text-emerald-700" />
-              Usuários e Níveis de Acesso
-            </span>
-            <span className="text-xs text-slate-600 font-mono">
-              Total: {usersList.length} usuários cadastrados
-            </span>
-          </div>
+      {activeTab === 'usuarios' && (() => {
+        const currentRank = ROLE_HIERARCHY[currentUser?.role || 'eleitor'] || 10;
+        // Filtragem hierárquica estrita: Administrador não vê Master, e assim sucessivamente
+        const visibleUsersList = usersList.filter((user) => {
+          if (currentUser?.role === 'master') return true;
+          if (user.role === 'master') return false;
+          const targetRank = ROLE_HIERARCHY[user.role] || 10;
+          return targetRank <= currentRank;
+        });
 
-          <div className="divide-y divide-slate-100 w-full">
-            {usersList.map((user) => {
-              const userComp = safeCompanies.find(c => c.id === user.companyId);
+        return (
+          <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden w-full">
+            <div className="p-4 sm:p-5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-700" />
+                Usuários e Níveis de Acesso
+              </span>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-600 font-mono bg-white/70 px-2 py-0.5 rounded-lg border border-emerald-200/60 font-semibold">
+                  Total: {visibleUsersList.length} usuários visíveis
+                </span>
+                {currentUser?.role !== 'master' && (
+                  <span className="text-[10px] text-emerald-800 bg-emerald-100/60 px-2 py-0.5 rounded-lg border border-emerald-200 font-bold hidden sm:inline-flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                    Filtrado por seu nível ({ROLE_PERMISSIONS_DETAILS[currentUser?.role || 'eleitor']?.label})
+                  </span>
+                )}
+              </div>
+            </div>
 
-              return (
-                <div key={user.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="relative shrink-0">
-                      {user.avatarUrl ? (
-                        <img
-                          src={user.avatarUrl}
-                          alt={user.name}
-                          className="w-11 h-11 rounded-full object-cover ring-2 ring-emerald-500/40 shadow-xs"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
-                          {user.avatarInitials || (user.name ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'U')}
-                        </div>
-                      )}
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white absolute bottom-0 right-0"></span>
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-sm font-bold text-slate-900 block truncate">{user.name}</strong>
-                        {currentUser?.id && user.id === currentUser.id && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                            Sua Sessão
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{user.email}</span>
-                        </span>
-                        {user.cpf && (
-                          <span className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200 text-[10px]">
-                            CPF: {user.cpf}
-                          </span>
-                        )}
-                        {userComp && (
-                          <span className="hidden md:inline text-slate-400">· {userComp.nomeFantasia}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
-                    <div className="text-left sm:text-right">
-                      <span className="text-xs font-bold text-emerald-700 block">
-                        {user.roleLabel || user.role}
-                      </span>
-                      <span className="text-[10px] text-slate-500 block truncate max-w-[200px]">
-                        {user.roleDescription || 'Usuário do sistema'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setViewingUser(user)}
-                        className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                        title="Visualizar Usuário"
-                      >
-                        <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
-                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                          Visualizar
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditingUser(user)}
-                        className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                        title="Editar Usuário"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                          Editar
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleResetUserPassword(user)}
-                        className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                        title="Reenviar e-mail de redefinição de senha"
-                      >
-                        <KeyRound className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
-                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                          Senha
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setUserToDelete(user)}
-                        className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                        title="Excluir Usuário"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
-                        <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                          Excluir
-                        </span>
-                      </button>
-                    </div>
-                  </div>
+            <div className="divide-y divide-slate-100 w-full">
+              {visibleUsersList.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  Nenhum usuário cadastrado neste nível de permissão.
                 </div>
-              );
-            })}
+              ) : (
+                visibleUsersList.map((user) => {
+                  const assignedCompanyIds = (user.companyIds && user.companyIds.length > 0)
+                    ? user.companyIds
+                    : (user.companyId ? [user.companyId] : []);
+                  const assignedCompanies = safeCompanies.filter(c => assignedCompanyIds.includes(c.id));
+                  const userUnitsCount = user.unitIds?.length || (user.unitId ? 1 : 0);
+                  const isFullCpfAllowed = canCurrentUserViewFullCpf(user);
+
+                  return (
+                    <div key={user.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="relative shrink-0">
+                          {user.avatarUrl ? (
+                            <img
+                              src={user.avatarUrl}
+                              alt={user.name}
+                              className="w-11 h-11 rounded-full object-cover ring-2 ring-emerald-500/40 shadow-xs"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
+                              {user.avatarInitials || (user.name ? user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : 'U')}
+                            </div>
+                          )}
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white absolute bottom-0 right-0"></span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <strong className="text-sm font-bold text-slate-900 block truncate">{user.name}</strong>
+                            {currentUser?.id && user.id === currentUser.id && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                                Sua Sessão
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{user.email}</span>
+                            </span>
+
+                            {/* CPF protegido por LGPD */}
+                            {user.cpf && (
+                              <span 
+                                className="font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[10px] inline-flex items-center gap-1"
+                                title={isFullCpfAllowed ? "CPF Completo (Visível para seu perfil)" : "CPF com proteção de privacidade LGPD (3 últimos dígitos)"}
+                              >
+                                {!isFullCpfAllowed && <Lock className="w-2.5 h-2.5 text-slate-400" />}
+                                <span>CPF: {isFullCpfAllowed ? user.cpf : maskCPFLGPD(user.cpf)}</span>
+                              </span>
+                            )}
+
+                            {/* Múltiplas Empresas e Filiais */}
+                            {assignedCompanies.length > 0 && (
+                              <span 
+                                className="hidden md:inline-flex items-center gap-1 text-[11px] font-medium text-slate-600"
+                                title={assignedCompanies.map(c => c.nomeFantasia).join(', ')}
+                              >
+                                <span>·</span>
+                                <Building className="w-3 h-3 text-slate-400" />
+                                <span className="font-semibold text-slate-700">{assignedCompanies[0].nomeFantasia}</span>
+                                {assignedCompanies.length > 1 && (
+                                  <span className="text-[10px] font-bold px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    +{assignedCompanies.length - 1} empresa{assignedCompanies.length > 2 ? 's' : ''}
+                                  </span>
+                                )}
+                                {userUnitsCount > 0 && (
+                                  <span className="text-[10px] text-slate-500 font-normal">
+                                    ({userUnitsCount} filial{userUnitsCount > 1 ? 'is' : ''})
+                                  </span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                        <div className="text-left sm:text-right">
+                          <span className={`text-xs font-bold block ${ROLE_PERMISSIONS_DETAILS[user.role]?.badgeClass || 'text-emerald-700'}`}>
+                            {user.roleLabel || user.role}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block truncate max-w-[220px]" title={user.roleDescription}>
+                            {user.roleDescription || 'Usuário do sistema'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowFullCpfInModal(false);
+                              setViewingUser(user);
+                            }}
+                            className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                            title="Visualizar Usuário"
+                          >
+                            <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                              Visualizar
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingUser({
+                                ...user,
+                                companyIds: (user.companyIds && user.companyIds.length > 0) ? user.companyIds : (user.companyId ? [user.companyId] : [companies[0]?.id || 'emp-1']),
+                                unitIds: user.unitIds || (user.unitId ? [user.unitId] : [])
+                              });
+                            }}
+                            className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                            title="Editar Usuário"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                              Editar
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleResetUserPassword(user)}
+                            className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                            title="Reenviar e-mail de redefinição de senha"
+                          >
+                            <KeyRound className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                              Senha
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setUserToDelete(user)}
+                            className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                            title="Excluir Usuário"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                            <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                              Excluir
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL CADASTRAR FILIAL / UNIDADE                                          */}
@@ -2435,95 +2653,249 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {/* MODAL VISUALIZAR USUÁRIO                                                  */}
       {/* ========================================================================= */}
-      {viewingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[85vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-3 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-emerald-700" />
-                Ficha do Usuário
-              </h3>
-              <button onClick={() => setViewingUser(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {viewingUser && (() => {
+        const roleInfo = ROLE_PERMISSIONS_DETAILS[viewingUser.role] || ROLE_PERMISSIONS_DETAILS.eleitor;
+        const isFullCpfAllowed = canCurrentUserViewFullCpf(viewingUser);
+        const assignedCompanyIds = (viewingUser.companyIds && viewingUser.companyIds.length > 0)
+          ? viewingUser.companyIds
+          : (viewingUser.companyId ? [viewingUser.companyId] : []);
+        const assignedCompanies = safeCompanies.filter(c => assignedCompanyIds.includes(c.id));
 
-            <div className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto flex-1 overscroll-contain">
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                {viewingUser.avatarUrl ? (
-                  <img
-                    src={viewingUser.avatarUrl}
-                    alt={viewingUser.name}
-                    className="w-16 h-16 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs shrink-0"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-slate-900 text-white font-bold text-base flex items-center justify-center shrink-0">
-                    {viewingUser.avatarInitials}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <h4 className="text-base font-extrabold text-slate-900">{viewingUser.name}</h4>
-                  <div className="flex items-center gap-1.5 text-slate-500 mt-0.5">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="truncate">{viewingUser.email}</span>
-                  </div>
-                  {viewingUser.cpf && (
-                    <div className="flex items-center gap-1.5 text-slate-600 mt-0.5 font-mono text-[11px] font-bold">
-                      <span className="text-slate-400 font-sans font-normal">CPF:</span>
-                      <span>{viewingUser.cpf}</span>
+        const allUnitsOfAssignedCompanies = assignedCompanies.flatMap(c => c.units || []);
+        const assignedUnitIds = viewingUser.unitIds || (viewingUser.unitId ? [viewingUser.unitId] : []);
+        const assignedUnits = allUnitsOfAssignedCompanies.filter(u => assignedUnitIds.includes(u.id));
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-5 py-3.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-700" />
+                  Ficha Cadastral e Permissões do Usuário
+                </h3>
+                <button 
+                  onClick={() => setViewingUser(null)} 
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-emerald-100/50 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto flex-1 overscroll-contain">
+                {/* Identificação Principal do Usuário */}
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  {viewingUser.avatarUrl ? (
+                    <img
+                      src={viewingUser.avatarUrl}
+                      alt={viewingUser.name}
+                      className="w-16 h-16 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-slate-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-xs">
+                      {viewingUser.avatarInitials || (viewingUser.name ? viewingUser.name.slice(0, 2).toUpperCase() : 'U')}
                     </div>
                   )}
-                  <span className="inline-block mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-900">
-                    {viewingUser.roleLabel}
-                  </span>
-                </div>
-              </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-base font-extrabold text-slate-900">{viewingUser.name}</h4>
+                      {currentUser?.id && viewingUser.id === currentUser.id && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                          Sua Conta
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 text-slate-500 mt-1">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="truncate">{viewingUser.email}</span>
+                    </div>
 
-              <div className="space-y-2">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Empresa Vinculada</span>
-                  <strong className="text-slate-800 text-xs block">
-                    {companies.find(c => c.id === viewingUser.companyId)?.nomeFantasia || 'Todas as Organizações (Master)'}
-                  </strong>
+                    {/* CPF em conformidade com LGPD */}
+                    {viewingUser.cpf && (
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 text-slate-700 font-mono text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                          <span className="text-slate-400 font-sans font-normal text-[10px]">CPF:</span>
+                          <span>
+                            {isFullCpfAllowed 
+                              ? (showFullCpfInModal ? viewingUser.cpf : maskCPFLGPD(viewingUser.cpf))
+                              : maskCPFLGPD(viewingUser.cpf)}
+                          </span>
+                        </div>
+
+                        {isFullCpfAllowed ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowFullCpfInModal(!showFullCpfInModal)}
+                            className="text-[10px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
+                            title="Alternar visibilidade do CPF"
+                          >
+                            {showFullCpfInModal ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            <span>{showFullCpfInModal ? 'Mascarar' : 'Exibir Completo'}</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1 font-semibold" title="Em conformidade com a LGPD, apenas os 3 últimos dígitos são exibidos.">
+                            <Lock className="w-2.5 h-2.5" />
+                            Protegido pela LGPD
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-2">
+                      <span className={`inline-block text-[11px] font-bold px-2.5 py-1 rounded-lg border shadow-2xs ${roleInfo.badgeClass}`}>
+                        {roleInfo.label}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase block">Nível de Permissões NR-5</span>
-                  <p className="text-slate-700 text-xs mt-0.5 leading-relaxed">
-                    {viewingUser.roleDescription}
+                {/* Vínculos Organizacionais: Multiempresas e Multifiliais */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-slate-400" />
+                      Empresas Vinculadas ({assignedCompanies.length})
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {assignedCompanies.length === 0 ? (
+                        <span className="text-slate-400 italic text-[11px]">Nenhuma organização vinculada</span>
+                      ) : (
+                        assignedCompanies.map(c => (
+                          <span 
+                            key={c.id} 
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold text-xs shadow-2xs"
+                          >
+                            <Building2 className="w-3 h-3 text-emerald-600" />
+                            <span>{c.nomeFantasia}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">({c.cnpj})</span>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      Filiais e Unidades Designadas
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {assignedUnits.length > 0 ? (
+                        assignedUnits.map(u => (
+                          <span 
+                            key={u.id} 
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 font-medium text-xs"
+                          >
+                            <MapPin className="w-3 h-3 text-emerald-700 shrink-0" />
+                            <span>{u.name}</span>
+                            <span className="text-[10px] text-emerald-700 font-bold">({u.city} - {u.state})</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-medium">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Acesso global a todas as filiais das empresas vinculadas
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detalhamento Real dos Níveis de Permissões NR-5 */}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                      Nível de Permissões e Capacidades NR-5
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      Hierarquia Grau {ROLE_HIERARCHY[viewingUser.role] || 10}/100
+                    </span>
+                  </div>
+
+                  <p className="text-slate-700 text-xs leading-relaxed bg-white p-2.5 rounded-xl border border-slate-200/80">
+                    {roleInfo.description}
                   </p>
+
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Matriz de Acessos Operacionais
+                    </span>
+                    <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                      {roleInfo.permissions.map((perm, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`p-2 rounded-xl border flex items-start gap-2.5 transition-colors ${
+                            perm.allowed 
+                              ? 'bg-white border-slate-200 text-slate-800' 
+                              : 'bg-slate-100/70 border-slate-200/60 text-slate-500'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {perm.allowed ? (
+                              <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5" />
+                              </div>
+                            ) : (
+                              <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center">
+                                <Lock className="w-2.5 h-2.5" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-xs">{perm.name}</span>
+                              <span className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                                perm.allowed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                              }`}>
+                                {perm.allowed ? 'Permitido' : 'Restrito'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                              {perm.desc}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  handleResetUserPassword(viewingUser);
-                }}
-                className="px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
-                title="Reenviar e-mail de redefinição de senha"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Redefinir Senha</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const u = viewingUser;
-                  setViewingUser(null);
-                  setEditingUser(u);
-                }}
-                className="px-4 py-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Editar Usuário</span>
-              </button>
+              {/* Rodapé Fixo */}
+              <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleResetUserPassword(viewingUser);
+                  }}
+                  className="px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+                  title="Reenviar e-mail de redefinição de senha"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Redefinir Senha</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const u = viewingUser;
+                    setViewingUser(null);
+                    setEditingUser({
+                      ...u,
+                      companyIds: (u.companyIds && u.companyIds.length > 0) ? u.companyIds : (u.companyId ? [u.companyId] : [companies[0]?.id || 'emp-1']),
+                      unitIds: u.unitIds || (u.unitId ? [u.unitId] : [])
+                    });
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-xl border border-amber-200 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Editar Usuário</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL EDITAR USUÁRIO                                                      */}
@@ -2674,31 +3046,155 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
-                  <select
-                    value={editingUser.companyId || companies[0]?.id}
-                    onChange={e => setEditingUser({ ...editingUser, companyId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {companies.map(c => (
-                      <option key={c.id} value={c.id}>{c.nomeFantasia}</option>
-                    ))}
-                  </select>
+                {/* Seleção de Múltiplas Empresas */}
+                <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Empresas Vinculadas (Multiempresas)
+                    </label>
+                    <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded font-bold">
+                      {(editingUser.companyIds?.length || 1)} selecionada{(editingUser.companyIds?.length || 1) > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    O usuário pode ter acesso a uma ou mais empresas da organização.
+                  </p>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+                    {companies.map(c => {
+                      const isChecked = (editingUser.companyIds || [editingUser.companyId]).includes(c.id);
+                      return (
+                        <label
+                          key={c.id}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                            isChecked ? 'bg-white border-emerald-500 shadow-2xs font-bold text-slate-900' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const currentIds = editingUser.companyIds || (editingUser.companyId ? [editingUser.companyId] : [c.id]);
+                              let nextIds: string[];
+                              if (e.target.checked) {
+                                nextIds = Array.from(new Set([...currentIds, c.id]));
+                              } else {
+                                if (currentIds.length <= 1) {
+                                  showFeedback('Aviso', 'O usuário deve estar vinculado a pelo menos uma empresa.', 'warning');
+                                  return;
+                                }
+                                nextIds = currentIds.filter(id => id !== c.id);
+                              }
+                              setEditingUser({
+                                ...editingUser,
+                                companyIds: nextIds,
+                                companyId: nextIds[0]
+                              });
+                            }}
+                            className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                          />
+                          <div className="min-w-0 flex-1 truncate">
+                            <span className="block truncate">{c.nomeFantasia}</span>
+                            <span className="text-[10px] text-slate-400 font-mono font-normal">CNPJ: {c.cnpj}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* Seleção de Múltiplas Filiais */}
+                {(() => {
+                  const currentCompIds = editingUser.companyIds || (editingUser.companyId ? [editingUser.companyId] : []);
+                  const selectedCompanies = safeCompanies.filter(c => currentCompIds.includes(c.id));
+                  const availableUnits = selectedCompanies.flatMap(c => c.units.map(u => ({ ...u, companyName: c.nomeFantasia })));
+
+                  return (
+                    <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                          Filiais / Unidades Vinculadas (Multifiliais)
+                        </label>
+                        <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded font-bold">
+                          {(editingUser.unitIds?.length || 0)} selecionada{(editingUser.unitIds?.length || 0) !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Marque as filiais permitidas. Se nenhuma for marcada, o acesso abrangerá todas as filiais.
+                      </p>
+
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+                        {availableUnits.length === 0 ? (
+                          <div className="text-[11px] text-slate-400 p-2 italic text-center">
+                            Nenhuma filial cadastrada nas empresas selecionadas.
+                          </div>
+                        ) : (
+                          availableUnits.map(unit => {
+                            const isChecked = (editingUser.unitIds || []).includes(unit.id);
+                            return (
+                              <label
+                                key={unit.id}
+                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                  isChecked ? 'bg-white border-emerald-500 shadow-2xs font-bold text-slate-900' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    const currentUnits = editingUser.unitIds || [];
+                                    const nextUnits = e.target.checked
+                                      ? Array.from(new Set([...currentUnits, unit.id]))
+                                      : currentUnits.filter(id => id !== unit.id);
+                                    setEditingUser({
+                                      ...editingUser,
+                                      unitIds: nextUnits,
+                                      unitId: nextUnits[0] || undefined
+                                    });
+                                  }}
+                                  className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                <div className="min-w-0 flex-1 truncate">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="truncate">{unit.name}</span>
+                                    <span className="text-[10px] text-slate-400 font-normal">({unit.city} - {unit.state})</span>
+                                  </div>
+                                  <span className="text-[10px] text-emerald-700 font-normal block truncate">
+                                    {unit.companyName}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Função / Nível de Acesso filtrado por hierarquia */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Nível máx: {currentUser?.role || 'master'}
+                    </span>
+                  </div>
                   <select
                     value={editingUser.role}
                     onChange={e => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="admin_empresa">Administrador da Empresa</option>
-                    <option value="gestor_unidade">Gestor de Unidade</option>
-                    <option value="tecnico_sst">Técnico de Segurança do Trabalho (SST)</option>
-                    <option value="cipeiro">Cipeiro (Eleito/Indicado)</option>
-                    <option value="eleitor">Eleitor (Colaborador Votante)</option>
+                    {AVAILABLE_ROLES
+                      .filter(r => {
+                        if (currentUser?.role === 'master') return true;
+                        if (r.role === 'master') return false;
+                        return (ROLE_HIERARCHY[r.role] || 10) <= (ROLE_HIERARCHY[currentUser?.role || 'eleitor'] || 10);
+                      })
+                      .map(r => (
+                        <option key={r.role} value={r.role}>{r.label}</option>
+                      ))}
                   </select>
                 </div>
               </div>
@@ -2884,31 +3380,147 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Empresa Vinculada</label>
-                  <select
-                    value={newUserCompanyId}
-                    onChange={e => setNewUserCompanyId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {companies.map(c => (
-                      <option key={c.id} value={c.id}>{c.nomeFantasia}</option>
-                    ))}
-                  </select>
+                {/* Seleção de Múltiplas Empresas */}
+                <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Empresas Vinculadas (Multiempresas)
+                    </label>
+                    <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded font-bold">
+                      {newUserCompanyIds.length} selecionada{newUserCompanyIds.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    O usuário poderá acessar e operar uma ou mais empresas da organização.
+                  </p>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+                    {companies.map(c => {
+                      const isChecked = newUserCompanyIds.includes(c.id);
+                      return (
+                        <label
+                          key={c.id}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                            isChecked ? 'bg-white border-emerald-500 shadow-2xs font-bold text-slate-900' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                const next = Array.from(new Set([...newUserCompanyIds, c.id]));
+                                setNewUserCompanyIds(next);
+                                setNewUserCompanyId(next[0]);
+                              } else {
+                                if (newUserCompanyIds.length <= 1) {
+                                  showFeedback('Aviso', 'O usuário deve estar vinculado a pelo menos uma empresa.', 'warning');
+                                  return;
+                                }
+                                const next = newUserCompanyIds.filter(id => id !== c.id);
+                                setNewUserCompanyIds(next);
+                                setNewUserCompanyId(next[0]);
+                              }
+                            }}
+                            className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                          />
+                          <div className="min-w-0 flex-1 truncate">
+                            <span className="block truncate">{c.nomeFantasia}</span>
+                            <span className="text-[10px] text-slate-400 font-mono font-normal">CNPJ: {c.cnpj}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* Seleção de Múltiplas Filiais */}
+                {(() => {
+                  const selectedCompanies = safeCompanies.filter(c => newUserCompanyIds.includes(c.id));
+                  const availableUnits = selectedCompanies.flatMap(c => c.units.map(u => ({ ...u, companyName: c.nomeFantasia })));
+
+                  return (
+                    <div className="space-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                          Filiais / Unidades Vinculadas (Multifiliais)
+                        </label>
+                        <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded font-bold">
+                          {newUserUnitIds.length} selecionada{newUserUnitIds.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Marque as filiais permitidas. Se nenhuma for marcada, o usuário terá acesso a todas as filiais das empresas selecionadas.
+                      </p>
+
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+                        {availableUnits.length === 0 ? (
+                          <div className="text-[11px] text-slate-400 p-2 italic text-center">
+                            Nenhuma filial cadastrada nas empresas selecionadas.
+                          </div>
+                        ) : (
+                          availableUnits.map(unit => {
+                            const isChecked = newUserUnitIds.includes(unit.id);
+                            return (
+                              <label
+                                key={unit.id}
+                                className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                  isChecked ? 'bg-white border-emerald-500 shadow-2xs font-bold text-slate-900' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setNewUserUnitIds(Array.from(new Set([...newUserUnitIds, unit.id])));
+                                    } else {
+                                      setNewUserUnitIds(newUserUnitIds.filter(id => id !== unit.id));
+                                    }
+                                  }}
+                                  className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                <div className="min-w-0 flex-1 truncate">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="truncate">{unit.name}</span>
+                                    <span className="text-[10px] text-slate-400 font-normal">({unit.city} - {unit.state})</span>
+                                  </div>
+                                  <span className="text-[10px] text-emerald-700 font-normal block truncate">
+                                    {unit.companyName}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Função / Nível de Acesso filtrado por hierarquia */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">Função / Nível de Acesso</label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Nível máx: {currentUser?.role || 'master'}
+                    </span>
+                  </div>
                   <select
                     value={newUserRole}
                     onChange={e => setNewUserRole(e.target.value as UserRole)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="admin_empresa">Administrador da Empresa</option>
-                    <option value="gestor_unidade">Gestor de Unidade</option>
-                    <option value="tecnico_sst">Técnico de Segurança do Trabalho (SST)</option>
-                    <option value="cipeiro">Cipeiro (Eleito/Indicado)</option>
-                    <option value="eleitor">Eleitor (Colaborador Votante)</option>
+                    {AVAILABLE_ROLES
+                      .filter(r => {
+                        if (currentUser?.role === 'master') return true;
+                        if (r.role === 'master') return false;
+                        return (ROLE_HIERARCHY[r.role] || 10) <= (ROLE_HIERARCHY[currentUser?.role || 'eleitor'] || 10);
+                      })
+                      .map(r => (
+                        <option key={r.role} value={r.role}>{r.label}</option>
+                      ))}
                   </select>
                 </div>
               </div>
