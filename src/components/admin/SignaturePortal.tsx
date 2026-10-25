@@ -12,7 +12,8 @@ import {
   ChevronDown,
   ChevronUp,
   MapPin,
-  Download
+  Download,
+  Edit3
 } from 'lucide-react';
 import { 
   SignatureService, 
@@ -22,6 +23,7 @@ import {
 import { GeneratedDocument } from '../../data/documentTemplates';
 import { PdfService } from '../../services/pdfService';
 import { NewEnvelopeModal } from './NewEnvelopeModal';
+import { EditEnvelopeSignersModal } from './EditEnvelopeSignersModal';
 import { SignatureAuditTrailModal } from './SignatureAuditTrailModal';
 import { SignaturePlacementModal } from './SignaturePlacementModal';
 import { DigitalSignatureModal } from '../DigitalSignatureModal';
@@ -54,6 +56,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
   const [viewingPlacementEnvelope, setViewingPlacementEnvelope] = useState<SignatureEnvelope | null>(null);
   const [signingTarget, setSigningTarget] = useState<{ envelope: SignatureEnvelope; signer: SignatureSigner } | null>(null);
   const [envelopeToDelete, setEnvelopeToDelete] = useState<SignatureEnvelope | null>(null);
+  const [editingSignersEnvelope, setEditingSignersEnvelope] = useState<SignatureEnvelope | null>(null);
   const [expandedEnvelopeId, setExpandedEnvelopeId] = useState<string | null>(null);
 
   // Pergunta para assinar se o usuário logado for signatário
@@ -400,11 +403,11 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">Documento</th>
-                  <th className="py-3 px-3">Fluxo</th>
-                  <th className="py-3 px-4">Signatários</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-4 text-right">Ações</th>
+                  <th className="py-3 px-4 text-center">Documento</th>
+                  <th className="py-3 px-3 text-center">Fluxo</th>
+                  <th className="py-3 px-4 text-center">Signatários</th>
+                  <th className="py-3 px-3 text-center">Status</th>
+                  <th className="py-3 px-4 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -424,24 +427,24 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                       >
                         
                         {/* 1. Documento (Apenas o nome, abre ao clicar) */}
-                        <td className="py-3.5 px-4 align-top">
+                        <td className="py-3.5 px-4 align-top text-center">
                           <div className="font-extrabold text-slate-900 text-xs group-hover/row:text-emerald-700 transition-colors">
                             {env.title}
                           </div>
                         </td>
 
                         {/* 2. Fluxo (Apenas o tipo de fluxo) */}
-                        <td className="py-3.5 px-3 align-top">
+                        <td className="py-3.5 px-3 align-top text-center">
                           <span className="inline-block px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
                             {env.sendSequence === 'sequencial' ? 'Sequencial (1 a 1)' : 'Simultâneo'}
                           </span>
                         </td>
 
                         {/* 3. Signatários & Progresso (Clicável na barra para expandir) */}
-                        <td className="py-3.5 px-4 align-top" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-3.5 px-4 align-top text-center" onClick={(e) => e.stopPropagation()}>
                           <div 
                             onClick={() => setExpandedEnvelopeId(isExpanded ? null : env.id)}
-                            className="space-y-1.5 min-w-[150px] cursor-pointer group/bar select-none"
+                            className="space-y-1.5 min-w-[150px] max-w-[200px] mx-auto cursor-pointer group/bar select-none"
                             title="Clique para ver ou ocultar os signatários"
                           >
                             <div className="flex items-center justify-between text-[11px]">
@@ -462,33 +465,35 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                         </td>
 
                         {/* 4. Status (Ícone que expande texto no hover) */}
-                        <td className="py-3.5 px-3 align-top" onClick={(e) => e.stopPropagation()}>
-                          {isCompleted ? (
-                            <div 
-                              className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
-                              title="Documento Concluído"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
-                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold text-emerald-800 transition-opacity duration-300">
-                                Concluído
-                              </span>
-                            </div>
-                          ) : (
-                            <div 
-                              className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
-                              title="Documento Pendente"
-                            >
-                              <Clock className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold text-amber-800 transition-opacity duration-300">
-                                Pendente
-                              </span>
-                            </div>
-                          )}
+                        <td className="py-3.5 px-3 align-top text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-center">
+                            {isCompleted ? (
+                              <div 
+                                className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
+                                title="Documento Concluído"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold text-emerald-800 transition-opacity duration-300">
+                                  Concluído
+                                </span>
+                              </div>
+                            ) : (
+                              <div 
+                                className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
+                                title="Documento Pendente"
+                              >
+                                <Clock className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold text-amber-800 transition-opacity duration-300">
+                                  Pendente
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         {/* 5. Ações (Apenas ícones que expandem no hover) */}
-                        <td className="py-3.5 px-4 align-top text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                        <td className="py-3.5 px-4 align-top text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1 flex-wrap">
                             
                             {/* Baixar PDF Completo (Documento + Certificado) */}
                             <button
@@ -502,6 +507,21 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                                 Baixar
                               </span>
                             </button>
+
+                            {/* Editar Signatários (Não permitido se 100% assinado) */}
+                            {!isCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingSignersEnvelope(env)}
+                                className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                title="Editar Signatários (Acrescentar ou remover pendentes)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                  Editar
+                                </span>
+                              </button>
+                            )}
 
                             {/* Reenviar (Se houver pendentes - Reenvia apenas para quem ainda não assinou) */}
                             {!isCompleted && (
@@ -546,18 +566,20 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               </span>
                             </button>
 
-                            {/* Excluir */}
-                            <button
-                              type="button"
-                              onClick={() => setEnvelopeToDelete(env)}
-                              className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                              title="Excluir Envelope"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
-                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                Excluir
-                              </span>
-                            </button>
+                            {/* Excluir (Não permitido se 100% assinado) */}
+                            {!isCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => setEnvelopeToDelete(env)}
+                                className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                title="Excluir Envelope"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                  Excluir
+                                </span>
+                              </button>
+                            )}
 
                           </div>
                         </td>
@@ -714,6 +736,22 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
             isOpen: true,
             title: 'Posições de Assinatura Atualizadas!',
             description: 'Os locais onde os signatários devem assinar foram gravados com sucesso no envelope.',
+            type: 'success'
+          });
+        }}
+      />
+
+      {/* MODAL 3.6: EDIÇÃO DE SIGNATÁRIOS (ACRESCENTAR NOVOS OU REMOVER PENDENTES) */}
+      <EditEnvelopeSignersModal
+        envelope={editingSignersEnvelope}
+        isOpen={!!editingSignersEnvelope}
+        onClose={() => setEditingSignersEnvelope(null)}
+        onSaved={() => {
+          loadEnvelopes();
+          setFeedbackModal({
+            isOpen: true,
+            title: 'Signatários Atualizados!',
+            description: 'A lista de signatários do envelope foi gravada com sucesso.',
             type: 'success'
           });
         }}

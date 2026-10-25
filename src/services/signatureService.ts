@@ -692,6 +692,40 @@ export const SignatureService = {
     };
   },
 
+  updateEnvelopeSigners(envelopeId: string, updatedSigners: SignatureSigner[]): SignatureEnvelope {
+    const envelopes = this.getEnvelopes();
+    const index = envelopes.findIndex(e => e.id === envelopeId);
+    if (index === -1) {
+      throw new Error('Envelope não encontrado.');
+    }
+    const env = { ...envelopes[index] };
+    if (env.status === 'concluido') {
+      throw new Error('Documentos 100% assinados possuem fé pública e não podem ser alterados.');
+    }
+
+    // Preservar integridade: quem já assinou não pode ser removido
+    const alreadySigned = env.signers.filter(s => s.status === 'assinado');
+    for (const signed of alreadySigned) {
+      const existsInUpdated = updatedSigners.some(u => u.id === signed.id);
+      if (!existsInUpdated) {
+        throw new Error(`O signatário ${signed.name} já assinou o documento e não pode ser removido.`);
+      }
+    }
+
+    env.signers = updatedSigners;
+    env.updatedAt = new Date().toLocaleString('pt-BR');
+    env.auditEvents.push({
+      id: `aud-${Date.now()}-edit-signers`,
+      timestamp: env.updatedAt,
+      action: 'SIGNATARIOS_ATUALIZADOS',
+      description: `Lista de signatários atualizada. Total: ${updatedSigners.length} signatário(s).`
+    });
+
+    envelopes[index] = env;
+    this.saveAllEnvelopes(envelopes);
+    return env;
+  },
+
   updateSignaturePositions(envelopeId: string, positions: SignatureTagPosition[]): boolean {
     const envelopes = this.getEnvelopes();
     const index = envelopes.findIndex(e => e.id === envelopeId);
@@ -704,6 +738,10 @@ export const SignatureService = {
 
   deleteEnvelope(envelopeId: string): void {
     const envelopes = this.getEnvelopes();
+    const env = envelopes.find(e => e.id === envelopeId);
+    if (env && env.status === 'concluido') {
+      throw new Error('Documentos 100% assinados possuem fé pública e não podem ser excluídos.');
+    }
     const filtered = envelopes.filter(e => e.id !== envelopeId);
     this.saveAllEnvelopes(filtered);
   }
