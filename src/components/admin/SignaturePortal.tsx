@@ -20,7 +20,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  KeyRound
+  KeyRound,
+  MapPin
 } from 'lucide-react';
 import { 
   SignatureService, 
@@ -30,6 +31,7 @@ import {
 import { GeneratedDocument } from '../../data/documentTemplates';
 import { NewEnvelopeModal } from './NewEnvelopeModal';
 import { SignatureAuditTrailModal } from './SignatureAuditTrailModal';
+import { SignaturePlacementModal } from './SignaturePlacementModal';
 import { DigitalSignatureModal } from '../DigitalSignatureModal';
 import { StandardModal } from '../common/StandardModal';
 
@@ -55,6 +57,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
   // Modais de Operação
   const [isNewEnvelopeModalOpen, setIsNewEnvelopeModalOpen] = useState(false);
   const [viewingAuditEnvelope, setViewingAuditEnvelope] = useState<SignatureEnvelope | null>(null);
+  const [viewingPlacementEnvelope, setViewingPlacementEnvelope] = useState<SignatureEnvelope | null>(null);
   const [signingTarget, setSigningTarget] = useState<{ envelope: SignatureEnvelope; signer: SignatureSigner } | null>(null);
   const [envelopeToDelete, setEnvelopeToDelete] = useState<SignatureEnvelope | null>(null);
   const [expandedEnvelopeId, setExpandedEnvelopeId] = useState<string | null>(null);
@@ -502,6 +505,17 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                         </button>
                       )}
 
+                      {/* Posicionamento de Assinaturas (Estilo DocuSign / D4Sign) */}
+                      <button
+                        type="button"
+                        onClick={() => setViewingPlacementEnvelope(env)}
+                        className="px-2.5 py-1.5 rounded-xl text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                        title="Definir ou visualizar o local exato onde as assinaturas aparecem no documento"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Locais de Assinatura</span>
+                      </button>
+
                       {/* Visualizar Documento */}
                       <button
                         type="button"
@@ -580,6 +594,22 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
         envelope={viewingAuditEnvelope}
         isOpen={!!viewingAuditEnvelope}
         onClose={() => setViewingAuditEnvelope(null)}
+      />
+
+      {/* MODAL 3.5: POSICIONAMENTO VISUAL DE ASSINATURAS (DOCUSIGN / D4SIGN) */}
+      <SignaturePlacementModal
+        envelope={viewingPlacementEnvelope}
+        isOpen={!!viewingPlacementEnvelope}
+        onClose={() => setViewingPlacementEnvelope(null)}
+        onSave={() => {
+          loadEnvelopes();
+          setFeedbackModal({
+            isOpen: true,
+            title: 'Posições de Assinatura Atualizadas!',
+            description: 'Os locais onde os signatários devem assinar foram gravados com sucesso no envelope.',
+            type: 'success'
+          });
+        }}
       />
 
       {/* MODAL 4: CONFIRMAÇÃO DE EXCLUSÃO DE ENVELOPE (HEADER VERMELHO PADRONIZADO) */}

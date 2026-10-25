@@ -240,6 +240,7 @@ export default function App() {
             signatureHash={docHash}
             signatureDate={docDate}
             signersList={signers}
+            signaturePositions={envelope?.signaturePositions}
             onSignRequested={() => {
               if (viewingDocument) {
                 handleOpenSignatureModal(docId, viewingDocument.title);

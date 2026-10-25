@@ -11,6 +11,7 @@ interface DocumentViewerModalProps {
   signatureHash?: string;
   signatureDate?: string;
   signersList?: Array<{ name: string; email: string; role?: string; signedAt?: string; signatureStyle?: string }>;
+  signaturePositions?: Array<{ id: string; signerEmail: string; signerName: string; type: string; posX: number; posY: number }>;
 }
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
@@ -21,7 +22,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   isSigned = false,
   signatureHash,
   signatureDate,
-  signersList
+  signersList,
+  signaturePositions
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
 

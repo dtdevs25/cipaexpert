@@ -30,6 +30,18 @@ export interface AuditEvent {
   hash?: string;
 }
 
+export interface SignatureTagPosition {
+  id: string;
+  signerEmail: string;
+  signerName: string;
+  type: 'assinatura' | 'rubrica' | 'data';
+  page: number; // Página 1, 2...
+  posX: number; // Percentual X (0 a 100)
+  posY: number; // Percentual Y (0 a 100)
+  widthPercent?: number;
+  heightPercent?: number;
+}
+
 export interface SignatureEnvelope {
   id: string;
   title: string;
@@ -52,6 +64,7 @@ export interface SignatureEnvelope {
   finalHash?: string;
   completedAt?: string;
   auditEvents: AuditEvent[];
+  signaturePositions?: SignatureTagPosition[];
 }
 
 const STORAGE_KEY = 'cipa_expert_signature_envelopes_v1';
@@ -406,6 +419,7 @@ export const SignatureService = {
     sendSequence: 'todos_juntos' | 'sequencial';
     creatorName: string;
     creatorEmail: string;
+    signaturePositions?: SignatureTagPosition[];
   }): Promise<SignatureEnvelope> {
     const now = new Date().toLocaleString('pt-BR');
     const docHash = await computeSha256(params.content.join('\n\n') + params.title + params.companyName);
@@ -442,6 +456,7 @@ export const SignatureService = {
       sendSequence: params.sendSequence,
       status: 'em_andamento',
       documentHash: docHash,
+      signaturePositions: params.signaturePositions || [],
       auditEvents: [
         {
           id: `aud-${Date.now()}-1`,
@@ -674,6 +689,16 @@ export const SignatureService = {
         ? `Lembrete reenviado com sucesso para ${targetSigners[0].name} (${targetSigners[0].email})!`
         : `Lembretes reenviados com sucesso para todos os ${sentCount} signatários pendentes!`
     };
+  },
+
+  updateSignaturePositions(envelopeId: string, positions: SignatureTagPosition[]): boolean {
+    const envelopes = this.getEnvelopes();
+    const index = envelopes.findIndex(e => e.id === envelopeId);
+    if (index === -1) return false;
+    envelopes[index].signaturePositions = positions;
+    envelopes[index].updatedAt = new Date().toLocaleString('pt-BR');
+    this.saveAllEnvelopes(envelopes);
+    return true;
   },
 
   deleteEnvelope(envelopeId: string): void {
