@@ -907,6 +907,38 @@ apiRouter.post('/users', SecurityService.authenticate, async (req: Authenticated
 });
 
 // ─────────────────────────────────────────────────────────────
+// 7.5. MÓDULO DE ASSINATURAS DIGITAIS (DOCUSIGN / D4SIGN CIPA)
+// ─────────────────────────────────────────────────────────────
+apiRouter.post('/signatures/send-invitation', async (req: Request, res: Response) => {
+  try {
+    const { to, signerName, documentTitle, companyName, signLink, roleDescription, isReminder } = req.body;
+
+    if (!to || !signerName || !documentTitle) {
+      res.status(400).json({ success: false, error: 'E-mail, nome do signatário e título do documento são obrigatórios.' });
+      return;
+    }
+
+    const result = await MailerService.sendSignatureInvitationEmail({
+      to: to.toLowerCase().trim(),
+      signerName,
+      documentTitle,
+      companyName: companyName || 'CIPA Expert',
+      signLink: signLink || `${req.headers.origin || 'https://cipaexpert.com.br'}/?signDoc=1`,
+      roleDescription,
+      isReminder: Boolean(isReminder)
+    });
+
+    res.json({
+      success: true,
+      message: result.message || 'Convite para assinatura enviado com sucesso.'
+    });
+  } catch (error: any) {
+    console.error('Erro ao enviar convite de assinatura:', error);
+    res.status(500).json({ success: false, error: 'Falha ao processar envio do convite.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // 8. SEED E DIAGNÓSTICO DO SISTEMA
 // ─────────────────────────────────────────────────────────────
 apiRouter.get('/system/status', async (req: Request, res: Response) => {

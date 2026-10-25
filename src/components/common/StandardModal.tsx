@@ -78,6 +78,8 @@ export const StandardModal: React.FC<StandardModalProps> = ({
 
   const { icon: IconComponent, iconBg, confirmBtn } = getIconAndColors();
 
+  const isDelete = type === 'confirm_delete';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
@@ -85,10 +87,16 @@ export const StandardModal: React.FC<StandardModalProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        {/* Header Padronizado */}
-        <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 sm:px-6 py-3.5 sm:py-4 border-b border-emerald-200/80 flex items-center justify-between shrink-0">
-          <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2 truncate">
-            <IconComponent className="w-4 h-4 text-emerald-700 shrink-0" />
+        {/* Header Padronizado (Vermelho para Exclusão, Verde Esmeralda para os demais) */}
+        <div className={`px-5 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0 ${
+          isDelete 
+            ? 'bg-gradient-to-r from-rose-100/90 via-rose-50 to-rose-100/80 border-b border-rose-200/80' 
+            : 'bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 border-b border-emerald-200/80'
+        }`}>
+          <h3 className={`text-sm font-extrabold flex items-center gap-2 truncate ${
+            isDelete ? 'text-rose-950' : 'text-emerald-950'
+          }`}>
+            <IconComponent className={`w-4 h-4 shrink-0 ${isDelete ? 'text-rose-700' : 'text-emerald-700'}`} />
             <span className="truncate">{title}</span>
           </h3>
           <button

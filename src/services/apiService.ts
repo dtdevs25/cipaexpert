@@ -263,5 +263,21 @@ export const ApiService = {
   async getCnaes(query?: string): Promise<any[]> {
     const url = query ? `/api/cnaes?q=${encodeURIComponent(query)}` : '/api/cnaes';
     return this.request<any[]>(url);
+  },
+
+  // 9. Envio de Convite de Assinatura Digital
+  async sendSignatureInvitation(params: {
+    to: string;
+    signerName: string;
+    documentTitle: string;
+    companyName: string;
+    signLink: string;
+    roleDescription?: string;
+    isReminder?: boolean;
+  }): Promise<{ success: boolean; message: string }> {
+    return this.request('/api/signatures/send-invitation', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    });
   }
 };

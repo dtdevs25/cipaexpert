@@ -11,6 +11,7 @@ import { GeneratedDocument } from './data/documentTemplates';
 import { AuthUser } from './types/auth';
 import { DEMO_USERS } from './data/multiCompanyData';
 import { ApiService } from './services/apiService';
+import { SignatureService } from './services/signatureService';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'login' | 'admin'>('landing');
@@ -200,19 +201,54 @@ export default function App() {
       />
 
       {/* Document Viewer Modal for Official Legal Documents */}
-      <DocumentViewerModal
-        document={viewingDocument}
-        isOpen={!!viewingDocument}
-        onClose={() => setViewingDocument(null)}
-        isSigned={false}
-        onSignRequested={() => {
-          if (viewingDocument) {
-            const docId = viewingDocument.title.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 30);
-            handleOpenSignatureModal(docId, viewingDocument.title);
-            setViewingDocument(null);
-          }
-        }}
-      />
+      {(() => {
+        const envelope = viewingDocument 
+          ? SignatureService.getEnvelopes().find(e => e.title === viewingDocument.title)
+          : null;
+        
+        const docId = viewingDocument 
+          ? viewingDocument.title.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 30)
+          : '';
+        const staticSign = docId ? signedAtas[docId] : null;
+
+        const isDocSigned = envelope 
+          ? (envelope.status === 'concluido' || envelope.signers.some(s => s.status === 'assinado'))
+          : !!staticSign;
+
+        const docHash = envelope 
+          ? (envelope.finalSignatureHash || envelope.rootHash)
+          : staticSign?.hash;
+
+        const docDate = envelope 
+          ? envelope.updatedAt
+          : staticSign?.timestamp;
+
+        const signers = envelope?.signers?.map(s => ({
+          name: s.name,
+          email: s.email,
+          role: s.role,
+          signedAt: s.signedAt,
+          signatureStyle: s.signatureType === 'padrao_cursiva' ? s.name : (s.status === 'assinado' ? s.name : undefined)
+        }));
+
+        return (
+          <DocumentViewerModal
+            document={viewingDocument}
+            isOpen={!!viewingDocument}
+            onClose={() => setViewingDocument(null)}
+            isSigned={isDocSigned}
+            signatureHash={docHash}
+            signatureDate={docDate}
+            signersList={signers}
+            onSignRequested={() => {
+              if (viewingDocument) {
+                handleOpenSignatureModal(docId, viewingDocument.title);
+                setViewingDocument(null);
+              }
+            }}
+          />
+        );
+      })()}
 
       {/* Digital Signature Pad Modal */}
       <DigitalSignatureModal

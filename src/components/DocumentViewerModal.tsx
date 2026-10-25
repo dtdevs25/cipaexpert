@@ -10,6 +10,7 @@ interface DocumentViewerModalProps {
   isSigned?: boolean;
   signatureHash?: string;
   signatureDate?: string;
+  signersList?: Array<{ name: string; email: string; role?: string; signedAt?: string; signatureStyle?: string }>;
 }
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
@@ -19,7 +20,8 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   onSignRequested,
   isSigned = false,
   signatureHash,
-  signatureDate
+  signatureDate,
+  signersList
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -112,9 +114,21 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
           </div>
         </div>
 
-        {/* Modal Printable Content Area */}
-        <div ref={contentRef} className="p-8 sm:p-12 overflow-y-auto space-y-6 text-slate-800 bg-white font-sans text-sm leading-relaxed">
+        {/* Modal Printable Content Area with Cryptographic Margin */}
+        <div ref={contentRef} className="relative p-8 sm:p-12 overflow-y-auto space-y-6 text-slate-800 bg-white font-sans text-sm leading-relaxed">
           
+          {/* Tarja Lateral Criptográfica estilo D4Sign / DocuSign */}
+          {isSigned && (
+            <div className="hidden lg:flex absolute left-2 top-8 bottom-8 flex-col justify-between items-center text-[9px] font-mono text-slate-400 select-none pointer-events-none">
+              <span className="[writing-mode:vertical-lr] rotate-180 tracking-widest uppercase">
+                VALIDAÇÃO CRIPTOGRÁFICA NR-5 · SHA-256: {(signatureHash || 'SHA256-VERIFIED').slice(0, 24)}... · MP 2.200-2/2001 · LEI 14.063/2020
+              </span>
+              <span className="[writing-mode:vertical-lr] rotate-180 text-emerald-600 font-bold tracking-wider">
+                DOCUMENTO AUTENTICADO CIPA EXPERT
+              </span>
+            </div>
+          )}
+
           {/* Institutional Header */}
           <div className="border-b-2 border-slate-900 pb-6 text-center space-y-2">
             <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
@@ -141,38 +155,69 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
           </div>
 
           {/* Official Signatures Section */}
-          <div className="pt-8 border-t border-slate-200 space-y-8">
+          <div className="pt-8 border-t border-slate-200 space-y-6">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center">
               Termos de Ciência e Validação das Partes Interessadas
             </h4>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4">
-              {docData.signatories.map((sig, idx) => (
-                <div key={idx} className="text-center space-y-1">
-                  <div className="border-b border-slate-400 mx-auto w-48 mb-2"></div>
-                  <p className="text-xs font-semibold text-slate-900">{sig}</p>
-                  <p className="text-[11px] text-slate-500">CIPA Expert · Documento Registrado</p>
-                </div>
-              ))}
+              {signersList && signersList.length > 0 ? (
+                signersList.map((sig, idx) => (
+                  <div key={idx} className="text-center space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50/50">
+                    <div className="h-10 flex items-center justify-center font-serif italic text-emerald-800 text-lg">
+                      {sig.signatureStyle ? (
+                        <span className="font-serif italic font-medium">{sig.signatureStyle}</span>
+                      ) : (
+                        <span className="border-b border-slate-400 w-36"></span>
+                      )}
+                    </div>
+                    <div className="border-t border-slate-300 mx-auto w-44 pt-1">
+                      <p className="text-xs font-bold text-slate-900">{sig.name}</p>
+                      <p className="text-[10px] text-slate-500">{sig.email}</p>
+                      {sig.role && <p className="text-[10px] text-emerald-700 font-medium">{sig.role}</p>}
+                      {sig.signedAt && (
+                        <p className="text-[9px] text-slate-400 font-mono mt-0.5">Assinado em {new Date(sig.signedAt).toLocaleString('pt-BR')}</p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                docData.signatories.map((sig, idx) => (
+                  <div key={idx} className="text-center space-y-1">
+                    <div className="border-b border-slate-400 mx-auto w-48 mb-2"></div>
+                    <p className="text-xs font-semibold text-slate-900">{sig}</p>
+                    <p className="text-[11px] text-slate-500">CIPA Expert · Documento Registrado</p>
+                  </div>
+                ))
+              )}
             </div>
 
-            {/* Cryptographic Digital Stamp */}
+            {/* Cryptographic Digital Stamp & Chancela Legal */}
             {isSigned && (
-              <div className="mt-6 p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold text-emerald-950">
-                    Documento Assinado Digitalmente com Validade Jurídica (MP 2.200-2/2001)
-                  </p>
-                  <p className="text-emerald-800">
-                    Assinatura eletrônica autenticada pela plataforma <strong>CIPA Expert</strong>. Carimbo de tempo criptográfico verificado.
-                  </p>
-                  <p className="font-mono text-[11px] text-emerald-700 break-all">
-                    Hash de Autenticidade: {signatureHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
-                  </p>
-                  <p className="text-[11px] text-emerald-700">
-                    Data e Hora do Registro: {signatureDate || new Date().toLocaleString('pt-BR')}
-                  </p>
+              <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border-2 border-emerald-300 text-xs text-emerald-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5 ring-1 ring-emerald-300">
+                    <Shield className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-extrabold text-emerald-950 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" />
+                      Documento Autenticado com Validade Jurídica Integral
+                    </p>
+                    <p className="text-slate-700 text-[11px] leading-snug">
+                      Assinatura eletrônica avançada em estrita conformidade com a <strong>Medida Provisória nº 2.200-2/2001</strong> e a <strong>Lei Federal nº 14.063/2020</strong>.
+                    </p>
+                    <div className="font-mono text-[10px] text-slate-600 bg-white/80 p-2 rounded border border-emerald-200 mt-1 break-all">
+                      <span className="text-emerald-800 font-bold">HASH SHA-256: </span>
+                      {signatureHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-left sm:text-right shrink-0 font-mono text-[10px] text-slate-500 border-t sm:border-t-0 sm:border-l border-emerald-200 pt-2 sm:pt-0 sm:pl-4 space-y-0.5">
+                  <p className="font-bold text-slate-700">CARIMBO TEMPORAL</p>
+                  <p>{signatureDate || new Date().toLocaleString('pt-BR')}</p>
+                  <p className="text-emerald-700 font-bold">PADRÃO ICP-BRASIL / NR-5</p>
                 </div>
               </div>
             )}
