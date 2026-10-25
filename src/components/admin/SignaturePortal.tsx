@@ -5,23 +5,14 @@ import {
   CheckCircle2, 
   Clock, 
   FileText, 
-  Printer, 
-  Eye, 
   Trash2, 
   Send, 
   ShieldCheck, 
-  Users, 
   Search, 
-  RotateCw, 
-  Mail, 
-  Layers, 
-  FileCheck, 
-  AlertCircle,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
-  KeyRound,
-  MapPin
+  MapPin,
+  Download
 } from 'lucide-react';
 import { 
   SignatureService, 
@@ -29,6 +20,7 @@ import {
   SignatureSigner 
 } from '../../services/signatureService';
 import { GeneratedDocument } from '../../data/documentTemplates';
+import { PdfService } from '../../services/pdfService';
 import { NewEnvelopeModal } from './NewEnvelopeModal';
 import { SignatureAuditTrailModal } from './SignatureAuditTrailModal';
 import { SignaturePlacementModal } from './SignaturePlacementModal';
@@ -36,6 +28,7 @@ import { DigitalSignatureModal } from '../DigitalSignatureModal';
 import { StandardModal } from '../common/StandardModal';
 
 interface SignaturePortalProps {
+  currentUser?: any;
   companyName: string;
   cnpj: string;
   onOpenDocument: (doc: GeneratedDocument) => void;
@@ -45,6 +38,7 @@ interface SignaturePortalProps {
 }
 
 export const SignaturePortal: React.FC<SignaturePortalProps> = ({
+  currentUser,
   companyName,
   cnpj,
   onOpenDocument,
@@ -62,6 +56,9 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
   const [envelopeToDelete, setEnvelopeToDelete] = useState<SignatureEnvelope | null>(null);
   const [expandedEnvelopeId, setExpandedEnvelopeId] = useState<string | null>(null);
 
+  // Pergunta para assinar se o usuário logado for signatário
+  const [promptSelfSign, setPromptSelfSign] = useState<{ envelope: SignatureEnvelope; signer: SignatureSigner } | null>(null);
+
   // Modal de Feedback do Sistema
   const [feedbackModal, setFeedbackModal] = useState<{
     isOpen: boolean;
@@ -77,36 +74,40 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
 
   // Carrega envelopes do SignatureService
   const loadEnvelopes = () => {
-    const data = SignatureService.getEnvelopes(companyName, cnpj);
+    const data = SignatureService.getEnvelopes();
     setEnvelopes(data);
   };
 
   useEffect(() => {
     loadEnvelopes();
-  }, [companyName, cnpj]);
+  }, []);
 
-  // Estatísticas do Portal
+  // Métricas Globais
   const totalEnvelopes = envelopes.length;
   const concluidosCount = envelopes.filter(e => e.status === 'concluido').length;
-  const pendentesCount = envelopes.filter(e => e.status !== 'concluido').length;
-  const totalSignaturesColetadas = envelopes.reduce((acc, env) => {
-    return acc + env.signers.filter(s => s.status === 'assinado').length;
-  }, 0);
-  const totalSignaturesNecessarias = envelopes.reduce((acc, env) => acc + env.signers.length, 0);
+  const pendentesCount = envelopes.filter(e => e.status === 'pendente').length;
+  
+  const totalSignaturesNecessarias = envelopes.reduce((acc, curr) => acc + curr.signers.length, 0);
+  const totalSignaturesColetadas = envelopes.reduce(
+    (acc, curr) => acc + curr.signers.filter(s => s.status === 'assinado').length, 
+    0
+  );
   const globalCompletionRate = totalSignaturesNecessarias > 0 
     ? Math.round((totalSignaturesColetadas / totalSignaturesNecessarias) * 100) 
     : 0;
 
-  // Filtros e Pesquisa
-  const filteredEnvelopes = envelopes.filter(env => {
-    if (filter === 'pendentes' && env.status === 'concluido') return false;
+  // Filtragem e Busca
+  const filteredEnvelopes = envelopes.filter((env) => {
+    if (filter === 'pendentes' && env.status !== 'pendente') return false;
     if (filter === 'concluidos' && env.status !== 'concluido') return false;
-
+    
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = env.title.toLowerCase().includes(q);
       const matchCategory = env.category.toLowerCase().includes(q);
-      const matchSigner = env.signers.some(s => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
+      const matchSigner = env.signers.some(s => 
+        s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
+      );
       return matchTitle || matchCategory || matchSigner;
     }
     return true;
@@ -128,6 +129,20 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
         isOpen: true,
         title: 'Falha no Reenvio',
         description: err.message || 'Erro ao reenviar notificações.',
+        type: 'error'
+      });
+    }
+  };
+
+  // Ação: Baixar Documento Completo em PDF com Certificado
+  const handleDownloadPdf = (envelope: SignatureEnvelope) => {
+    try {
+      PdfService.downloadEnvelopePdf(envelope);
+    } catch (err: any) {
+      setFeedbackModal({
+        isOpen: true,
+        title: 'Erro ao Gerar PDF',
+        description: err.message || 'Não foi possível compilar o documento em PDF.',
         type: 'error'
       });
     }
@@ -179,7 +194,6 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
 
   // Ação: Visualizar Documento com Tarja Oficial
   const handleViewDocument = (envelope: SignatureEnvelope) => {
-    const isSigned = envelope.status === 'concluido' || envelope.signers.some(s => s.status === 'assinado');
     onOpenDocument({
       title: envelope.title,
       category: envelope.category,
@@ -222,7 +236,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
           </div>
         </div>
 
-        {/* Botão Principal: + Envelope */}
+        {/* Botão Principal: Envelope */}
         <button
           type="button"
           onClick={() => setIsNewEnvelopeModalOpen(true)}
@@ -355,19 +369,18 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                   const signedCount = env.signers.filter(s => s.status === 'assinado').length;
                   const percent = totalSigners > 0 ? Math.round((signedCount / totalSigners) * 100) : 0;
                   const isExpanded = expandedEnvelopeId === env.id;
-                  const nextPendingSigner = env.signers.find(s => s.status === 'pendente');
 
                   return (
                     <React.Fragment key={env.id}>
-                      <tr className="hover:bg-slate-50/70 transition-colors">
+                      <tr 
+                        onClick={() => handleViewDocument(env)}
+                        className="hover:bg-slate-50/70 transition-colors cursor-pointer group/row"
+                        title="Clique na linha para visualizar o documento completo"
+                      >
                         
-                        {/* 1. Documento (Apenas o nome) */}
+                        {/* 1. Documento (Apenas o nome, abre ao clicar) */}
                         <td className="py-3.5 px-4 align-top">
-                          <div 
-                            className="font-extrabold text-slate-900 text-xs hover:text-emerald-800 transition-colors cursor-pointer" 
-                            onClick={() => handleViewDocument(env)}
-                            title="Clique para visualizar o documento"
-                          >
+                          <div className="font-extrabold text-slate-900 text-xs group-hover/row:text-emerald-700 transition-colors">
                             {env.title}
                           </div>
                         </td>
@@ -379,8 +392,8 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                           </span>
                         </td>
 
-                        {/* 3. Signatários & Progresso (Clicável na própria barra para abrir) */}
-                        <td className="py-3.5 px-4 align-top">
+                        {/* 3. Signatários & Progresso (Clicável na barra para expandir) */}
+                        <td className="py-3.5 px-4 align-top" onClick={(e) => e.stopPropagation()}>
                           <div 
                             onClick={() => setExpandedEnvelopeId(isExpanded ? null : env.id)}
                             className="space-y-1.5 min-w-[150px] cursor-pointer group/bar select-none"
@@ -404,7 +417,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                         </td>
 
                         {/* 4. Status (Ícone que expande texto no hover) */}
-                        <td className="py-3.5 px-3 align-top">
+                        <td className="py-3.5 px-3 align-top" onClick={(e) => e.stopPropagation()}>
                           {isCompleted ? (
                             <div 
                               className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-default shadow-2xs overflow-hidden shrink-0"
@@ -428,26 +441,24 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                           )}
                         </td>
 
-                        {/* 5. Ações (Nomes pequenos e diretos) */}
-                        <td className="py-3.5 px-4 align-top text-right">
+                        {/* 5. Ações (Apenas ícones que expandem no hover) */}
+                        <td className="py-3.5 px-4 align-top text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1 flex-wrap">
                             
-                            {/* Assinar */}
-                            {!isCompleted && nextPendingSigner && (
-                              <button
-                                type="button"
-                                onClick={() => setSigningTarget({ envelope: env, signer: nextPendingSigner })}
-                                className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white border border-emerald-600 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                title={`Assinar como ${nextPendingSigner.name}`}
-                              >
-                                <FileCheck className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-white" />
-                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                  Assinar
-                                </span>
-                              </button>
-                            )}
+                            {/* Baixar PDF Completo (Documento + Certificado) */}
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPdf(env)}
+                              className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                              title="Baixar PDF Completo com Certificado"
+                            >
+                              <Download className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Baixar
+                              </span>
+                            </button>
 
-                            {/* Reenviar */}
+                            {/* Reenviar (Se houver pendentes) */}
                             {!isCompleted && (
                               <button
                                 type="button"
@@ -472,19 +483,6 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               <MapPin className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
                               <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
                                 Posições
-                              </span>
-                            </button>
-
-                            {/* Ver */}
-                            <button
-                              type="button"
-                              onClick={() => handleViewDocument(env)}
-                              className="group flex items-center h-8 w-8 hover:w-20 rounded-xl bg-slate-100 hover:bg-blue-50 active:scale-95 text-slate-700 hover:text-blue-800 border border-slate-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                              title="Visualizar Documento"
-                            >
-                              <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
-                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                Ver
                               </span>
                             </button>
 
@@ -527,41 +525,35 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
                                 Signatários do Envelope ({totalSigners})
                               </span>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {env.signers.map((s, idx) => {
-                                  const isSignerSigned = s.status === 'assinado';
-                                  const isSignerWaiting = s.status === 'aguardando_turno';
-
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                {env.signers.map((signer, idx) => {
+                                  const isSigned = signer.status === 'assinado';
                                   return (
-                                    <div key={s.id} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
-                                      <div className="min-w-0">
-                                        <p className="font-bold text-slate-900 truncate">{idx + 1}. {s.name}</p>
-                                        <p className="text-[10px] text-slate-500 font-mono truncate">{s.email}</p>
-                                        <p className="text-[10px] text-emerald-700 font-medium">{s.role}</p>
+                                    <div 
+                                      key={idx} 
+                                      className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
+                                        isSigned 
+                                          ? 'bg-emerald-50/60 border-emerald-200' 
+                                          : 'bg-white border-slate-200'
+                                      }`}
+                                    >
+                                      <div className="truncate mr-2">
+                                        <p className="font-bold text-slate-800 truncate">{signer.name}</p>
+                                        <p className="text-[10px] text-slate-500 truncate">{signer.email}</p>
+                                        <span className="text-[9px] text-slate-400 font-mono">{signer.role}</span>
                                       </div>
-                                      <div className="shrink-0">
-                                        {isSignerSigned ? (
-                                          <span className="px-2 py-0.5 rounded text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Assinado
+                                      <div className="text-right shrink-0">
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider block ${
+                                          isSigned 
+                                            ? 'bg-emerald-100 text-emerald-800' 
+                                            : 'bg-amber-100 text-amber-800'
+                                        }`}>
+                                          {isSigned ? 'Assinado' : 'Pendente'}
+                                        </span>
+                                        {signer.signedAt && (
+                                          <span className="text-[9px] text-slate-400 font-mono block mt-0.5">
+                                            {new Date(signer.signedAt).toLocaleDateString('pt-BR')}
                                           </span>
-                                        ) : isSignerWaiting ? (
-                                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold text-slate-500 bg-slate-100">
-                                            Aguardando
-                                          </span>
-                                        ) : (
-                                          <div className="flex items-center gap-1">
-                                            <span className="px-2 py-0.5 rounded text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200">
-                                              Pendente
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleResendInvitation(env.id, s.id)}
-                                              className="p-1 text-slate-400 hover:text-emerald-700 rounded hover:bg-emerald-50 cursor-pointer"
-                                              title="Reenviar e-mail"
-                                            >
-                                              <Mail className="w-3 h-3" />
-                                            </button>
-                                          </div>
                                         )}
                                       </div>
                                     </div>
@@ -587,18 +579,47 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
         onClose={() => setIsNewEnvelopeModalOpen(false)}
         companyName={companyName}
         cnpj={cnpj}
-        creatorName="Daniele Santos (Administrador)"
-        creatorEmail="daniele.santos@empresa.com.br"
+        creatorName={currentUser?.name || 'Administrador'}
+        creatorEmail={currentUser?.email || 'admin@empresa.com.br'}
         onEnvelopeCreated={(newEnv) => {
           loadEnvelopes();
-          setFeedbackModal({
-            isOpen: true,
-            title: 'Envelope Criado com Sucesso!',
-            description: `O envelope "${newEnv.title}" foi registrado e as notificações por e-mail foram disparadas para os signatários.`,
-            type: 'success'
-          });
+
+          // Verifica se o usuário logado precisa assinar o novo documento
+          const userSigner = newEnv.signers.find(s => s.status === 'pendente' && (
+            (currentUser?.email && s.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+            (currentUser?.name && s.name.toLowerCase() === currentUser.name.toLowerCase())
+          ));
+
+          if (userSigner) {
+            setPromptSelfSign({ envelope: newEnv, signer: userSigner });
+          } else {
+            setFeedbackModal({
+              isOpen: true,
+              title: 'Envelope Criado com Sucesso!',
+              description: `O envelope "${newEnv.title}" foi registrado e as notificações por e-mail foram disparadas para os signatários.`,
+              type: 'success'
+            });
+          }
         }}
       />
+
+      {/* MODAL: IDENTIFICAÇÃO AUTOMÁTICA DE ASSINATURA PARA O USUÁRIO LOGADO */}
+      {promptSelfSign && (
+        <StandardModal
+          isOpen={true}
+          onClose={() => setPromptSelfSign(null)}
+          title="Assinar Documento Agora?"
+          type="info"
+          description={`Você é um dos signatários pendentes do envelope "${promptSelfSign.envelope.title}". Deseja registrar a sua assinatura digital agora com fé pública?`}
+          confirmLabel="Sim, Assinar Agora"
+          cancelLabel="Assinar Mais Tarde"
+          onConfirm={() => {
+            const target = promptSelfSign;
+            setPromptSelfSign(null);
+            setSigningTarget({ envelope: target.envelope, signer: target.signer });
+          }}
+        />
+      )}
 
       {/* MODAL 2: ASSINATURA DIGITAL INTERATIVA COM 2 OPÇÕES (DESENHO OU PADRÃO TIPOGRÁFICO) */}
       {signingTarget && (

@@ -547,14 +547,17 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
           }`}
           style={{ minHeight: '800px' }}
         >
-          {/* Tarja Lateral Criptográfica Mock */}
-          <div className="absolute left-2 top-8 bottom-8 flex flex-col justify-between items-center text-[8px] font-mono text-slate-300 pointer-events-none select-none">
-            <span className="[writing-mode:vertical-lr] rotate-180 tracking-widest uppercase">
-              ÁREA DE POSICIONAMENTO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020
-            </span>
-            <span className="[writing-mode:vertical-lr] rotate-180 text-emerald-600 font-bold">
-              CIPASIGN · CIPA EXPERT
-            </span>
+          {/* Dados de Criptografia no Canto Superior Esquerdo da Página (Mínimo Regulamentar MP 2.200-2/2001) */}
+          <div className="text-left font-mono text-[7.5px] text-slate-500 leading-tight space-y-0.5 select-none pb-2 border-b border-slate-100 mb-2">
+            <p className="font-bold text-emerald-800">
+              AUTENTICAÇÃO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020
+            </p>
+            <p className="text-slate-600 truncate max-w-sm">
+              SHA-256: 4e8f1b92c0a87f54d19b76e210fa...92ca
+            </p>
+            <p className="text-slate-500">
+              Carimbo Temporal: 25/10/2026 14:35:12 BRT (Horário de Brasília)
+            </p>
           </div>
 
           {/* Cabeçalho Institucional da Folha */}

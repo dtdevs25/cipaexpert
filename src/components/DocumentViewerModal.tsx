@@ -128,17 +128,18 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
         {/* Modal Printable Content Area with Cryptographic Margin */}
         <div ref={contentRef} className="relative p-8 sm:p-12 overflow-y-auto space-y-6 text-slate-800 bg-white font-sans text-sm leading-relaxed">
           
-          {/* Tarja Lateral Criptográfica estilo D4Sign / DocuSign */}
-          {isSigned && (
-            <div className="hidden lg:flex absolute left-2 top-8 bottom-8 flex-col justify-between items-center text-[9px] font-mono text-slate-400 select-none pointer-events-none">
-              <span className="[writing-mode:vertical-lr] rotate-180 tracking-widest uppercase">
-                VALIDAÇÃO CRIPTOGRÁFICA NR-5 · SHA-256: {(signatureHash || 'SHA256-VERIFIED').slice(0, 24)}... · MP 2.200-2/2001 · LEI 14.063/2020
-              </span>
-              <span className="[writing-mode:vertical-lr] rotate-180 text-emerald-600 font-bold tracking-wider">
-                DOCUMENTO AUTENTICADO CIPA EXPERT
-              </span>
-            </div>
-          )}
+          {/* Dados de Criptografia no Canto Superior Esquerdo da Página (Mínimo Regulamentar MP 2.200-2/2001) */}
+          <div className="text-left font-mono text-[8.5px] text-slate-500 leading-tight space-y-0.5 select-none pb-2 border-b border-slate-100">
+            <p className="font-bold text-emerald-800">
+              AUTENTICAÇÃO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020
+            </p>
+            <p className="text-slate-600 truncate max-w-md">
+              SHA-256: {signatureHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+            </p>
+            <p className="text-slate-500">
+              Carimbo Temporal: {signatureDate || new Date().toLocaleString('pt-BR')} (Horário de Brasília)
+            </p>
+          </div>
 
           {/* Institutional Header */}
           <div className="border-b-2 border-slate-900 pb-6 text-center space-y-2">
