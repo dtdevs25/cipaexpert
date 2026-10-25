@@ -23,38 +23,24 @@ import {
   ArrowRight,
   KeyRound,
   Search,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Company, CompanyUnit, UserRole, AuthUser } from '../../types/auth';
 import { DEMO_USERS, INITIAL_COMPANIES } from '../../data/multiCompanyData';
 import { CNAE_DATABASE } from '../../data/cnaeData';
 import { StandardModal } from '../common/StandardModal';
 import { ApiService } from '../../services/apiService';
+import { 
+  validateCPF, 
+  validateCNPJ, 
+  formatCPF, 
+  formatCNPJ, 
+  formatCNAE 
+} from '../../utils/documentValidators';
 
-// Utilitários de formatação em tempo real
-export const formatCNPJ = (val: string): string => {
-  const digits = val.replace(/\D/g, '').slice(0, 14);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
-};
-
-export const formatCPF = (val: string): string => {
-  const digits = val.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-};
-
-export const formatCNAE = (val: string): string => {
-  const digits = val.replace(/\D/g, '').slice(0, 7);
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 5)}/${digits.slice(5, 7)}`;
-};
+// Reexporta para manter compatibilidade com quaisquer outros componentes
+export { validateCPF, validateCNPJ, formatCPF, formatCNPJ, formatCNAE };
 
 // Componente inteligente de busca e digitação de CNAE com largura contida
 interface CnaeSearchSelectProps {
@@ -328,6 +314,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       return;
     }
 
+    if (!validateCNPJ(newCnpj)) {
+      showFeedback(
+        'CNPJ Inválido',
+        'O CNPJ informado não é válido segundo os critérios da Receita Federal. Verifique os dígitos e digite novamente.',
+        'warning'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const cnaeObj = cnaesList.find(c => c.code === newSelectedCnae);
@@ -401,6 +396,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       return;
     }
 
+    if (newFilialCnpj.trim() && !validateCNPJ(newFilialCnpj)) {
+      showFeedback(
+        'CNPJ da Filial Inválido',
+        'O CNPJ informado para a filial é inválido segundo a Receita Federal. Caso utilize o CNPJ da matriz, deixe em branco ou informe um CNPJ válido.',
+        'warning'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const cnaeObj = cnaesList.find(c => c.code === newFilialCnae);
@@ -465,6 +469,20 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     e.preventDefault();
     if (!editingFilial || isSubmitting) return;
 
+    if (!editingFilial.filial.name.trim() || !editingFilial.filial.city.trim() || !editingFilial.filial.gestorName.trim()) {
+      showFeedback('Campos Obrigatórios', 'Nome da filial, cidade e gestor local são obrigatórios.', 'warning');
+      return;
+    }
+
+    if (editingFilial.filial.cnpj?.trim() && !validateCNPJ(editingFilial.filial.cnpj)) {
+      showFeedback(
+        'CNPJ da Filial Inválido',
+        'O CNPJ informado para a filial é inválido segundo a Receita Federal. Por favor, corrija os dígitos.',
+        'warning'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const updatedCompanies = companies.map(c => {
@@ -491,6 +509,20 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     e.preventDefault();
     if (!editingCompany || isSubmitting) return;
 
+    if (!editingCompany.cnpj.trim() || !editingCompany.nomeFantasia.trim() || !editingCompany.responsavelAdmin.trim()) {
+      showFeedback('Campos Obrigatórios', 'CNPJ, Nome Fantasia e Responsável Administrador são obrigatórios.', 'warning');
+      return;
+    }
+
+    if (!validateCNPJ(editingCompany.cnpj)) {
+      showFeedback(
+        'CNPJ Inválido',
+        'O CNPJ da empresa é inválido segundo a Receita Federal. Por favor, verifique os dígitos digitados.',
+        'warning'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const updated = companies.map(c => c.id === editingCompany.id ? editingCompany : c);
@@ -507,6 +539,20 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser || isSubmitting) return;
+
+    if (!editingUser.name.trim() || !editingUser.email.trim()) {
+      showFeedback('Campos Obrigatórios', 'Nome e e-mail corporativo são obrigatórios.', 'warning');
+      return;
+    }
+
+    if (editingUser.cpf?.trim() && !validateCPF(editingUser.cpf)) {
+      showFeedback(
+        'CPF Inválido',
+        'O CPF informado para o usuário é inválido segundo a Receita Federal. Por favor, verifique os dígitos.',
+        'warning'
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -564,6 +610,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName.trim() || !newUserEmail.trim() || isSubmitting) return;
+
+    if (newUserCpf.trim() && !validateCPF(newUserCpf)) {
+      showFeedback(
+        'CPF Inválido',
+        'O CPF informado para o usuário é inválido segundo a Receita Federal. Por favor, verifique os números digitados.',
+        'warning'
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -1401,16 +1456,39 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      CNPJ da Filial <span className="text-slate-400 font-normal">(caso possua CNPJ próprio)</span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">
+                        CNPJ da Filial <span className="text-slate-400 font-normal">(caso possua CNPJ próprio)</span>
+                      </label>
+                      {newFilialCnpj.replace(/\D/g, '').length === 14 && (
+                        validateCNPJ(newFilialCnpj) ? (
+                          <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Válido
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-500" /> Inválido
+                          </span>
+                        )
+                      )}
+                    </div>
                     <input
                       type="text"
                       placeholder="00.000.000/0002-00"
                       value={newFilialCnpj}
                       onChange={e => setNewFilialCnpj(formatCNPJ(e.target.value))}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 font-mono transition-colors ${
+                        newFilialCnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(newFilialCnpj)
+                          ? 'border-rose-400 bg-rose-50/30 focus:ring-rose-500 text-rose-900'
+                          : 'border-slate-300 focus:ring-emerald-500'
+                      }`}
                     />
+                    {newFilialCnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(newFilialCnpj) && (
+                      <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        CNPJ da filial inválido segundo a Receita Federal.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1543,9 +1621,22 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      CNPJ da Filial <span className="text-slate-400 font-normal">(específico da unidade)</span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">
+                        CNPJ da Filial <span className="text-slate-400 font-normal">(específico da unidade)</span>
+                      </label>
+                      {editingFilial.filial.cnpj && editingFilial.filial.cnpj.replace(/\D/g, '').length === 14 && (
+                        validateCNPJ(editingFilial.filial.cnpj) ? (
+                          <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Válido
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-500" /> Inválido
+                          </span>
+                        )
+                      )}
+                    </div>
                     <input
                       type="text"
                       placeholder="00.000.000/0002-00"
@@ -1554,8 +1645,18 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         ...editingFilial,
                         filial: { ...editingFilial.filial, cnpj: formatCNPJ(e.target.value) }
                       })}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 font-mono transition-colors ${
+                        editingFilial.filial.cnpj && editingFilial.filial.cnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(editingFilial.filial.cnpj)
+                          ? 'border-rose-400 bg-rose-50/30 focus:ring-rose-500 text-rose-900'
+                          : 'border-slate-300 focus:ring-emerald-500'
+                      }`}
                     />
+                    {editingFilial.filial.cnpj && editingFilial.filial.cnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(editingFilial.filial.cnpj) && (
+                      <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        CNPJ da filial inválido segundo a Receita Federal.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1819,17 +1920,40 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      CNPJ <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">
+                        CNPJ <span className="text-rose-500">*</span>
+                      </label>
+                      {newCnpj.replace(/\D/g, '').length === 14 && (
+                        validateCNPJ(newCnpj) ? (
+                          <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Válido
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-500" /> Inválido
+                          </span>
+                        )
+                      )}
+                    </div>
                     <input
                       type="text"
                       required
                       placeholder="00.000.000/0001-00"
                       value={newCnpj}
                       onChange={e => setNewCnpj(formatCNPJ(e.target.value))}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 font-mono transition-colors ${
+                        newCnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(newCnpj)
+                          ? 'border-rose-400 bg-rose-50/30 focus:ring-rose-500 text-rose-900'
+                          : 'border-slate-300 focus:ring-emerald-500'
+                      }`}
                     />
+                    {newCnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(newCnpj) && (
+                      <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        CNPJ inválido segundo a Receita Federal (dígitos verificadores inconsistentes).
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -2125,16 +2249,39 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      CNPJ <span className="text-rose-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-slate-700">
+                        CNPJ <span className="text-rose-500">*</span>
+                      </label>
+                      {editingCompany.cnpj.replace(/\D/g, '').length === 14 && (
+                        validateCNPJ(editingCompany.cnpj) ? (
+                          <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Válido
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 text-rose-500" /> Inválido
+                          </span>
+                        )
+                      )}
+                    </div>
                     <input
                       type="text"
                       required
                       value={editingCompany.cnpj}
                       onChange={e => setEditingCompany({ ...editingCompany, cnpj: formatCNPJ(e.target.value) })}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                      className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 font-mono transition-colors ${
+                        editingCompany.cnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(editingCompany.cnpj)
+                          ? 'border-rose-400 bg-rose-50/30 focus:ring-rose-500 text-rose-900'
+                          : 'border-slate-300 focus:ring-emerald-500'
+                      }`}
                     />
+                    {editingCompany.cnpj.replace(/\D/g, '').length === 14 && !validateCNPJ(editingCompany.cnpj) && (
+                      <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        CNPJ inválido segundo a Receita Federal.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -2445,14 +2592,37 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                    {editingUser.cpf && editingUser.cpf.replace(/\D/g, '').length === 11 && (
+                      validateCPF(editingUser.cpf) ? (
+                        <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Válido
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-rose-500" /> Inválido
+                        </span>
+                      )
+                    )}
+                  </div>
                   <input
                     type="text"
                     placeholder="000.000.000-00"
                     value={editingUser.cpf || ''}
                     onChange={e => setEditingUser({ ...editingUser, cpf: formatCPF(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 font-mono transition-colors ${
+                      editingUser.cpf && editingUser.cpf.replace(/\D/g, '').length === 11 && !validateCPF(editingUser.cpf)
+                        ? 'border-rose-400 bg-rose-50/30 focus:ring-rose-500 text-rose-900'
+                        : 'border-slate-300 focus:ring-emerald-500'
+                    }`}
                   />
+                  {editingUser.cpf && editingUser.cpf.replace(/\D/g, '').length === 11 && !validateCPF(editingUser.cpf) && (
+                    <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      CPF inválido segundo a Receita Federal.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -2632,14 +2802,37 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">CPF do Usuário</label>
+                    {newUserCpf.replace(/\D/g, '').length === 11 && (
+                      validateCPF(newUserCpf) ? (
+                        <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Válido
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-rose-500" /> Inválido
+                        </span>
+                      )
+                    )}
+                  </div>
                   <input
                     type="text"
                     placeholder="000.000.000-00"
                     value={newUserCpf}
                     onChange={e => setNewUserCpf(formatCPF(e.target.value))}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 font-mono transition-colors ${
+                      newUserCpf.replace(/\D/g, '').length === 11 && !validateCPF(newUserCpf)
+                        ? 'border-rose-400 bg-rose-50/30 focus:ring-rose-500 text-rose-900'
+                        : 'border-slate-300 focus:ring-emerald-500'
+                    }`}
                   />
+                  {newUserCpf.replace(/\D/g, '').length === 11 && !validateCPF(newUserCpf) && (
+                    <p className="text-[10px] text-rose-600 font-semibold flex items-center gap-1 mt-0.5">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      CPF inválido segundo a Receita Federal (dígitos verificadores inconsistentes).
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
