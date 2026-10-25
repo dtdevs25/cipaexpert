@@ -40,6 +40,7 @@ export interface SignatureTagPosition {
   posY: number; // Percentual Y (0 a 100)
   widthPercent?: number;
   heightPercent?: number;
+  scale?: number; // Escala de tamanho (ex: 0.75, 1.0, 1.25)
 }
 
 export interface SignatureEnvelope {

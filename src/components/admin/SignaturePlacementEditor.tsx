@@ -6,13 +6,15 @@ import {
   Calendar, 
   FileCheck2, 
   Sparkles, 
-  Info,
-  CheckCircle2,
-  MousePointer,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  GripVertical
+  CheckCircle2, 
+  MousePointer, 
+  Eye, 
+  EyeOff, 
+  ShieldCheck, 
+  GripVertical,
+  Minus,
+  Plus,
+  Maximize2
 } from 'lucide-react';
 import { SignatureTagPosition } from '../../services/signatureService';
 
@@ -57,8 +59,12 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
 }) => {
   const [selectedSignerIndex, setSelectedSignerIndex] = useState<number>(0);
   const [selectedFieldType, setSelectedFieldType] = useState<'assinatura' | 'rubrica' | 'data'>('assinatura');
-  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+  const [defaultScale, setDefaultScale] = useState<number>(1.0);
+  const [isGlobalPreview, setIsGlobalPreview] = useState<boolean>(false);
   
+  // Tags que estão individualmente em modo de visualização de assinatura simulada (sem o marcador)
+  const [individualPreviewTagIds, setIndividualPreviewTagIds] = useState<Record<string, boolean>>({});
+
   // Estado para arraste fluido
   const [activeDrag, setActiveDrag] = useState<{
     tagId: string;
@@ -71,6 +77,36 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
   const pageContainerRef = useRef<HTMLDivElement>(null);
 
   const activeSigner = signers[selectedSignerIndex] || signers[0];
+
+  // Alternar visualização simulada de uma tag individual (tira o marcador e mostra a assinatura)
+  const toggleTagPreview = (tagId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIndividualPreviewTagIds(prev => ({
+      ...prev,
+      [tagId]: !prev[tagId]
+    }));
+  };
+
+  // Alterar escala / tamanho da assinatura de uma tag
+  const updateTagScale = (tagId: string, delta: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    onChangePositions(
+      positions.map(p => {
+        if (p.id !== tagId) return p;
+        const currentScale = p.scale ?? 1.0;
+        const newScale = Math.max(0.65, Math.min(1.5, Math.round((currentScale + delta) * 100) / 100));
+        return { ...p, scale: newScale };
+      })
+    );
+  };
+
+  // Definir preset de escala (P: 0.75, M: 1.0, G: 1.3)
+  const setTagPresetScale = (tagId: string, presetScale: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    onChangePositions(
+      positions.map(p => (p.id === tagId ? { ...p, scale: presetScale } : p))
+    );
+  };
 
   // Listener global de arraste de mouse/touch
   useEffect(() => {
@@ -112,9 +148,9 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
 
   // Iniciar arraste do marcador
   const handleTagPointerDown = (tagId: string, e: React.PointerEvent) => {
-    if (readOnly || isPreviewMode) return;
+    if (readOnly) return;
     
-    // Ignora se o usuário clicou em botão, select ou links
+    // Ignora se o usuário clicou em botão, select ou option
     if ((e.target as HTMLElement).closest('button, select, input, option')) return;
 
     e.preventDefault();
@@ -134,7 +170,7 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
 
   // Adiciona campo ao clicar na folha do documento
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (readOnly || isPreviewMode || !pageContainerRef.current || !activeSigner) return;
+    if (readOnly || isGlobalPreview || !pageContainerRef.current || !activeSigner) return;
     
     // Evita adicionar se clicou em um marcador existente ou durante arraste
     if ((e.target as HTMLElement).closest('[data-signature-tag]')) return;
@@ -157,7 +193,8 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
       type: selectedFieldType,
       page: 1,
       posX,
-      posY
+      posY,
+      scale: defaultScale
     };
 
     onChangePositions([...positions, newTag]);
@@ -206,7 +243,8 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
         type: 'assinatura',
         page: 1,
         posX,
-        posY
+        posY,
+        scale: 1.0
       };
     });
 
@@ -222,7 +260,8 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
       type: 'rubrica',
       page: 1,
       posX: 70 - (idx * 16),
-      posY: 93
+      posY: 93,
+      scale: 0.85
     }));
 
     onChangePositions([...positions, ...initialTags]);
@@ -240,45 +279,100 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
       {!readOnly && (
         <div className="w-full lg:w-76 shrink-0 space-y-4">
           
-          {/* Botão de Destaque: PRÉVIA DA ASSINATURA (OLHINHO) */}
+          {/* Botão de Destaque: PRÉVIA GERAL DA ASSINATURA (OLHINHO GLOBAL) */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3.5 rounded-xl border border-blue-200 shadow-xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
                 <Eye className="w-4 h-4 text-blue-600" />
-                Modo Visualização
+                Prévia Geral
               </span>
               <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                isPreviewMode ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
+                isGlobalPreview ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'
               }`}>
-                {isPreviewMode ? 'PRÉVIA ATIVA' : 'EDIÇÃO'}
+                {isGlobalPreview ? 'VER TUDO REAL' : 'MODO EDIÇÃO'}
               </span>
             </div>
 
             <button
               type="button"
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
+              onClick={() => setIsGlobalPreview(!isGlobalPreview)}
               className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98 ${
-                isPreviewMode 
+                isGlobalPreview 
                   ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-blue-300' 
                   : 'bg-white hover:bg-blue-100/60 text-blue-900 border border-blue-300'
               }`}
             >
-              {isPreviewMode ? (
+              {isGlobalPreview ? (
                 <>
                   <EyeOff className="w-4 h-4 text-white" />
-                  <span>Voltar para Edição (Arrastar)</span>
+                  <span>Voltar aos Marcadores (Mover)</span>
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4 text-blue-600" />
-                  <span>Visualizar Como Ficará a Assinatura</span>
+                  <span>Ver Todas as Assinaturas Reais</span>
                 </>
               )}
             </button>
             <p className="text-[10px] text-blue-800/80 leading-tight">
-              {isPreviewMode 
-                ? 'Você está vendo o carimbo e a assinatura como aparecerão no PDF final.'
-                : 'Clique para conferir a assinatura real e garantir o alinhamento no texto.'}
+              {isGlobalPreview 
+                ? 'Marcadores ocultados. Você está vendo exatamente as assinaturas e chancelas como sairão no documento.'
+                : 'Dica: Você também pode clicar no olhinho de cada marcador individual para simular apenas aquela assinatura!'}
+            </p>
+          </div>
+
+          {/* Card: Tamanho Padrão das Novas Assinaturas */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700">
+              <div className="flex items-center gap-1.5">
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Tamanho das Assinaturas</span>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-700 font-bold">
+                {Math.round(defaultScale * 100)}%
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setDefaultScale(0.75)}
+                className={`py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  defaultScale === 0.75 
+                    ? 'bg-emerald-600 border-emerald-700 text-white' 
+                    : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                }`}
+                title="Pequeno (75%)"
+              >
+                P (75%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDefaultScale(1.0)}
+                className={`py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  defaultScale === 1.0 
+                    ? 'bg-emerald-600 border-emerald-700 text-white' 
+                    : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                }`}
+                title="Médio Padrão (100%)"
+              >
+                M (100%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setDefaultScale(1.25)}
+                className={`py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  defaultScale === 1.25 
+                    ? 'bg-emerald-600 border-emerald-700 text-white' 
+                    : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700'
+                }`}
+                title="Grande (125%)"
+              >
+                G (125%)
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-500">
+              Você também pode usar os botões <strong>[-]</strong> e <strong>[+]</strong> em cada marcador individual na folha.
             </p>
           </div>
 
@@ -412,19 +506,6 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
             )}
           </div>
 
-          {/* Dicas de Arraste e Seleção */}
-          <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 text-[11px] text-slate-600 space-y-1.5">
-            <div className="font-bold text-slate-800 flex items-center gap-1">
-              <Move className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Dicas de posicionamento:</span>
-            </div>
-            <ul className="list-disc list-inside space-y-1 text-[10px] leading-tight">
-              <li><strong>Arrastar:</strong> Segure o campo pelo ícone de grade e mova-o livremente pela folha.</li>
-              <li><strong>Mudar Signatário:</strong> Use a lista suspensa diretamente dentro de cada campo.</li>
-              <li><strong>Prévia:</strong> Clique no botão de olho acima para conferir o visual real da assinatura.</li>
-            </ul>
-          </div>
-
         </div>
       )}
 
@@ -439,19 +520,21 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
             <span className="text-slate-500">{positions.length} campo(s) configurado(s)</span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsPreviewMode(!isPreviewMode)}
-            className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
-              isPreviewMode 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-white text-slate-700 hover:text-blue-700 hover:bg-blue-50 border border-slate-300'
-            }`}
-            title="Alternar entre modo de edição e prévia visual"
-          >
-            {isPreviewMode ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-blue-600" />}
-            <span>{isPreviewMode ? 'Modo de Edição' : 'Prévia da Assinatura'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsGlobalPreview(!isGlobalPreview)}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
+                isGlobalPreview 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-white text-slate-700 hover:text-blue-700 hover:bg-blue-50 border border-slate-300'
+              }`}
+              title="Alternar entre modo de edição e prévia visual"
+            >
+              {isGlobalPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-blue-600" />}
+              <span>{isGlobalPreview ? 'Modo de Edição' : 'Ver Todas Assinadas'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Folha A4 Estilizada com Sombreamento e Proporção Real */}
@@ -459,7 +542,7 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
           ref={pageContainerRef}
           onClick={handlePageClick}
           className={`relative w-full max-w-2xl bg-white rounded-lg shadow-xl border border-slate-300 p-8 sm:p-12 min-h-[780px] select-none transition-all ${
-            isPreviewMode ? 'cursor-default' : 'cursor-crosshair'
+            isGlobalPreview ? 'cursor-default' : 'cursor-crosshair'
           }`}
           style={{ minHeight: '800px' }}
         >
@@ -510,86 +593,136 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
           </div>
 
           {/* ========================================================================= */}
-          {/* MODO PRÉVIA: RENDERIZAÇÃO REALISTA DE COMO A ASSINATURA FICARÁ NO PDF     */}
+          {/* RENDERIZAÇÃO DOS CAMPOS DE ASSINATURA NA FOLHA                            */}
           {/* ========================================================================= */}
-          {isPreviewMode && (
-            <>
-              {positions.map((pos) => {
-                return (
-                  <div
-                    key={pos.id}
-                    style={{
-                      position: 'absolute',
-                      left: `${pos.posX}%`,
-                      top: `${pos.posY}%`,
-                      transform: 'translate(-5%, -50%)',
-                      zIndex: 30
-                    }}
-                    className="pointer-events-none select-none animate-in fade-in zoom-in-95 duration-200"
-                  >
-                    {pos.type === 'assinatura' && (
-                      <div className="bg-white/95 border-2 border-emerald-600/90 rounded-lg p-2.5 shadow-lg min-w-[220px] max-w-[270px] text-left ring-1 ring-emerald-500/20">
-                        {/* Assinatura Manuscrita Cursiva Simulada */}
-                        <div className="pb-1 border-b border-emerald-300 flex items-center justify-between">
-                          <span className="font-serif italic text-base text-blue-900 font-bold tracking-wider select-none pr-2">
-                            {pos.signerName}
-                          </span>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        </div>
-
-                        {/* Carimbo Digital de Conformidade NR-5 / ICP-Brasil */}
-                        <div className="mt-1 text-[8px] text-slate-600 leading-tight space-y-0.5 font-mono">
-                          <p className="font-bold text-emerald-800 uppercase flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                            Assinado Digitalmente · CIPASign
-                          </p>
-                          <p className="truncate"><strong>Nome:</strong> {pos.signerName}</p>
-                          <p className="truncate"><strong>E-mail:</strong> {pos.signerEmail}</p>
-                          <p><strong>Data/Hora:</strong> 25/10/2026 14:35:12 BRT</p>
-                          <p className="text-[7.5px] text-slate-400 truncate">
-                            SHA256: 4e8f1b...c92a (MP 2.200-2 / Lei 14.063)
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {pos.type === 'rubrica' && (
-                      <div className="bg-white/95 border-2 border-blue-500 rounded-lg p-2 shadow-md text-left min-w-[130px] ring-1 ring-blue-400/20">
-                        <div className="flex items-center justify-between border-b border-blue-200 pb-1">
-                          <span className="font-serif italic text-base text-blue-900 font-bold">
-                            {pos.signerName.split(' ').map(n => n[0]).join('')}.
-                          </span>
-                          <FileCheck2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        </div>
-                        <p className="text-[8px] text-slate-600 font-mono mt-0.5 truncate">
-                          Rubrica Digital · {pos.signerName.split(' ')[0]}
-                        </p>
-                      </div>
-                    )}
-
-                    {pos.type === 'data' && (
-                      <div className="bg-white/95 border border-slate-300 rounded p-1.5 shadow-sm text-[9px] font-mono text-slate-700">
-                        <div className="flex items-center gap-1 text-emerald-700 font-bold">
-                          <Calendar className="w-3 h-3" />
-                          <span>25/10/2026 14:35</span>
-                        </div>
-                        <p className="text-[8px] text-slate-400">Data e Hora Certificada</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {/* ========================================================================= */}
-          {/* MODO EDIÇÃO: MARCADORES INTERATIVOS ARRASTÁVEIS COM LISTA SUSPENSA        */}
-          {/* ========================================================================= */}
-          {!isPreviewMode && positions.map((pos) => {
+          {positions.map((pos) => {
             const signerIdx = signers.findIndex(s => s.email.toLowerCase() === pos.signerEmail.toLowerCase());
             const color = SIGNER_COLORS[signerIdx >= 0 ? signerIdx % SIGNER_COLORS.length : 0];
             const isBeingDragged = activeDrag?.tagId === pos.id;
+            const tagScale = pos.scale ?? 1.0;
+            
+            // Verifica se este campo específico está em modo de prévia simulada (ou global)
+            const isSimulatedPreview = isGlobalPreview || !!individualPreviewTagIds[pos.id];
 
+            // -------------------------------------------------------------
+            // CASO 1: ASSINATURA SIMULADA ("Tira o marcador e mostra a assinatura")
+            // -------------------------------------------------------------
+            if (isSimulatedPreview) {
+              return (
+                <div
+                  key={pos.id}
+                  data-signature-tag="true"
+                  style={{
+                    position: 'absolute',
+                    left: `${pos.posX}%`,
+                    top: `${pos.posY}%`,
+                    transform: `translate(-5%, -50%) scale(${tagScale})`,
+                    transformOrigin: 'top left',
+                    zIndex: isBeingDragged ? 50 : 25
+                  }}
+                  onPointerDown={(e) => handleTagPointerDown(pos.id, e)}
+                  className={`group relative select-none animate-in fade-in zoom-in-95 duration-150 ${
+                    readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+                  }`}
+                  title="Clique e arraste para reposicionar ou use o botão de olho para voltar ao modo de edição"
+                >
+                  {/* Botão Flutuante no Hover para Voltar ao Marcador e Ajustar Tamanho */}
+                  {!readOnly && !isGlobalPreview && (
+                    <div className="absolute -top-7 left-0 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white rounded-lg px-2 py-0.5 text-[9px] flex items-center gap-1.5 shadow-md z-30 pointer-events-auto">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleTagPreview(pos.id, e)}
+                        className="hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer"
+                        title="Voltar aos controles do marcador"
+                      >
+                        <EyeOff className="w-3 h-3 text-emerald-400" />
+                        <span>Editar</span>
+                      </button>
+                      <span className="text-slate-500">|</span>
+                      <button
+                        type="button"
+                        onClick={(e) => updateTagScale(pos.id, -0.15, e)}
+                        className="hover:text-amber-300 p-0.5 cursor-pointer font-bold"
+                        title="Diminuir assinatura"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono text-[9px]">{Math.round(tagScale * 100)}%</span>
+                      <button
+                        type="button"
+                        onClick={(e) => updateTagScale(pos.id, 0.15, e)}
+                        className="hover:text-emerald-400 p-0.5 cursor-pointer font-bold"
+                        title="Aumentar assinatura"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Visual Real: Assinatura Completa com Carimbo e Estampa de Data e Hora */}
+                  {pos.type === 'assinatura' && (
+                    <div className="bg-white/95 border-2 border-emerald-600/90 rounded-lg p-2.5 shadow-lg min-w-[230px] max-w-[280px] text-left ring-1 ring-emerald-500/20 backdrop-blur-xs">
+                      {/* Assinatura Manuscrita Cursiva Azul */}
+                      <div className="pb-1 border-b border-emerald-300 flex items-center justify-between">
+                        <span className="font-serif italic text-base text-blue-900 font-bold tracking-wider select-none pr-2">
+                          {pos.signerName}
+                        </span>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      </div>
+
+                      {/* Estampa Criptográfica com Data, Hora e Norma */}
+                      <div className="mt-1 text-[8px] text-slate-700 leading-tight space-y-0.5 font-mono">
+                        <p className="font-bold text-emerald-800 uppercase flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          Assinado Digitalmente · CIPASign
+                        </p>
+                        <p className="truncate"><strong>Nome:</strong> {pos.signerName}</p>
+                        <p className="truncate"><strong>E-mail:</strong> {pos.signerEmail}</p>
+                        <p className="text-emerald-950 font-bold bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200 inline-block">
+                          📅 25/10/2026 às 14:35:12 BRT (Horário de Brasília)
+                        </p>
+                        <p className="text-[7.5px] text-slate-500 truncate">
+                          🔒 SHA256: 4e8f1b...c92a · MP 2.200-2 / Lei 14.063
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Visual Real: Rubrica com Iniciais e Carimbo */}
+                  {pos.type === 'rubrica' && (
+                    <div className="bg-white/95 border-2 border-blue-500 rounded-lg p-2 shadow-md text-left min-w-[140px] ring-1 ring-blue-400/20 backdrop-blur-xs">
+                      <div className="flex items-center justify-between border-b border-blue-200 pb-1">
+                        <span className="font-serif italic text-base text-blue-900 font-bold">
+                          {pos.signerName.split(' ').map(n => n[0]).join('')}.
+                        </span>
+                        <FileCheck2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      </div>
+                      <p className="text-[8px] text-slate-700 font-mono mt-0.5 truncate">
+                        Rubrica Digital · {pos.signerName.split(' ')[0]}
+                      </p>
+                      <p className="text-[7.5px] text-slate-500 font-mono">
+                        25/10/2026 14:35:12 BRT
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Visual Real: Data e Hora Estampada */}
+                  {pos.type === 'data' && (
+                    <div className="bg-white/95 border border-slate-300 rounded p-1.5 shadow-sm text-[9px] font-mono text-slate-700">
+                      <div className="flex items-center gap-1 text-emerald-700 font-bold">
+                        <Calendar className="w-3 h-3" />
+                        <span>25/10/2026 14:35:12 BRT</span>
+                      </div>
+                      <p className="text-[8px] text-slate-500">Data e Hora Certificada</p>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // -------------------------------------------------------------
+            // CASO 2: MODO MARCADOR COM CONTROLES DE ARRASTE, LISTA E TAMANHO
+            // -------------------------------------------------------------
             return (
               <div
                 key={pos.id}
@@ -598,7 +731,8 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
                   position: 'absolute',
                   left: `${pos.posX}%`,
                   top: `${pos.posY}%`,
-                  transform: 'translate(-5%, -50%)',
+                  transform: `translate(-5%, -50%) scale(${tagScale})`,
+                  transformOrigin: 'top left',
                   zIndex: isBeingDragged ? 50 : 20
                 }}
                 onPointerDown={(e) => handleTagPointerDown(pos.id, e)}
@@ -611,7 +745,7 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
                 {/* Ícone de Arraste (Grip) */}
                 <div 
                   className="cursor-grab active:cursor-grabbing text-slate-400 group-hover:text-slate-700 transition-colors p-0.5"
-                  title="Clique e arraste para mover o campo pela folha"
+                  title="Segure e arraste para posicionar"
                 >
                   <GripVertical className="w-4 h-4" />
                 </div>
@@ -641,8 +775,8 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
                     </select>
                   </div>
 
-                  {/* 2. Tipo de Campo */}
-                  <div className="flex items-center gap-1">
+                  {/* 2. Tipo de Campo & Controles de Tamanho */}
+                  <div className="flex items-center gap-1.5">
                     <select
                       value={pos.type}
                       onChange={(e) => handleTypeChange(pos.id, e.target.value as any)}
@@ -653,29 +787,61 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
                       <option value="data">Data</option>
                     </select>
 
-                    <span className="text-[9px] text-slate-500 font-mono">
-                      {pos.posX}% x {pos.posY}%
-                    </span>
+                    {/* Botões de Diminuir / Aumentar Tamanho */}
+                    <div className="flex items-center bg-white/90 border border-slate-200 rounded px-1 py-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={(e) => updateTagScale(pos.id, -0.15, e)}
+                        className="text-slate-600 hover:text-slate-900 font-bold px-1 transition-colors cursor-pointer"
+                        title="Diminuir tamanho da assinatura"
+                      >
+                        <Minus className="w-2.5 h-2.5" />
+                      </button>
+                      <span className="text-[9px] font-mono font-bold text-slate-700 px-0.5">
+                        {Math.round(tagScale * 100)}%
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => updateTagScale(pos.id, 0.15, e)}
+                        className="text-slate-600 hover:text-slate-900 font-bold px-1 transition-colors cursor-pointer"
+                        title="Aumentar tamanho da assinatura"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Botão de Excluir Marcador */}
-                {!readOnly && (
+                {/* Botões de Ação da Tag: Olhinho (Prévia Simulada) e Excluir */}
+                <div className="flex flex-col gap-1 shrink-0 self-start ml-0.5">
+                  {/* Olhinho: Tira o marcador e mostra a assinatura simulada no local */}
                   <button
                     type="button"
-                    onClick={(e) => handleRemoveTag(pos.id, e)}
-                    className="p-1 rounded-lg text-rose-600 hover:text-white hover:bg-rose-600 transition-colors cursor-pointer self-start ml-0.5"
-                    title="Remover este campo"
+                    onClick={(e) => toggleTagPreview(pos.id, e)}
+                    className="p-1 rounded-md text-blue-600 hover:text-white hover:bg-blue-600 transition-colors cursor-pointer"
+                    title="Ver como ficará a assinatura simulada neste local"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5" />
                   </button>
-                )}
+
+                  {/* Excluir */}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveTag(pos.id, e)}
+                      className="p-1 rounded-md text-rose-600 hover:text-white hover:bg-rose-600 transition-colors cursor-pointer"
+                      title="Remover este campo"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
 
           {/* Dica de Tela Vazia de Posições */}
-          {positions.length === 0 && !readOnly && !isPreviewMode && (
+          {positions.length === 0 && !readOnly && !isGlobalPreview && (
             <div className="absolute inset-x-8 bottom-16 p-4 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/90 text-center space-y-1.5 animate-pulse">
               <p className="text-xs font-bold text-emerald-950 flex items-center justify-center gap-1.5">
                 <MousePointer className="w-4 h-4 text-emerald-600" />
