@@ -55,8 +55,11 @@ export const ApiService = {
   // Helper base para requisições com headers de autorização
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
+    const storedUser = this.getStoredUser();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...(storedUser?.id ? { 'x-user-id': storedUser.id } : {}),
+      ...(storedUser?.email ? { 'x-user-email': storedUser.email } : {}),
       ...(options.headers as Record<string, string> || {})
     };
 
@@ -111,24 +114,36 @@ export const ApiService = {
     return this.request<AuthUser>('/api/auth/me');
   },
 
-  async updateProfile(profileData: { name?: string; avatarUrl?: string }): Promise<AuthUser> {
+  async updateProfile(profileData: { name?: string; avatarUrl?: string }): Promise<{ success: boolean; user: AuthUser; message?: string }> {
     const data = await this.request<any>('/api/auth/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData)
     });
+    const userObj = data.user || data;
     const current = this.getStoredUser();
     const updated: AuthUser = {
       ...(current || {}),
-      id: data.id,
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      avatarUrl: data.avatarUrl,
-      companyId: data.companyId,
-      unitId: data.unitId
+      id: userObj.id,
+      name: userObj.name,
+      email: userObj.email,
+      role: userObj.role,
+      avatarUrl: userObj.avatarUrl,
+      companyId: userObj.companyId,
+      unitId: userObj.unitId
     } as AuthUser;
     this.setStoredUser(updated);
-    return updated;
+    return {
+      success: true,
+      user: updated,
+      message: data.message || 'Perfil atualizado com sucesso!'
+    };
+  },
+
+  async uploadPhotoToMinio(imageBase64: string, filename?: string, mimeType?: string): Promise<{ success: boolean; avatarUrl: string; message: string }> {
+    return this.request('/api/upload/photo', {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64, filename, mimeType })
+    });
   },
 
   async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {

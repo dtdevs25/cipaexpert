@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
+import path from 'path';
 import { prisma } from './db';
 import { SecurityService, AuthenticatedRequest } from './security';
 import { calcularDimensionamentoNR5Backend, calcularPrazosCronogramaNR5 } from './nr5Rules';
 import { MailerService } from './mailer';
+import { StorageService } from './storage';
 
 export const apiRouter = Router();
 
@@ -112,11 +114,28 @@ apiRouter.get('/auth/me', SecurityService.authenticate, async (req: Authenticate
   }
 });
 
-// Atualizar Nome e Foto de Perfil
+// Atualizar Nome e Foto de Perfil (Foto gravada diretamente no MinIO)
 apiRouter.put('/auth/profile', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, avatarUrl } = req.body;
+    let { name, avatarUrl } = req.body;
     const userId = req.user!.userId;
+
+    // Se o avatar foi enviado em base64 (upload do computador), envia para o bucket do MinIO
+    if (avatarUrl && typeof avatarUrl === 'string' && avatarUrl.startsWith('data:image/')) {
+      const match = avatarUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+      if (match) {
+        const mimeType = match[1];
+        const base64Data = match[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+        const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+        try {
+          avatarUrl = await StorageService.uploadPhoto(userId, buffer, mimeType, `avatar.${ext}`);
+          console.log(`✅ [PROFILE] Foto de perfil enviada com sucesso para o MinIO: ${avatarUrl}`);
+        } catch (storageErr) {
+          console.error('❌ [PROFILE] Falha ao enviar foto para o MinIO:', storageErr);
+        }
+      }
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -127,7 +146,7 @@ apiRouter.put('/auth/profile', SecurityService.authenticate, async (req: Authent
       include: { company: true, unit: true }
     });
 
-    res.json({
+    const userPayload = {
       id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
@@ -137,10 +156,88 @@ apiRouter.put('/auth/profile', SecurityService.authenticate, async (req: Authent
       companyName: updatedUser.company?.nomeFantasia,
       unitName: updatedUser.unit?.name,
       avatarUrl: updatedUser.avatarUrl
+    };
+
+    res.json({
+      success: true,
+      message: 'Perfil atualizado com sucesso!',
+      user: userPayload,
+      ...userPayload
     });
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
-    res.status(500).json({ error: 'Erro ao atualizar dados do perfil.' });
+    res.status(500).json({ success: false, error: 'Erro ao atualizar dados do perfil.' });
+  }
+});
+
+// Upload Dedicado de Foto de Perfil para o MinIO
+apiRouter.post('/upload/photo', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { imageBase64, filename, mimeType } = req.body;
+    const userId = req.user!.userId;
+
+    if (!imageBase64) {
+      res.status(400).json({ success: false, error: 'Dados da imagem não fornecidos.' });
+      return;
+    }
+
+    // Extrai o conteúdo base64 caso venha com prefixo data:image/...
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const finalMime = mimeType || 'image/jpeg';
+    const finalName = filename || 'avatar.jpg';
+
+    // Grava no bucket de fotos do MinIO
+    const minioUrl = await StorageService.uploadPhoto(userId, buffer, finalMime, finalName);
+
+    // Atualiza a URL da foto no registro do usuário no banco
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: minioUrl }
+    });
+
+    res.json({
+      success: true,
+      message: 'Foto enviada com sucesso para o bucket do MinIO!',
+      avatarUrl: minioUrl,
+      userId: updatedUser.id
+    });
+  } catch (error) {
+    console.error('Erro no upload de foto para o MinIO:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar upload da foto no MinIO.' });
+  }
+});
+
+// Proxy Seguro de Visualização de Arquivos do MinIO (para buckets públicos ou privados)
+apiRouter.get('/storage/:bucket/*', async (req: Request, res: Response) => {
+  try {
+    const bucket = req.params.bucket;
+    const objectName = req.params[0];
+
+    if (!bucket || !objectName) {
+      res.status(400).send('Parâmetros inválidos.');
+      return;
+    }
+
+    try {
+      const stat = await StorageService.getFileStat(bucket, objectName);
+      if (stat.metaData && stat.metaData['content-type']) {
+        res.setHeader('Content-Type', stat.metaData['content-type']);
+      } else {
+        const ext = path.extname(objectName).toLowerCase();
+        if (ext === '.png') res.setHeader('Content-Type', 'image/png');
+        else if (ext === '.jpg' || ext === '.jpeg') res.setHeader('Content-Type', 'image/jpeg');
+        else if (ext === '.webp') res.setHeader('Content-Type', 'image/webp');
+      }
+
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      const stream = await StorageService.getFileStream(bucket, objectName);
+      stream.pipe(res);
+    } catch (err: any) {
+      res.status(404).send('Arquivo não encontrado no MinIO.');
+    }
+  } catch (error) {
+    res.status(500).send('Erro ao buscar arquivo no MinIO.');
   }
 });
 
