@@ -979,12 +979,11 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 border-b border-emerald-200/80 text-emerald-950 font-bold text-[11px] uppercase tracking-wider">
-                      <th className="py-3.5 px-4">Empresa & Logo</th>
-                      <th className="py-3.5 px-4">CNPJ</th>
+                      <th className="py-3.5 px-4">Empresa</th>
                       <th className="py-3.5 px-4">CNAE Principal</th>
-                      <th className="py-3.5 px-4">Endereço Completo</th>
+                      <th className="py-3.5 px-4">Endereço</th>
                       <th className="py-3.5 px-4">Responsável</th>
-                      <th className="py-3.5 px-4">Filiais</th>
+                      <th className="py-3.5 px-4 text-center">Filiais</th>
                       <th className="py-3.5 px-4 text-center">Ações</th>
                     </tr>
                   </thead>
@@ -1005,28 +1004,50 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                               </div>
                             )}
                             <div className="min-w-0">
-                              <strong className="text-slate-900 font-bold block truncate max-w-[200px]">{company.nomeFantasia}</strong>
-                              <span className="text-[11px] text-slate-500 block truncate max-w-[200px]">{company.razaoSocial}</span>
+                              <strong 
+                                className="text-slate-900 font-bold block truncate max-w-[200px]"
+                                title={`${company.nomeFantasia} (${company.razaoSocial})`}
+                              >
+                                {company.nomeFantasia}
+                              </strong>
+                              <span 
+                                className="text-[11px] font-mono font-medium text-slate-500 block truncate"
+                                title={`CNPJ: ${company.cnpj}`}
+                              >
+                                {company.cnpj}
+                              </span>
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-4 font-mono text-slate-600 font-semibold whitespace-nowrap">
-                          {company.cnpj}
-                        </td>
                         <td className="py-4 px-4 whitespace-nowrap">
                           <span className="font-mono font-bold text-slate-800 block">{company.cnaeCode || '2511-0/00'}</span>
-                          <span className="text-[11px] text-slate-500 truncate max-w-[180px] block">{company.cnaeDesc || 'Atividade'}</span>
+                          <span 
+                            className="text-[11px] text-slate-500 truncate max-w-[170px] block cursor-help"
+                            title={company.cnaeDesc || 'Atividade'}
+                          >
+                            {company.cnaeDesc || 'Atividade'}
+                          </span>
                         </td>
-                        <td className="py-4 px-4 max-w-[220px]">
-                          <span className="text-xs text-slate-700 line-clamp-2">
+                        <td className="py-4 px-4 max-w-[170px]">
+                          <span 
+                            className="text-xs text-slate-700 truncate block cursor-help"
+                            title={company.enderecoCompleto}
+                          >
                             {company.enderecoCompleto}
                           </span>
                         </td>
-                        <td className="py-4 px-4 font-medium text-slate-800 whitespace-nowrap">
-                          {company.responsavelAdmin}
+                        <td className="py-4 px-4 max-w-[140px] whitespace-nowrap">
+                          <span 
+                            className="text-xs font-medium text-slate-800 truncate block cursor-help"
+                            title={`Responsável Administrador: ${company.responsavelAdmin}`}
+                          >
+                            {company.responsavelAdmin}
+                          </span>
                         </td>
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <span className="font-bold text-slate-900 block">{(company.units || []).length} estabelecimentos</span>
+                        <td className="py-4 px-4 text-center whitespace-nowrap">
+                          <span className="inline-flex items-center justify-center font-extrabold text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
+                            {(company.units || []).length}
+                          </span>
                         </td>
                         <td className="py-4 px-4 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5 justify-center">

@@ -982,3 +982,29 @@ apiRouter.post('/admin/seed', async (req: Request, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// 9. CONSULTA DE CNAEs OFICIAIS (NR-4 / NR-5)
+// ─────────────────────────────────────────────────────────────
+apiRouter.get('/cnaes', async (req: Request, res: Response) => {
+  try {
+    const { CNAE_DATABASE } = await import('../data/cnaeData');
+    const q = (req.query.q as string || '').toLowerCase().trim();
+    if (!q) {
+      res.json(CNAE_DATABASE);
+      return;
+    }
+    const cleanQ = q.replace(/\D/g, '');
+    const filtered = CNAE_DATABASE.filter(c => {
+      const cleanCode = c.code.replace(/\D/g, '');
+      return c.code.toLowerCase().includes(q) ||
+        (cleanQ && cleanCode.includes(cleanQ)) ||
+        (c.description && c.description.toLowerCase().includes(q));
+    });
+    res.json(filtered);
+  } catch (error) {
+    console.error('Erro ao consultar CNAEs:', error);
+    res.status(500).json({ error: 'Erro ao consultar tabela de CNAEs.' });
+  }
+});
+
+
