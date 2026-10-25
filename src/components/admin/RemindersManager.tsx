@@ -261,10 +261,10 @@ export const RemindersManager: React.FC<RemindersManagerProps> = ({
                   <button
                     type="button"
                     onClick={() => setReminderToDelete(rem)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                     title="Excluir Lembrete"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <Trash2 className="w-4 h-4 text-rose-600" />
                   </button>
                 </div>
 

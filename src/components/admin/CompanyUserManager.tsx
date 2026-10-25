@@ -144,12 +144,6 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
   const [newUserCompanyId, setNewUserCompanyId] = useState(companies[0]?.id || 'emp-1');
   const [newUserAvatarUrl, setNewUserAvatarUrl] = useState('');
 
-  const logoPresets = [
-    'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=160&h=160&q=80',
-    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=160&h=160&q=80',
-    'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=160&h=160&q=80'
-  ];
-
   const handleFileToDataUrl = (file: File, onLoaded: (url: string) => void) => {
     if (!file) return;
     const reader = new FileReader();
@@ -707,7 +701,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <button
                           type="button"
                           onClick={() => setCompanyToDelete(company)}
-                          className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                           title="Excluir Empresa"
                         >
                           <Trash2 className="w-4 h-4 text-rose-600" />
@@ -791,7 +785,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                             </button>
                             <button
                               onClick={() => setCompanyToDelete(company)}
-                              className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                               title="Excluir Empresa"
                             >
                               <Trash2 className="w-4 h-4 text-rose-600" />
@@ -890,7 +884,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                         <button
                           type="button"
                           onClick={() => setFilialToDelete({ filial: item.filial, companyId: item.companyId })}
-                          className="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                           title="Excluir Filial"
                         >
                           <Trash2 className="w-4 h-4 text-rose-600" />
@@ -952,7 +946,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                             </button>
                             <button
                               onClick={() => setFilialToDelete({ filial: item.filial, companyId: item.companyId })}
-                              className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                               title="Excluir Filial"
                             >
                               <Trash2 className="w-4 h-4 text-rose-600" />
@@ -1066,7 +1060,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       <button
                         type="button"
                         onClick={() => setUserToDelete(user)}
-                        className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                         title="Excluir Usuário"
                       >
                         <Trash2 className="w-4 h-4 text-rose-600" />
@@ -1425,7 +1419,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          handleFileToDataUrl(file, url => setNewLogoUrl(url));
+                          handleFileToDataUrl(file, async (url) => {
+                            setNewLogoUrl(url);
+                            try {
+                              const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'empresas');
+                              if (res?.url) setNewLogoUrl(res.url);
+                            } catch (err) {
+                              console.warn('Erro ao enviar logo para MinIO:', err);
+                            }
+                          });
                         }
                       }}
                     />
@@ -1447,19 +1449,6 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                           Remover
                         </button>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <span className="text-[10px] text-slate-400">Sugestões:</span>
-                      {logoPresets.map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setNewLogoUrl(preset)}
-                          className="w-6 h-6 rounded-full overflow-hidden border border-slate-200 hover:scale-110 transition-transform cursor-pointer"
-                        >
-                          <img src={preset} alt="preset" className="w-full h-full object-cover" />
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -1725,7 +1714,17 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          handleFileToDataUrl(file, url => setEditingCompany({ ...editingCompany, logoUrl: url }));
+                          handleFileToDataUrl(file, async (url) => {
+                            setEditingCompany({ ...editingCompany, logoUrl: url });
+                            try {
+                              const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'empresas', editingCompany.id);
+                              if (res?.url) {
+                                setEditingCompany(prev => prev ? ({ ...prev, logoUrl: res.url }) : null);
+                              }
+                            } catch (err) {
+                              console.warn('Erro ao enviar logo para MinIO:', err);
+                            }
+                          });
                         }
                       }}
                     />
@@ -1747,19 +1746,6 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                           Remover
                         </button>
                       )}
-                    </div>
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <span className="text-[10px] text-slate-400">Sugestões:</span>
-                      {logoPresets.map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setEditingCompany({ ...editingCompany, logoUrl: preset })}
-                          className="w-6 h-6 rounded-full overflow-hidden border border-slate-200 hover:scale-110 transition-transform cursor-pointer"
-                        >
-                          <img src={preset} alt="preset" className="w-full h-full object-cover" />
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -2011,7 +1997,17 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      handleFileToDataUrl(file, url => setEditingUser({ ...editingUser, avatarUrl: url }));
+                      handleFileToDataUrl(file, async (url) => {
+                        setEditingUser({ ...editingUser, avatarUrl: url });
+                        try {
+                          const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'usuarios', editingUser.id);
+                          if (res?.url) {
+                            setEditingUser(prev => prev ? ({ ...prev, avatarUrl: res.url }) : null);
+                          }
+                        } catch (err) {
+                          console.warn('Erro ao enviar avatar para MinIO:', err);
+                        }
+                      });
                     }
                   }}
                 />
@@ -2161,7 +2157,15 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      handleFileToDataUrl(file, url => setNewUserAvatarUrl(url));
+                      handleFileToDataUrl(file, async (url) => {
+                        setNewUserAvatarUrl(url);
+                        try {
+                          const res = await ApiService.uploadPhotoToMinio(url, file.name, file.type, 'usuarios');
+                          if (res?.url) setNewUserAvatarUrl(res.url);
+                        } catch (err) {
+                          console.warn('Erro ao enviar avatar para MinIO:', err);
+                        }
+                      });
                     }
                   }}
                 />

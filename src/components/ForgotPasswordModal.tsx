@@ -55,18 +55,16 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Cabeçalho Verde Padronizado */}
-        <div className="bg-gradient-to-r from-emerald-800 to-emerald-700 px-5 py-4 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center ring-1 ring-white/30">
-              <KeyRound className="w-4 h-4" />
-            </div>
-            <h3 className="text-base font-bold text-white leading-tight">Redefinir Senha</h3>
+        <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 sm:px-6 py-3.5 sm:py-4 border-b border-emerald-200/80 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <KeyRound className="w-4 h-4 text-emerald-700" />
+            <h3 className="text-sm font-extrabold text-emerald-950">Redefinir Senha</h3>
           </div>
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-white/60 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 

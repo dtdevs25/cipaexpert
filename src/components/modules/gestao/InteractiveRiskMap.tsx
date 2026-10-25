@@ -261,10 +261,10 @@ export const InteractiveRiskMap: React.FC = () => {
                   deleteRiskPoint(selectedPoint.id);
                   setSelectedPoint(null);
                 }}
-                className="text-rose-600 hover:text-rose-700 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                 title="Excluir este ponto do mapa"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4 text-rose-600" />
               </button>
             )}
           </div>
@@ -316,15 +316,15 @@ export const InteractiveRiskMap: React.FC = () => {
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-emerald-600" />
+            <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
+              <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-emerald-700" />
                 <span>Adicionar Ponto ao Mapa de Riscos</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

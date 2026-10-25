@@ -85,12 +85,16 @@ export const StandardModal: React.FC<StandardModalProps> = ({
         role="dialog"
         aria-modal="true"
       >
-        {/* Top bar with close button */}
-        <div className="flex items-center justify-end p-4 pb-0">
+        {/* Header Padronizado */}
+        <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 sm:px-6 py-3.5 sm:py-4 border-b border-emerald-200/80 flex items-center justify-between shrink-0">
+          <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2 truncate">
+            <IconComponent className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span className="truncate">{title}</span>
+          </h3>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-white/60 transition-colors shrink-0"
             aria-label="Fechar"
           >
             <X className="w-4 h-4" />
@@ -98,16 +102,11 @@ export const StandardModal: React.FC<StandardModalProps> = ({
         </div>
 
         {/* Modal content body */}
-        <div className="px-6 pb-6 pt-0 flex flex-col items-center text-center">
+        <div className="p-6 flex flex-col items-center text-center">
           {/* Badge Icon */}
           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform shadow-xs ${iconBg}`}>
             <IconComponent className="w-7 h-7" />
           </div>
-
-          {/* Title */}
-          <h3 className="text-lg font-extrabold text-slate-900 tracking-tight leading-snug">
-            {title}
-          </h3>
 
           {/* Optional Description */}
           {description && (

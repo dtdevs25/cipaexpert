@@ -72,7 +72,7 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     cargo: 'Operadora de Máquinas CNC',
     setor: 'Usinagem Pesada',
     tempoEmpresa: '4 anos',
-    fotoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&h=300&q=80',
+    fotoUrl: undefined,
     numero: '10',
     propostas: 'Foco na renovação de EPIs acústicos, melhoria de ventilação no galpão 02 e canal confidencial de denúncias para mulheres.',
     votos: 48
@@ -83,7 +83,7 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     cargo: 'Técnico de Manutenção Mecânica',
     setor: 'Manutenção Geral',
     tempoEmpresa: '6 anos',
-    fotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&h=300&q=80',
+    fotoUrl: undefined,
     numero: '22',
     propostas: 'Revisão periódica de bloqueios de energia LOTO, treinamentos práticos de primeiros socorros e inspeção quinzenal de escadas.',
     votos: 39
@@ -94,7 +94,7 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     cargo: 'Analista de Logística e Expedição',
     setor: 'Centro de Distribuição',
     tempoEmpresa: '3 anos',
-    fotoUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&h=300&q=80',
+    fotoUrl: undefined,
     numero: '15',
     propostas: 'Adequação ergonômica nos postos de etiquetagem, pausas ativas na expedição e combate rigoroso ao assédio moral.',
     votos: 31
@@ -105,7 +105,7 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     cargo: 'Soldador Especialista TIG/MIG',
     setor: 'Caldeiraria',
     tempoEmpresa: '5 anos',
-    fotoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&h=300&q=80',
+    fotoUrl: undefined,
     numero: '44',
     propostas: 'Substituição imediata de cortinas inactínicas danificadas, máscaras de solda com escurecimento automático e água fresca próxima à solda.',
     votos: 28

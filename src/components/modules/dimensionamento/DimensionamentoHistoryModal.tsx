@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, History, Calculator, Calendar, Printer, Building2, ShieldCheck, Trash2 } from 'lucide-react';
+import { X, History, Calculator, Calendar, Printer, Building2, ShieldCheck } from 'lucide-react';
 import { useCipa } from '../../../context/CipaContext';
 import { SavedDimensionamento } from '../../../services/mockStorage';
 
@@ -28,16 +28,16 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center border border-emerald-200 shadow-2xs">
-              <History className="w-5 h-5 text-emerald-700" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center ring-1 ring-emerald-200 shadow-2xs">
+              <History className="w-4 h-4 text-emerald-700" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
                 Histórico de Dimensionamentos NR-5
               </h3>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-600">
                 Cálculos e enquadramentos paritários homologados para {activeCompany.nomeFantasia}
               </p>
             </div>
@@ -45,7 +45,7 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

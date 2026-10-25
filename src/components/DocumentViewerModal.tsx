@@ -61,16 +61,16 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
       <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Modal Top Bar Verde Padronizado */}
-        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-emerald-800 to-emerald-700 text-white no-print">
+        <div className="flex items-center justify-between px-6 py-3.5 sm:py-4 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 border-b border-emerald-200/80 text-emerald-950 no-print shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center ring-1 ring-white/30">
-              <FileText className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center ring-1 ring-emerald-200 shadow-2xs">
+              <FileText className="w-4 h-4 text-emerald-700" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white leading-tight">
+              <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
                 {docData.title}
               </h3>
-              <p className="text-xs text-emerald-200 font-mono">
+              <p className="text-xs text-slate-600 font-mono">
                 {docData.normativeCode} · {docData.category}
               </p>
             </div>
@@ -79,7 +79,7 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white rounded-lg hover:bg-slate-100 transition-colors shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-200 shadow-xs cursor-pointer"
               title="Imprimir documento"
             >
               <Printer className="w-3.5 h-3.5 text-slate-700" />
@@ -87,7 +87,7 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             </button>
             <button
               onClick={handleDownloadTxt}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white rounded-lg hover:bg-slate-100 transition-colors shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-200 shadow-xs cursor-pointer"
               title="Baixar arquivo de texto"
             >
               <Download className="w-3.5 h-3.5 text-slate-700" />
@@ -96,7 +96,7 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             {onSignRequested && !isSigned && (
               <button
                 onClick={onSignRequested}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 border border-white/30 rounded-lg transition-colors shadow-xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors shadow-xs cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5" />
                 <span>Assinar Digitalmente</span>
@@ -104,7 +104,7 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             )}
             <button
               onClick={onClose}
-              className="p-1.5 text-white/80 hover:text-white rounded-lg hover:bg-white/20 transition-colors ml-2 cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors ml-2 cursor-pointer"
               title="Fechar"
             >
               <X className="w-5 h-5" />

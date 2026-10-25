@@ -107,7 +107,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-6 py-3.5 sm:py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <img 
               src="/logocompleto.png" 
@@ -115,17 +115,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               className="h-9 w-auto max-w-[180px] object-contain" 
             />
             <div>
-              <h3 className="text-sm font-bold text-slate-900 leading-tight">
+              <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
                 Autenticação de Acesso
               </h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-600 font-medium">
                 Acesse com seu e-mail e senha corporativos
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

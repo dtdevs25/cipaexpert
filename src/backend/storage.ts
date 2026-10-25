@@ -91,34 +91,37 @@ export class StorageService {
   }
 
   /**
-   * Faz upload da foto do usuário no bucket de fotos do MinIO
+   * Faz upload de imagem (colaborador, empresa ou usuário) no bucket do MinIO
    * Retorna a URL final acessível pelo navegador
    */
   public static async uploadPhoto(
-    userId: string,
+    id: string,
     fileBuffer: Buffer,
     mimeType: string = 'image/jpeg',
-    originalFilename: string = 'foto.jpg'
+    originalFilename: string = 'foto.jpg',
+    folder: string = 'usuarios'
   ): Promise<string> {
     const client = this.getClient();
     const bucket = this.getPhotoBucket();
 
     // Extensão limpa
     const extMatch = originalFilename.match(/\.[0-9a-z]+$/i);
-    const ext = extMatch ? extMatch[0].toLowerCase() : (mimeType.includes('png') ? '.png' : '.jpg');
-    const objectName = `usuarios/avatar-${userId}-${Date.now()}${ext}`;
+    const ext = extMatch ? extMatch[0].toLowerCase() : (mimeType.includes('png') ? '.png' : mimeType.includes('webp') ? '.webp' : '.jpg');
+    const prefix = folder === 'empresas' ? 'logo' : folder === 'colaboradores' ? 'colab' : 'avatar';
+    const objectName = `${folder}/${prefix}-${id}-${Date.now()}${ext}`;
 
     if (client) {
       await this.ensureBucket(bucket);
 
       const metaData = {
         'Content-Type': mimeType,
-        'x-amz-meta-user-id': userId
+        'x-amz-meta-id': id,
+        'x-amz-meta-folder': folder
       };
 
-      console.log(`📤 [STORAGE] Enviando foto para o MinIO: ${bucket}/${objectName} (${fileBuffer.length} bytes)...`);
+      console.log(`📤 [STORAGE] Enviando imagem (${folder}) para o MinIO: ${bucket}/${objectName} (${fileBuffer.length} bytes)...`);
       await client.putObject(bucket, objectName, fileBuffer, fileBuffer.length, metaData);
-      console.log(`✅ [STORAGE] Foto gravada no MinIO com sucesso!`);
+      console.log(`✅ [STORAGE] Imagem gravada no MinIO com sucesso!`);
 
       // Se houver MINIO_PUBLIC_URL explícita, usa ela
       if (process.env.MINIO_PUBLIC_URL) {
@@ -131,7 +134,7 @@ export class StorageService {
     }
 
     // Se MinIO não estiver conectado, retorna como data URI para não perder a foto do usuário
-    console.warn(`⚠️ [STORAGE] MinIO indisponível no momento. Salvando foto temporariamente.`);
+    console.warn(`⚠️ [STORAGE] MinIO indisponível no momento. Salvando imagem em fallback.`);
     return `data:${mimeType};base64,${fileBuffer.toString('base64')}`;
   }
 

@@ -170,11 +170,11 @@ apiRouter.put('/auth/profile', SecurityService.authenticate, async (req: Authent
   }
 });
 
-// Upload Dedicado de Foto de Perfil para o MinIO
-apiRouter.post('/upload/photo', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+// Upload Dedicado de Imagens (Usuários, Colaboradores, Empresas) para o MinIO
+apiRouter.post('/upload/photo', async (req: Request, res: Response) => {
   try {
-    const { imageBase64, filename, mimeType } = req.body;
-    const userId = req.user!.userId;
+    const { imageBase64, filename, mimeType, folder = 'usuarios', entityId } = req.body;
+    const targetId = entityId || (req as any).user?.userId || `img-${Date.now()}`;
 
     if (!imageBase64) {
       res.status(400).json({ success: false, error: 'Dados da imagem não fornecidos.' });
@@ -185,26 +185,35 @@ apiRouter.post('/upload/photo', SecurityService.authenticate, async (req: Authen
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
     const finalMime = mimeType || 'image/jpeg';
-    const finalName = filename || 'avatar.jpg';
+    const finalName = filename || 'imagem.jpg';
 
     // Grava no bucket de fotos do MinIO
-    const minioUrl = await StorageService.uploadPhoto(userId, buffer, finalMime, finalName);
+    const minioUrl = await StorageService.uploadPhoto(targetId, buffer, finalMime, finalName, folder);
 
-    // Atualiza a URL da foto no registro do usuário no banco
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: { avatarUrl: minioUrl }
-    });
+    // Se foi avatar de usuário existente, atualiza no banco
+    if (folder === 'usuarios' && targetId && !targetId.startsWith('img-')) {
+      try {
+        await prisma.user.update({
+          where: { id: targetId },
+          data: { avatarUrl: minioUrl }
+        });
+      } catch (dbErr) {
+        // Usuário pode ser novo em cadastro
+      }
+    }
 
     res.json({
       success: true,
-      message: 'Foto enviada com sucesso para o bucket do MinIO!',
+      message: 'Imagem enviada com sucesso para o bucket do MinIO!',
+      url: minioUrl,
       avatarUrl: minioUrl,
-      userId: updatedUser.id
+      logoUrl: minioUrl,
+      fotoUrl: minioUrl,
+      targetId
     });
   } catch (error) {
-    console.error('Erro no upload de foto para o MinIO:', error);
-    res.status(500).json({ success: false, error: 'Erro ao processar upload da foto no MinIO.' });
+    console.error('Erro no upload de imagem para o MinIO:', error);
+    res.status(500).json({ success: false, error: 'Erro ao processar upload da imagem no MinIO.' });
   }
 });
 

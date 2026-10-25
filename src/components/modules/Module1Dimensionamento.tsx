@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
+import { ApiService } from '../../services/apiService';
 
 export interface Employee {
   id: string;
@@ -57,15 +58,8 @@ export interface Employee {
   dataAdmissao: string;
 }
 
-// Avatares rápidos pré-configurados para testes e demonstração
-export const AVATAR_PRESETS = [
-  { label: 'Marcão', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80' },
-  { label: 'Paulinha', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80' },
-  { label: 'Beto', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80' },
-  { label: 'Camila', url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80' },
-  { label: 'Julinho', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80' },
-  { label: 'Juliana', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80' }
-];
+// Removidos avatares padrão: fotos devem vir do banco de dados/MinIO ou exibir iniciais/silhuetas
+
 
 interface Module1DimensionamentoProps {
   onOpenDocument: (doc: GeneratedDocument) => void;
@@ -87,13 +81,13 @@ interface Module1DimensionamentoProps {
   onSelectUnitId?: (id: string) => void;
 }
 
-// Colaboradores iniciais com apelidos e fotos de demonstração
+// Colaboradores iniciais (sem fotos de demonstração falsas, apenas reais ou iniciais)
 const INITIAL_EMPLOYEES: Employee[] = [
   { 
     id: 'emp-1', 
     name: 'Marcos Vinicius Santos', 
     apelido: 'Marcão da Usinagem',
-    fotoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    fotoUrl: undefined,
     matricula: 'CLT-1042', 
     cpf: '123.456.789-01', 
     cargo: 'Operador de Usinagem CNC', 
@@ -105,7 +99,7 @@ const INITIAL_EMPLOYEES: Employee[] = [
     id: 'emp-2', 
     name: 'Ana Paula Ferreira', 
     apelido: 'Paulinha',
-    fotoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    fotoUrl: undefined,
     matricula: 'CLT-1088', 
     cpf: '234.567.890-12', 
     cargo: 'Líder de Montagem Industrial', 
@@ -117,7 +111,7 @@ const INITIAL_EMPLOYEES: Employee[] = [
     id: 'emp-3', 
     name: 'Roberto Carlos Alencar', 
     apelido: 'Beto Mecânico',
-    fotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    fotoUrl: undefined,
     matricula: 'CLT-1102', 
     cpf: '345.678.901-23', 
     cargo: 'Técnico em Manutenção Mecânica', 
@@ -129,7 +123,7 @@ const INITIAL_EMPLOYEES: Employee[] = [
     id: 'emp-4', 
     name: 'Camila Duarte Rocha', 
     apelido: 'Cami da Qualidade',
-    fotoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    fotoUrl: undefined,
     matricula: 'CLT-1150', 
     cpf: '456.789.012-34', 
     cargo: 'Inspetora de Controle de Qualidade', 
@@ -141,7 +135,7 @@ const INITIAL_EMPLOYEES: Employee[] = [
     id: 'emp-5', 
     name: 'Julio Cesar Martins', 
     apelido: 'Julinho da Empilhadeira',
-    fotoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    fotoUrl: undefined,
     matricula: 'CLT-1194', 
     cpf: '567.890.123-45', 
     cargo: 'Operador de Empilhadeira', 
@@ -432,16 +426,24 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     setIsNewEmployeeModalOpen(true);
   };
 
-  // Upload de Foto do Colaborador (converte em Data URL local)
+  // Upload de Foto do Colaborador (Envia diretamente ao MinIO)
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
       if (dataUrl) {
-        setFormFotoUrl(dataUrl);
+        setFormFotoUrl(dataUrl); // preview imediato
+        try {
+          const uploadRes = await ApiService.uploadPhotoToMinio(dataUrl, file.name, file.type, 'colaboradores');
+          if (uploadRes?.url) {
+            setFormFotoUrl(uploadRes.url);
+          }
+        } catch (err) {
+          console.warn('Erro ao enviar foto para MinIO:', err);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -505,7 +507,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     const csvContent = 
       "Nome Completo;Apelido;Matrícula;CPF;Cargo;Setor;E-mail;Data de Admissão;FotoURL\n" +
       "João da Silva;Zé do Torno;CLT-2001;123.456.789-10;Operador de Máquinas;Produção;joao.silva@empresa.com.br;2021-05-10;\n" +
-      "Maria Souza Oliveira;Paulinha;CLT-2002;234.567.890-21;Supervisora de Linha;Montagem;maria.oliveira@empresa.com.br;2019-02-14;https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80\n" +
+      "Maria Souza Oliveira;Paulinha;CLT-2002;234.567.890-21;Supervisora de Linha;Montagem;maria.oliveira@empresa.com.br;2019-02-14;\n" +
       "Carlos Alberto Lima;Carlão;CLT-2003;345.678.901-32;Auxiliar de Almoxarifado;Logística;carlos.lima@empresa.com.br;2022-08-01;";
 
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -907,10 +909,10 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveEmployee(emp.id)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                                   title="Remover colaborador"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                                 </button>
                               </div>
                             </td>
@@ -1733,8 +1735,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
             
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+            {/* Header Padronizado */}
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
                   <FileText className="w-4 h-4 text-emerald-700" />
@@ -1896,33 +1898,6 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                   </div>
                 </div>
 
-                {/* Presets de foto rápida para demonstração */}
-                <div className="pt-2 border-t border-slate-200/70">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
-                    Ou selecione um avatar rápido para teste:
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {AVATAR_PRESETS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setFormFotoUrl(preset.url)}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded-xl border text-[11px] transition-all cursor-pointer ${
-                          formFotoUrl === preset.url 
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-1 ring-emerald-400' 
-                            : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-300'
-                        }`}
-                      >
-                        <img 
-                          src={preset.url} 
-                          alt={preset.label} 
-                          className="w-4 h-4 rounded-full object-cover"
-                        />
-                        <span>{preset.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {/* Nome Completo e Apelido */}

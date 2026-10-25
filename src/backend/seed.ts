@@ -232,7 +232,7 @@ export async function runDatabaseSeed(): Promise<void> {
       numero: '10',
       propostas: 'Foco na renovação de EPIs acústicos, melhoria de ventilação no galpão 02 e combate ao assédio.',
       totalVotos: 48,
-      fotoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80'
+      fotoUrl: null
     },
     {
       id: 'cand-2',
@@ -243,7 +243,7 @@ export async function runDatabaseSeed(): Promise<void> {
       numero: '22',
       propostas: 'Revisão periódica de bloqueios de energia LOTO e inspeção quinzenal de escadas.',
       totalVotos: 39,
-      fotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80'
+      fotoUrl: null
     },
     {
       id: 'cand-3',
@@ -254,7 +254,7 @@ export async function runDatabaseSeed(): Promise<void> {
       numero: '15',
       propostas: 'Adequação ergonômica nos postos de etiquetagem e pausas ativas na expedição.',
       totalVotos: 31,
-      fotoUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80'
+      fotoUrl: null
     }
   ];
 

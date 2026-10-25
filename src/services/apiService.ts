@@ -139,10 +139,16 @@ export const ApiService = {
     };
   },
 
-  async uploadPhotoToMinio(imageBase64: string, filename?: string, mimeType?: string): Promise<{ success: boolean; avatarUrl: string; message: string }> {
+  async uploadPhotoToMinio(
+    imageBase64: string,
+    filename?: string,
+    mimeType?: string,
+    folder: 'usuarios' | 'colaboradores' | 'empresas' = 'usuarios',
+    entityId?: string
+  ): Promise<{ success: boolean; url: string; avatarUrl: string; logoUrl: string; fotoUrl: string; message: string }> {
     return this.request('/api/upload/photo', {
       method: 'POST',
-      body: JSON.stringify({ imageBase64, filename, mimeType })
+      body: JSON.stringify({ imageBase64, filename, mimeType, folder, entityId })
     });
   },
 
