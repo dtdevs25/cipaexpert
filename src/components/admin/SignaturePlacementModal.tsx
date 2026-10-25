@@ -60,7 +60,7 @@ export const SignaturePlacementModal: React.FC<SignaturePlacementModalProps> = (
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-black text-emerald-950 leading-tight">
-                Posicionamento de Assinaturas (Estilo DocuSign & D4Sign)
+                Posicionamento de Assinaturas
               </h3>
               <p className="text-xs text-slate-600 font-mono truncate max-w-md">
                 {envelope.title} · {envelope.companyName}

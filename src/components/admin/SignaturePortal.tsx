@@ -217,22 +217,22 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight leading-tight">
-              Portal de Assinaturas Digitais (Estilo DocuSign & D4Sign)
+              Assinaturas Digitais
             </h2>
             <p className="text-xs text-slate-600 font-mono">
-              Envio de envelopes por e-mail, rastreamento de signatários e trilha de auditoria legal
+              Gestão de envelopes, signatários e trilha de auditoria
             </p>
           </div>
         </div>
 
-        {/* Botão Principal: Novo Envelope */}
+        {/* Botão Principal: + Envelope */}
         <button
           type="button"
           onClick={() => setIsNewEnvelopeModalOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
+          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Novo Envelope / Enviar Documento</span>
+          <span>+ Envelope</span>
         </button>
       </div>
 
@@ -321,242 +321,256 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
         </div>
       </div>
 
-      {/* 4. Lista de Envelopes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 4. Tabela de Envelopes (Clean e Direto ao Ponto) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {filteredEnvelopes.length === 0 ? (
-          <div className="col-span-full bg-white p-12 rounded-3xl border border-dashed border-slate-300 text-center space-y-3">
-            <PenTool className="w-10 h-10 text-slate-300 mx-auto" />
-            <h4 className="text-sm font-bold text-slate-700">Nenhum envelope encontrado com os filtros aplicados</h4>
+          <div className="p-12 text-center space-y-3">
+            <PenTool className="w-9 h-9 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-700">Nenhum envelope encontrado</h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Crie um novo envelope ou alterne os filtros acima para visualizar os documentos em processo de assinatura.
+              Crie um novo envelope ou alterne os filtros acima para visualizar os documentos.
             </p>
             <button
               type="button"
               onClick={() => setIsNewEnvelopeModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs uppercase shadow-sm cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm cursor-pointer"
             >
-              Criar Novo Envelope
+              + Envelope
             </button>
           </div>
         ) : (
-          filteredEnvelopes.map((env) => {
-            const isCompleted = env.status === 'concluido';
-            const totalSigners = env.signers.length;
-            const signedCount = env.signers.filter(s => s.status === 'assinado').length;
-            const percent = totalSigners > 0 ? Math.round((signedCount / totalSigners) * 100) : 0;
-            const isExpanded = expandedEnvelopeId === env.id;
-            
-            // Verifica o próximo da fila para assinar
-            const nextPendingSigner = env.signers.find(s => s.status === 'pendente');
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">Documento</th>
+                  <th className="py-3 px-3">Origem & Fluxo</th>
+                  <th className="py-3 px-4">Signatários</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredEnvelopes.map((env) => {
+                  const isCompleted = env.status === 'concluido';
+                  const totalSigners = env.signers.length;
+                  const signedCount = env.signers.filter(s => s.status === 'assinado').length;
+                  const percent = totalSigners > 0 ? Math.round((signedCount / totalSigners) * 100) : 0;
+                  const isExpanded = expandedEnvelopeId === env.id;
+                  const nextPendingSigner = env.signers.find(s => s.status === 'pendente');
 
-            return (
-              <div
-                key={env.id}
-                className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group border border-slate-200"
-              >
-                {/* Header Padronizado com Gradiente Verde */}
-                <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                      <FileText className="w-4 h-4 text-emerald-700" />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-[10px] uppercase font-mono font-bold text-emerald-950 block truncate">
-                        {env.category} {env.normativeCode ? `· ${env.normativeCode}` : ''}
-                      </span>
-                    </div>
-                  </div>
+                  return (
+                    <React.Fragment key={env.id}>
+                      <tr className="hover:bg-slate-50/70 transition-colors">
+                        
+                        {/* 1. Documento */}
+                        <td className="py-3.5 px-4 align-top">
+                          <div className="font-extrabold text-slate-900 text-xs hover:text-emerald-800 transition-colors cursor-pointer" onClick={() => handleViewDocument(env)}>
+                            {env.title}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                            {env.category} {env.normativeCode ? `· ${env.normativeCode}` : ''}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            Criado em: {env.createdAt}
+                          </div>
+                        </td>
 
-                  {isCompleted ? (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 shrink-0">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 100% Homologado
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 shrink-0">
-                      <Clock className="w-3 h-3 text-amber-600" /> {signedCount}/{totalSigners} Assinados
-                    </span>
-                  )}
-                </div>
+                        {/* 2. Origem & Fluxo */}
+                        <td className="py-3.5 px-3 align-top">
+                          <div className="space-y-1">
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">
+                              {env.sourceType === 'sistema' ? 'Sistema CIPA' : 'Arquivo Externo'}
+                            </span>
+                            <span className="block text-[10px] text-slate-500 font-medium">
+                              {env.sendSequence === 'sequencial' ? 'Sequencial (1 a 1)' : 'Simultâneo'}
+                            </span>
+                          </div>
+                        </td>
 
-                {/* Conteúdo do Card */}
-                <div className="p-4 sm:p-5 space-y-4 flex-1 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    {/* Título Principal */}
-                    <div>
-                      <h3 className="text-base font-extrabold text-slate-900 leading-snug">
-                        {env.title}
-                      </h3>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1">
-                        <span>Origem: <strong>{env.sourceType === 'sistema' ? 'Nativo CIPA Expert' : 'Arquivo Externo'}</strong></span>
-                        <span>•</span>
-                        <span>Fluxo: <strong>{env.sendSequence === 'sequencial' ? 'Sequencial (1 a 1)' : 'Simultâneo'}</strong></span>
-                      </div>
-                    </div>
+                        {/* 3. Signatários & Progresso */}
+                        <td className="py-3.5 px-4 align-top">
+                          <div className="space-y-1.5 min-w-[150px]">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-700 font-mono">
+                                {signedCount} de {totalSigners} assinados
+                              </span>
+                              <span className="text-[10px] font-mono font-bold text-emerald-800">
+                                {percent}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedEnvelopeId(isExpanded ? null : env.id)}
+                              className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 cursor-pointer pt-0.5"
+                            >
+                              <span>{isExpanded ? 'Ocultar signatários' : 'Ver signatários'}</span>
+                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
+                          </div>
+                        </td>
 
-                    {/* Barra de Progresso de Assinaturas */}
-                    <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5 text-emerald-600" />
-                          Controle de Signatários
-                        </span>
-                        <span className="font-bold font-mono text-emerald-800">
-                          {signedCount} de {totalSigners} ({percent}%)
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 transition-all duration-500 rounded-full"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
+                        {/* 4. Status */}
+                        <td className="py-3.5 px-3 align-top">
+                          {isCompleted ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase tracking-wider">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Homologado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-[10px] uppercase tracking-wider">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              Pendente
+                            </span>
+                          )}
+                        </td>
 
-                    {/* Lista Rápida / Expansível de Signatários */}
-                    <div className="space-y-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedEnvelopeId(isExpanded ? null : env.id)}
-                        className="w-full flex items-center justify-between text-[11px] font-bold text-slate-600 hover:text-slate-900 py-1 cursor-pointer"
-                      >
-                        <span>Ver lista de signatários ({totalSigners})</span>
-                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </button>
+                        {/* 5. Ações (Nomes pequenos e diretos) */}
+                        <td className="py-3.5 px-4 align-top text-right">
+                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                            
+                            {/* Assinar */}
+                            {!isCompleted && nextPendingSigner && (
+                              <button
+                                type="button"
+                                onClick={() => setSigningTarget({ envelope: env, signer: nextPendingSigner })}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                title={`Assinar como ${nextPendingSigner.name}`}
+                              >
+                                <FileCheck className="w-3 h-3" />
+                                <span>Assinar</span>
+                              </button>
+                            )}
 
+                            {/* Reenviar */}
+                            {!isCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => handleResendInvitation(env.id)}
+                                className="px-2.5 py-1 rounded-lg text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 font-medium text-xs transition-colors cursor-pointer"
+                                title="Reenviar e-mails para pendentes"
+                              >
+                                <span>Reenviar</span>
+                              </button>
+                            )}
+
+                            {/* Posições */}
+                            <button
+                              type="button"
+                              onClick={() => setViewingPlacementEnvelope(env)}
+                              className="px-2.5 py-1 rounded-lg text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 font-medium text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Posicionamento de Assinaturas"
+                            >
+                              <MapPin className="w-3 h-3 text-emerald-600" />
+                              <span>Posições</span>
+                            </button>
+
+                            {/* Ver */}
+                            <button
+                              type="button"
+                              onClick={() => handleViewDocument(env)}
+                              className="px-2.5 py-1 rounded-lg text-slate-700 hover:text-blue-800 bg-slate-100 hover:bg-blue-50 border border-slate-200 font-medium text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Visualizar Documento"
+                            >
+                              <Eye className="w-3 h-3 text-blue-600" />
+                              <span>Ver</span>
+                            </button>
+
+                            {/* Histórico */}
+                            <button
+                              type="button"
+                              onClick={() => setViewingAuditEnvelope(env)}
+                              className="px-2.5 py-1 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Trilha de Auditoria & Hashes"
+                            >
+                              <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                              <span>Histórico</span>
+                            </button>
+
+                            {/* Excluir */}
+                            <button
+                              type="button"
+                              onClick={() => setEnvelopeToDelete(env)}
+                              className="p-1 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                              title="Excluir Envelope"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            </button>
+
+                          </div>
+                        </td>
+
+                      </tr>
+
+                      {/* Linha Expansível: Detalhes dos Signatários */}
                       {isExpanded && (
-                        <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden animate-in fade-in duration-150">
-                          {env.signers.map((s, idx) => {
-                            const isSignerSigned = s.status === 'assinado';
-                            const isSignerWaiting = s.status === 'aguardando_turno';
+                        <tr className="bg-slate-50/80">
+                          <td colSpan={5} className="py-3 px-6 border-y border-slate-200/80">
+                            <div className="space-y-2">
+                              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                                Signatários do Envelope ({totalSigners})
+                              </span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {env.signers.map((s, idx) => {
+                                  const isSignerSigned = s.status === 'assinado';
+                                  const isSignerWaiting = s.status === 'aguardando_turno';
 
-                            return (
-                              <div key={s.id} className="p-2.5 bg-white flex items-center justify-between gap-2 text-xs">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">
-                                      {idx + 1}
-                                    </span>
-                                    <strong className="text-slate-900 truncate">{s.name}</strong>
-                                    <span className="text-[10px] text-slate-500 font-mono truncate">({s.role})</span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 block truncate pl-5">{s.email}</span>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  {isSignerSigned ? (
-                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                      {s.signedAt ? s.signedAt.split(' ')[0] : 'Assinado'}
-                                    </span>
-                                  ) : isSignerWaiting ? (
-                                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                      Aguardando Turno
-                                    </span>
-                                  ) : (
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                        Pendente
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleResendInvitation(env.id, s.id)}
-                                        className="p-1 text-slate-500 hover:text-emerald-700 rounded hover:bg-emerald-50 transition-colors cursor-pointer"
-                                        title="Reenviar e-mail de cobrança para este signatário"
-                                      >
-                                        <Mail className="w-3.5 h-3.5" />
-                                      </button>
+                                  return (
+                                    <div key={s.id} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs">
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-slate-900 truncate">{idx + 1}. {s.name}</p>
+                                        <p className="text-[10px] text-slate-500 font-mono truncate">{s.email}</p>
+                                        <p className="text-[10px] text-emerald-700 font-medium">{s.role}</p>
+                                      </div>
+                                      <div className="shrink-0">
+                                        {isSignerSigned ? (
+                                          <span className="px-2 py-0.5 rounded text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Assinado
+                                          </span>
+                                        ) : isSignerWaiting ? (
+                                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold text-slate-500 bg-slate-100">
+                                            Aguardando
+                                          </span>
+                                        ) : (
+                                          <div className="flex items-center gap-1">
+                                            <span className="px-2 py-0.5 rounded text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                              Pendente
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleResendInvitation(env.id, s.id)}
+                                              className="p-1 text-slate-400 hover:text-emerald-700 rounded hover:bg-emerald-50 cursor-pointer"
+                                              title="Reenviar e-mail"
+                                            >
+                                              <Mail className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          })}
-                        </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Barra de Ações do Envelope */}
-                  <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 mt-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* Botão Assinar Agora se houver pendente */}
-                      {!isCompleted && nextPendingSigner && (
-                        <button
-                          type="button"
-                          onClick={() => setSigningTarget({ envelope: env, signer: nextPendingSigner })}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
-                          title={`Assinar como ${nextPendingSigner.name}`}
-                        >
-                          <FileCheck className="w-3.5 h-3.5" />
-                          <span>Assinar na Tela</span>
-                        </button>
-                      )}
-
-                      {/* Reenviar E-mail para Todos os Pendentes */}
-                      {!isCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => handleResendInvitation(env.id)}
-                          className="px-2.5 py-1.5 rounded-xl text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                          title="Reenviar e-mail de notificação para todos os signatários pendentes"
-                        >
-                          <Send className="w-3 h-3 text-emerald-600" />
-                          <span>Reenviar E-mails</span>
-                        </button>
-                      )}
-
-                      {/* Posicionamento de Assinaturas (Estilo DocuSign / D4Sign) */}
-                      <button
-                        type="button"
-                        onClick={() => setViewingPlacementEnvelope(env)}
-                        className="px-2.5 py-1.5 rounded-xl text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                        title="Definir ou visualizar o local exato onde as assinaturas aparecem no documento"
-                      >
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Locais de Assinatura</span>
-                      </button>
-
-                      {/* Visualizar Documento */}
-                      <button
-                        type="button"
-                        onClick={() => handleViewDocument(env)}
-                        className="px-2.5 py-1.5 rounded-xl text-slate-700 hover:text-blue-800 bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                        title="Visualizar documento na íntegra"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Visualizar</span>
-                      </button>
-
-                      {/* Histórico Legal & Hashes */}
-                      <button
-                        type="button"
-                        onClick={() => setViewingAuditEnvelope(env)}
-                        className="px-2.5 py-1.5 rounded-xl text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                        title="Ver trilha de auditoria e hashes criptográficas legais"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Histórico & Hashes</span>
-                      </button>
-                    </div>
-
-                    {/* Botão Excluir Padronizado */}
-                    <button
-                      type="button"
-                      onClick={() => setEnvelopeToDelete(env)}
-                      className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
-                      title="Excluir Envelope"
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-600" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* MODAL 1: NOVO ENVELOPE (ESTILO DOCUSIGN / D4SIGN) */}
+      {/* MODAL 1: NOVO ENVELOPE */}
       <NewEnvelopeModal
         isOpen={isNewEnvelopeModalOpen}
         onClose={() => setIsNewEnvelopeModalOpen(false)}

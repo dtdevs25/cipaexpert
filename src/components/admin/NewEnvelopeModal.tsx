@@ -244,12 +244,12 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
-                Novo Envelope de Assinaturas Digitais (Estilo DocuSign & D4Sign)
+                Novo Envelope
               </h3>
               <p className="text-[11px] text-slate-600 font-mono">
-                {currentStep === 1 && 'Etapa 1 de 3: Seleção e integração de documentos'}
-                {currentStep === 2 && 'Etapa 2 de 3: Definição dos signatários e ordem de envio'}
-                {currentStep === 3 && 'Etapa 3 de 3: Posicionamento visual das assinaturas no documento'}
+                {currentStep === 1 && 'Etapa 1 de 3: Seleção do documento'}
+                {currentStep === 2 && 'Etapa 2 de 3: Signatários e ordem de assinatura'}
+                {currentStep === 3 && 'Etapa 3 de 3: Posicionamento das assinaturas'}
               </p>
             </div>
           </div>
@@ -261,8 +261,8 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
           </button>
         </div>
 
-        {/* Stepper Wizard Bar (Padrão DocuSign) */}
-        <div className="px-5 sm:px-6 py-2.5 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between text-xs shrink-0">
+        {/* Stepper Wizard Bar */}
+        <div className="px-5 sm:px-6 py-2 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between text-xs shrink-0">
           <div className="flex items-center gap-2 w-full max-w-lg">
             
             {/* Step 1 */}
@@ -296,7 +296,7 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               }`}>
                 2
               </span>
-              <span>Signatários & Envio</span>
+              <span>Signatários</span>
             </button>
 
             <span className="text-slate-300">/</span>
@@ -314,10 +314,7 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               }`}>
                 3
               </span>
-              <span className="flex items-center gap-1">
-                <span>Posicionar Assinaturas</span>
-                <span className="bg-emerald-100 text-emerald-800 text-[9px] px-1.5 py-0.2 rounded font-mono">D4Sign</span>
-              </span>
+              <span>Posicionar</span>
             </button>
 
           </div>
@@ -689,9 +686,9 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              <span>Avançar para Signatários</span>
+              <span>Avançar</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
@@ -701,9 +698,9 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               type="button"
               onClick={handleProceedToPlacement}
               disabled={signers.length === 0}
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              <span>Avançar para Posicionar Assinaturas</span>
+              <span>Avançar</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
@@ -713,10 +710,10 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               type="button"
               onClick={handleSubmitEnvelope}
               disabled={isSubmitting || signers.length === 0}
-              className="flex items-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Disparando Convites...' : 'Disparar Envelope para Assinaturas'}</span>
+              <span>{isSubmitting ? 'Enviando...' : 'Enviar'}</span>
             </button>
           )}
 

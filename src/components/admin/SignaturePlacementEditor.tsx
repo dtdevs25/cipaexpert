@@ -304,10 +304,10 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
           {/* Tarja Lateral Criptográfica Mock */}
           <div className="absolute left-2 top-8 bottom-8 flex flex-col justify-between items-center text-[8px] font-mono text-slate-300 pointer-events-none select-none">
             <span className="[writing-mode:vertical-lr] rotate-180 tracking-widest uppercase">
-              ÁREA DE POSICIONAMENTO DIGITAL · PADRÃO DOCUSIGN / D4SIGN · MP 2.200-2/2001
+              ÁREA DE POSICIONAMENTO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020
             </span>
             <span className="[writing-mode:vertical-lr] rotate-180 text-emerald-600 font-bold">
-              CIPA EXPERT DOC-SIGN
+              CIPA EXPERT
             </span>
           </div>
 
