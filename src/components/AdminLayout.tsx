@@ -324,8 +324,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         
         {/* Seletor de Empresa/Unidade em Operação:
-            Apenas nas telas operacionais dos módulos (não no Dashboard nem em Cadastros Gerais) */}
-        {activeTab !== 'dashboard' && activeTab !== 'cadastros' && (
+            Disponível no Dashboard e nos Módulos Operacionais */}
+        {activeTab !== 'cadastros' && (
           <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 xl:px-10 py-2.5 flex items-center justify-between text-xs w-full">
             <div className="flex items-center gap-3">
               {isMaster ? (
@@ -363,12 +363,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     onChange={(e) => setSelectedUnitId(e.target.value)}
                     className="font-medium text-slate-700 bg-transparent border-b border-slate-200 focus:outline-none cursor-pointer py-0.5"
                   >
+                    <option value="todas">Todas as Unidades (Visão Consolidada)</option>
                     {(activeCompany.units || []).map((u) => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 ) : (
-                  <span>{activeUnit?.name}</span>
+                  <span className="font-semibold text-slate-700">{activeUnit?.name}</span>
                 )}
               </div>
             </div>
@@ -384,6 +385,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               currentUser={currentUser}
               companies={companies}
               activeCompany={activeCompany}
+              selectedUnitId={selectedUnitId}
+              onSelectUnitId={setSelectedUnitId}
+              selectedCompanyId={selectedCompanyId}
+              onSelectCompanyId={setSelectedCompanyId}
               onNavigateTab={setActiveTab}
               onOpenSignatureModal={onOpenSignatureModal}
               signedAtas={signedAtas}
