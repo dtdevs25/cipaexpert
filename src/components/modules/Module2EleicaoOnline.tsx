@@ -134,7 +134,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
     <div className="w-full space-y-8 animate-in fade-in duration-150">
       
       {/* Module Top Bar: Verde Mais Vibrante e Compacto */}
-      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 w-full">
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 w-full">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
             <Vote className="w-4 h-4 text-white" />
@@ -165,7 +165,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
         
         {/* Total Votes */}
         <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between border border-slate-200">
-          <div className="bg-emerald-50/80 px-4 py-3 border-b border-emerald-200/70 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-4 py-3 border-b border-emerald-200/80 flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
               <Users className="w-4 h-4 text-emerald-700" />
               <span>Total de Votos</span>
@@ -186,7 +186,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
 
         {/* Quorum Status */}
         <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between border border-slate-200">
-          <div className="bg-emerald-50/80 px-4 py-3 border-b border-emerald-200/70 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-4 py-3 border-b border-emerald-200/80 flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-700" />
               <span>Quórum Legal (NR-5)</span>
@@ -223,7 +223,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
 
         {/* Top Candidate */}
         <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between border border-slate-200">
-          <div className="bg-emerald-50/80 px-4 py-3 border-b border-emerald-200/70 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-4 py-3 border-b border-emerald-200/80 flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
               <Award className="w-4 h-4 text-emerald-700" />
               <span>Líder da Apuração</span>
@@ -244,7 +244,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
 
         {/* Security / Immutability */}
         <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between border border-slate-200">
-          <div className="bg-emerald-50/80 px-4 py-3 border-b border-emerald-200/70 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-4 py-3 border-b border-emerald-200/80 flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-700" />
               <span>Auditoria Digital</span>
@@ -271,7 +271,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
         
         {/* Left: Voting Booth Simulator (5 cols) */}
         <div className="lg:col-span-5 bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-slate-200">
-          <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
             <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
               <Fingerprint className="w-4 h-4 text-emerald-700" />
               <span>Cabine de Votação do Colaborador</span>
@@ -425,7 +425,7 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
         <div className="lg:col-span-7 space-y-6">
           
           <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col border border-slate-200">
-            <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900">
                 Classificação Oficial dos Candidatos (NR-5)
               </h3>

@@ -108,7 +108,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
     <div className="w-full space-y-6 animate-in fade-in duration-150">
       
       {/* Header com estilo verde mais vibrante e compacto */}
-      <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs w-full">
+      <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl shadow-xs w-full">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
             <PenTool className="w-4 h-4 text-white" />
@@ -163,7 +163,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
               className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group"
             >
               {/* Header na cor verde claro idêntico ao dashboard */}
-              <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+              <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                     <FileText className="w-4 h-4 text-emerald-700" />

@@ -454,7 +454,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {/* 1. CARD DO TÍTULO: CABEÇALHO VERDE MAIS VIBRANTE E COMPACTO                */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex items-center justify-between gap-3 w-full">
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl shadow-xs flex items-center justify-between gap-3 w-full">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
             {activeTab === 'empresas' && <Building2 className="w-4 h-4 text-white" />}
@@ -619,8 +619,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   key={company.id}
                   className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group"
                 >
-                  {/* Header na cor verde claro idêntico ao dashboard */}
-                  <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+                  {/* Header na cor verde idêntico ao dashboard */}
+                  <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
                     <div className="flex items-center gap-2.5 min-w-0">
                       {company.logoUrl ? (
                         <img
@@ -723,7 +723,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               <div className="overflow-x-auto w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-emerald-50/80 border-b border-emerald-200/80 text-emerald-950 font-bold text-[11px] uppercase tracking-wider">
+                    <tr className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 border-b border-emerald-200/80 text-emerald-950 font-bold text-[11px] uppercase tracking-wider">
                       <th className="py-3.5 px-4">Empresa & Logo</th>
                       <th className="py-3.5 px-4">CNPJ</th>
                       <th className="py-3.5 px-4">CNAE Principal</th>
@@ -820,8 +820,8 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                   key={item.filial.id}
                   className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group"
                 >
-                  {/* Header na cor verde claro idêntico ao dashboard */}
-                  <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+                  {/* Header na cor verde idêntico ao dashboard */}
+                  <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                         <MapPin className="w-4 h-4 text-emerald-700" />
@@ -906,7 +906,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
               <div className="overflow-x-auto w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-emerald-50/80 border-b border-emerald-200/80 text-emerald-950 font-bold text-[11px] uppercase tracking-wider">
+                    <tr className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 border-b border-emerald-200/80 text-emerald-950 font-bold text-[11px] uppercase tracking-wider">
                       <th className="py-3.5 px-4">Filial / Unidade</th>
                       <th className="py-3.5 px-4">Empresa Vinculada</th>
                       <th className="py-3.5 px-4">Cidade / UF</th>
@@ -974,7 +974,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {/* ========================================================================= */}
       {activeTab === 'usuarios' && (
         <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden w-full">
-          <div className="p-4 sm:p-5 border-b border-emerald-200/80 bg-emerald-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="p-4 sm:p-5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-700" />
               Usuários e Níveis de Acesso
@@ -1086,7 +1086,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {isNewFilialModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-emerald-700" />
                 Cadastrar Nova Filial / Estabelecimento
@@ -1221,7 +1221,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {editingFilial && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-600" />
                 Editar Dados da Filial
@@ -1345,7 +1345,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {viewingFilial && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-emerald-700" />
                 Ficha da Filial
@@ -1385,7 +1385,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {isNewCompanyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-emerald-700" />
                 Cadastrar Empresa Cliente
@@ -1586,7 +1586,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {viewingCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-emerald-700" />
                 Ficha Cadastral da Empresa
@@ -1685,7 +1685,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {editingCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-600" />
                 Editar Dados da Empresa
@@ -1881,7 +1881,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {viewingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[85vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-3 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between shrink-0">
+            <div className="px-5 py-3 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-700" />
                 Ficha do Usuário
@@ -1968,7 +1968,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[85vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-3 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between shrink-0">
+            <div className="px-5 py-3 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-amber-600" />
                 Editar Usuário
@@ -2118,7 +2118,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       {isNewUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md max-h-[85vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-3 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between shrink-0">
+            <div className="px-5 py-3 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-700" />
                 Cadastrar Usuário

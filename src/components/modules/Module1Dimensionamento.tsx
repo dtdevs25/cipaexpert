@@ -621,7 +621,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     <div className="w-full space-y-6 animate-in fade-in duration-150">
       
       {/* 1. Header Bar Verde Mais Vibrante e Compacto */}
-      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex items-center justify-between gap-3 w-full">
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl shadow-xs flex items-center justify-between gap-3 w-full">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
             <Calculator className="w-4 h-4 text-white" />
@@ -735,7 +735,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           {/* PASSO 1: CADASTRO / IMPORTAÇÃO / EDIÇÃO DE COLABORADORES */}
           {stepDimensionamento === 1 && (
             <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden">
-              <div className="bg-emerald-50/80 px-5 py-4 border-b border-emerald-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-4 border-b border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Users className="w-4 h-4 text-emerald-700" />
@@ -1100,7 +1100,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           
           {/* CONFIGURAÇÃO DA DATA DA CIPA */}
           <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden">
-            <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-emerald-700" />
                 <span>Situação da CIPA na Unidade</span>
@@ -1157,7 +1157,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
           {/* TABELA DE ETAPAS DO CALENDÁRIO COM TICADOS E APENAS 1 BOTÃO DE AÇÃO */}
           <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden">
-            <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-emerald-700" />
                 <h3 className="text-sm font-extrabold text-slate-900">
@@ -1577,7 +1577,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
             
             {/* Header */}
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
                   <Send className="w-4 h-4" />
@@ -1821,7 +1821,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       {isNewEmployeeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                   <UserCheck className="w-4 h-4 text-emerald-700" />
@@ -2062,7 +2062,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       {isBatchImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
-            <div className="px-6 py-4 border-b border-emerald-200/80 bg-emerald-50/80 flex items-center justify-between shrink-0">
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
               <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
                 <span>Importação em Lote de Colaboradores</span>

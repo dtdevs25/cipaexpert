@@ -272,7 +272,7 @@ export const Module3GestaoCIPA: React.FC<Module3GestaoCIPAProps> = ({
     <div className="w-full space-y-8 animate-in fade-in duration-150">
       
       {/* Module Top Bar: Verde Mais Vibrante e Compacto */}
-      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl border border-emerald-300 shadow-xs flex items-center justify-between gap-3 w-full">
+      <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 py-2.5 px-4 sm:px-5 rounded-xl shadow-xs flex items-center justify-between gap-3 w-full">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
             <ClipboardList className="w-4 h-4 text-white" />
@@ -405,7 +405,7 @@ export const Module3GestaoCIPA: React.FC<Module3GestaoCIPAProps> = ({
                   className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col justify-between group"
                 >
                   {/* Header na cor verde claro idêntico ao dashboard */}
-                  <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
                         <FileText className="w-4 h-4 text-emerald-700" />
@@ -477,7 +477,7 @@ export const Module3GestaoCIPA: React.FC<Module3GestaoCIPAProps> = ({
       {activeSubTab === 'calendario' && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col">
-            <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-sm font-extrabold text-slate-900">
                 Calendário Anual de Reuniões Obrigatórias da CIPA
               </h3>
@@ -631,7 +631,7 @@ export const Module3GestaoCIPA: React.FC<Module3GestaoCIPAProps> = ({
                 className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group"
               >
                 {/* Header na cor verde claro idêntico ao dashboard */}
-                <div className="bg-emerald-50/80 px-5 py-3.5 border-b border-emerald-200/70 flex items-center justify-between gap-2">
+                <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-xs font-black uppercase tracking-wider text-emerald-950 truncate">
                       {plano.categoria === 'prevencao_assedio'
