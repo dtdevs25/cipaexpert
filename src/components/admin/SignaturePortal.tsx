@@ -503,13 +503,13 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               </span>
                             </button>
 
-                            {/* Reenviar (Se houver pendentes) */}
+                            {/* Reenviar (Se houver pendentes - Reenvia apenas para quem ainda não assinou) */}
                             {!isCompleted && (
                               <button
                                 type="button"
                                 onClick={() => handleResendInvitation(env.id)}
                                 className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-600 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                title="Reenviar e-mails para pendentes"
+                                title="Reenviar e-mail de lembrete (apenas para signatários pendentes)"
                               >
                                 <Send className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-slate-500 group-hover:text-emerald-600" />
                                 <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
@@ -518,18 +518,20 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               </button>
                             )}
 
-                            {/* Posições */}
-                            <button
-                              type="button"
-                              onClick={() => setViewingPlacementEnvelope(env)}
-                              className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                              title="Posicionamento de Assinaturas"
-                            >
-                              <MapPin className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
-                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                Posições
-                              </span>
-                            </button>
+                            {/* Posições (Aparece APENAS se ninguém ainda tiver assinado) */}
+                            {signedCount === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setViewingPlacementEnvelope(env)}
+                                className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                title="Posicionamento de Assinaturas (Disponível antes do primeiro signatário assinar)"
+                              >
+                                <MapPin className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                  Posições
+                                </span>
+                              </button>
+                            )}
 
                             {/* Histórico */}
                             <button
@@ -587,7 +589,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                                         <p className="text-[10px] text-slate-500 truncate">{signer.email}</p>
                                         <span className="text-[9px] text-slate-400 font-mono">{signer.role}</span>
                                       </div>
-                                      <div className="text-right shrink-0">
+                                      <div className="text-right shrink-0 flex flex-col items-end gap-1">
                                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider block ${
                                           isSigned 
                                             ? 'bg-emerald-100 text-emerald-800' 
@@ -595,10 +597,24 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                                         }`}>
                                           {isSigned ? 'Assinado' : 'Pendente'}
                                         </span>
-                                        {signer.signedAt && (
-                                          <span className="text-[9px] text-slate-400 font-mono block mt-0.5">
+                                        {isSigned && signer.signedAt && (
+                                          <span className="text-[9px] text-slate-400 font-mono block">
                                             {new Date(signer.signedAt).toLocaleDateString('pt-BR')}
                                           </span>
+                                        )}
+                                        {!isSigned && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleResendInvitation(env.id, signer.id);
+                                            }}
+                                            className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold inline-flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                                            title={`Reenviar e-mail de lembrete para ${signer.name}`}
+                                          >
+                                            <Send className="w-2.5 h-2.5 text-emerald-700" />
+                                            <span>Reenviar</span>
+                                          </button>
                                         )}
                                       </div>
                                     </div>

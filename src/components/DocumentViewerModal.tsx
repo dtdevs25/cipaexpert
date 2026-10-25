@@ -128,17 +128,22 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
         {/* Modal Printable Content Area with Cryptographic Margin */}
         <div ref={contentRef} className="relative p-8 sm:p-12 overflow-y-auto space-y-6 text-slate-800 bg-white font-sans text-sm leading-relaxed">
           
-          {/* Dados de Criptografia no Canto Superior Esquerdo da Página (Mínimo Regulamentar MP 2.200-2/2001) */}
-          <div className="text-left font-mono text-[8.5px] text-slate-500 leading-tight space-y-0.5 select-none pb-2 border-b border-slate-100">
-            <p className="font-bold text-emerald-800">
-              AUTENTICAÇÃO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020
-            </p>
-            <p className="text-slate-600 truncate max-w-md">
-              SHA-256: {signatureHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
-            </p>
-            <p className="text-slate-500">
-              Carimbo Temporal: {signatureDate || new Date().toLocaleString('pt-BR')} (Horário de Brasília)
-            </p>
+          {/* Dados de Criptografia no Canto Superior Esquerdo da Página (Linha Única - Mínimo Regulamentar MP 2.200-2/2001) */}
+          <div className="flex items-center justify-between text-left font-mono text-[8.5px] text-slate-500 select-none pb-2 border-b border-slate-100 gap-2">
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="font-bold text-emerald-800 shrink-0">Autenticação Digital MP 2.200-2/01</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-600 truncate">
+                SHA-256: {signatureHash ? `${signatureHash.slice(0, 20)}...` : 'e3b0c44298fc1c149afb...'}
+              </span>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-500 shrink-0">
+                {signatureDate || new Date().toLocaleString('pt-BR')}
+              </span>
+            </div>
+            <span className="text-[8px] font-mono text-slate-400 shrink-0 hidden sm:inline">
+              Fé Pública Digital
+            </span>
           </div>
 
           {/* Institutional Header */}

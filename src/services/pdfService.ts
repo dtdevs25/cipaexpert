@@ -6,6 +6,7 @@ export class PdfService {
    * Gera e faz o download de um único PDF contendo:
    * 1. O documento original com os dados normativos e chancelas
    * 2. O Certificado de Autenticidade e Trilha de Assinaturas Digitais com fé pública
+   * Em todas as páginas é aplicada uma linha única de autenticação criptográfica válida pela legislação.
    */
   static downloadEnvelopePdf(envelope: SignatureEnvelope): void {
     const doc = new jsPDF({
@@ -19,47 +20,35 @@ export class PdfService {
     const margin = 18;
     const contentWidth = pageWidth - margin * 2;
 
-    const hashDoc = envelope.finalSignatureHash || envelope.rootHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    const hashDoc = envelope.finalHash || envelope.documentHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
     const timestampDoc = envelope.updatedAt || envelope.createdAt || new Date().toLocaleString('pt-BR');
 
     // =========================================================================
     // PÁGINA 1: DOCUMENTO ORIGINAL FORMATADO
     // =========================================================================
-    
-    // 1. Dados de Criptografia no Canto Superior Esquerdo (Mínimo Necessário Regulamentar)
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(5, 122, 85); // Emerald
-    doc.text('AUTENTICAÇÃO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020', margin, 12);
-    
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(90, 100, 110);
-    doc.text(`SHA-256: ${hashDoc.slice(0, 32)}...`, margin, 15.5);
-    doc.text(`Carimbo Temporal: ${timestampDoc} (Horário de Brasília)`, margin, 19);
 
-    // 2. Cabeçalho Institucional
+    // Cabeçalho Institucional
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(100, 110, 120);
-    doc.text('REPÚBLICA FEDERATIVA DO BRASIL · MINISTÉRIO DO TRABALHO E EMPREGO', pageWidth / 2, 28, { align: 'center' });
+    doc.text('REPÚBLICA FEDERATIVA DO BRASIL · MINISTÉRIO DO TRABALHO E EMPREGO', pageWidth / 2, 22, { align: 'center' });
 
     doc.setFontSize(13);
     doc.setTextColor(15, 23, 42); // Slate-900
-    doc.text(envelope.title.toUpperCase(), pageWidth / 2, 35, { align: 'center' });
+    doc.text(envelope.title.toUpperCase(), pageWidth / 2, 29, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(70, 80, 90);
-    doc.text(`Empresa: ${envelope.companyName}   |   CNPJ: ${envelope.cnpj}   |   Norma: ${envelope.normativeCode || 'NR-5'}`, pageWidth / 2, 41, { align: 'center' });
+    doc.text(`Empresa: ${envelope.companyName}   |   CNPJ: ${envelope.cnpj}   |   Norma: ${envelope.normativeCode || 'NR-5'}`, pageWidth / 2, 35, { align: 'center' });
 
     // Linha divisória sutil
     doc.setDrawColor(200, 210, 220);
     doc.setLineWidth(0.3);
-    doc.line(margin, 45, pageWidth - margin, 45);
+    doc.line(margin, 39, pageWidth - margin, 39);
 
-    // 3. Conteúdo do Documento (Parágrafos)
-    let currentY = 53;
+    // Conteúdo do Documento (Parágrafos)
+    let currentY = 47;
     doc.setFont('times', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(30, 41, 59);
@@ -74,7 +63,7 @@ export class PdfService {
       currentY += lines.length * 5 + 3.5;
     });
 
-    // 4. Assinaturas Coletadas no Documento (Sem linhas nem caixas)
+    // Assinaturas Coletadas no Documento (Sem linhas nem caixas)
     const signedSigners = envelope.signers.filter(s => s.status === 'assinado');
     if (signedSigners.length > 0) {
       if (currentY + 40 > pageHeight - 20) {
@@ -99,8 +88,8 @@ export class PdfService {
         // Se tem imagem da assinatura desenhada em dataUrl
         if (s.signatureDataUrl && s.signatureDataUrl.startsWith('data:image')) {
           try {
-            doc.addImage(s.signatureDataUrl, 'PNG', margin, currentY, 40, 12);
-            currentY += 13;
+            doc.addImage(s.signatureDataUrl, 'PNG', margin, currentY, 38, 11);
+            currentY += 12;
           } catch {
             doc.setFont('times', 'italic');
             doc.setFontSize(11);
@@ -133,23 +122,23 @@ export class PdfService {
 
     // Topo do Certificado
     doc.setFillColor(245, 248, 250);
-    doc.rect(margin, 15, contentWidth, 22, 'F');
+    doc.rect(margin, 18, contentWidth, 22, 'F');
     doc.setDrawColor(16, 185, 129); // Emerald
     doc.setLineWidth(0.8);
-    doc.line(margin, 15, margin + contentWidth, 15);
+    doc.line(margin, 18, margin + contentWidth, 18);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(6, 78, 59); // Dark green
-    doc.text('CERTIFICADO DE CONFORMIDADE E VALIDAÇÃO DIGITAL', margin + 4, 23);
+    doc.text('CERTIFICADO DE CONFORMIDADE E VALIDAÇÃO DIGITAL', margin + 4, 26);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(71, 85, 105);
-    doc.text('Em conformidade integral com a MP nº 2.200-2/2001 e com a Lei Federal nº 14.063/2020.', margin + 4, 29);
-    doc.text(`Identificador do Envelope: ${envelope.id}   |   Hash Raiz: ${hashDoc.slice(0, 20)}...`, margin + 4, 33);
+    doc.text('Em conformidade integral com a MP nº 2.200-2/2001 e com a Lei Federal nº 14.063/2020.', margin + 4, 31.5);
+    doc.text(`Identificador do Envelope: ${envelope.id}   |   Hash Raiz: ${hashDoc.slice(0, 20)}...`, margin + 4, 35.5);
 
-    let certY = 45;
+    let certY = 47;
 
     // Resumo dos Metadados Legais
     doc.setFont('helvetica', 'bold');
@@ -181,10 +170,10 @@ export class PdfService {
       const isSigned = signer.status === 'assinado';
       
       doc.setFillColor(isSigned ? 240 : 250, isSigned ? 253 : 250, isSigned ? 244 : 250);
-      doc.rect(margin, certY, contentWidth, 24, 'F');
+      doc.rect(margin, certY, contentWidth, 23, 'F');
       doc.setDrawColor(isSigned ? 167 : 226, isSigned ? 243 : 232, isSigned ? 208 : 240);
       doc.setLineWidth(0.2);
-      doc.rect(margin, certY, contentWidth, 24, 'S');
+      doc.rect(margin, certY, contentWidth, 23, 'S');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
@@ -204,7 +193,7 @@ export class PdfService {
         doc.text('Aguardando assinatura do signatário', margin + 3, certY + 17.5);
       }
 
-      certY += 27;
+      certY += 26;
     });
 
     // Rodapé de Fé Pública
@@ -224,6 +213,28 @@ export class PdfService {
     doc.setTextColor(100, 116, 139);
     doc.text('As assinaturas eletrônicas deste documento foram coletadas com validação de IP, timestamp e hash SHA-256.', pageWidth / 2, certY + 4, { align: 'center' });
     doc.text('O documento original e este certificado formam um único instrumento probatório para efeitos de fiscalização e auditoria trabalhista.', pageWidth / 2, certY + 7.5, { align: 'center' });
+
+    // =========================================================================
+    // APLICAÇÃO DO CABEÇALHO CRIPTOGRÁFICO EM LINHA ÚNICA EM TODAS AS PÁGINAS
+    // =========================================================================
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      
+      const authHeaderLine = `Autenticação Digital MP 2.200-2/01 · SHA-256: ${hashDoc.slice(0, 20)}... · ${timestampDoc}`;
+      doc.text(authHeaderLine, margin, 8);
+
+      // Paginação no canto superior direito
+      doc.text(`Pág. ${i}/${totalPages}`, pageWidth - margin, 8, { align: 'right' });
+
+      // Linha divisória sutil
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.line(margin, 10, pageWidth - margin, 10);
+    }
 
     // Salvar arquivo PDF
     const cleanFileName = envelope.title

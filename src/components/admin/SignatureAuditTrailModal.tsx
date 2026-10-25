@@ -175,7 +175,9 @@ export const SignatureAuditTrailModal: React.FC<SignatureAuditTrailModalProps> =
                         </span>
                         <strong className="text-sm font-bold text-slate-900 truncate">{signer.name}</strong>
                         {signer.cpf && (
-                          <span className="text-[11px] font-mono text-slate-500">CPF: {signer.cpf}</span>
+                          <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                            CPF: ***.***.***-** (Protegido LGPD)
+                          </span>
                         )}
                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                           isSigned ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'

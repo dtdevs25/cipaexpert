@@ -547,17 +547,18 @@ export const SignaturePlacementEditor: React.FC<SignaturePlacementEditorProps> =
           }`}
           style={{ minHeight: '800px' }}
         >
-          {/* Dados de Criptografia no Canto Superior Esquerdo da Página (Mínimo Regulamentar MP 2.200-2/2001) */}
-          <div className="text-left font-mono text-[7.5px] text-slate-500 leading-tight space-y-0.5 select-none pb-2 border-b border-slate-100 mb-2">
-            <p className="font-bold text-emerald-800">
-              AUTENTICAÇÃO DIGITAL · MP 2.200-2/2001 · LEI 14.063/2020
-            </p>
-            <p className="text-slate-600 truncate max-w-sm">
-              SHA-256: 4e8f1b92c0a87f54d19b76e210fa...92ca
-            </p>
-            <p className="text-slate-500">
-              Carimbo Temporal: 25/10/2026 14:35:12 BRT (Horário de Brasília)
-            </p>
+          {/* Dados de Criptografia no Canto Superior Esquerdo da Página (Linha Única - Mínimo Regulamentar MP 2.200-2/2001) */}
+          <div className="flex items-center justify-between text-left font-mono text-[7.5px] text-slate-500 select-none pb-2 border-b border-slate-100 mb-2 gap-2">
+            <div className="flex items-center gap-1 truncate">
+              <span className="font-bold text-emerald-800 shrink-0">Autenticação Digital MP 2.200-2/01</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-600 truncate">SHA-256: 4e8f1b92c0a87f54d19b...</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-500 shrink-0">25/10/2026 14:35 BRT</span>
+            </div>
+            <span className="text-[7.5px] font-mono text-slate-400 shrink-0 hidden sm:inline">
+              Fé Pública Digital
+            </span>
           </div>
 
           {/* Cabeçalho Institucional da Folha */}
