@@ -150,7 +150,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     if (isCipeiro) {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'text-emerald-400' },
-        { id: 'assinaturas', label: 'Assinaturas', icon: PenTool, color: 'text-amber-400' },
+        { id: 'assinaturas', label: 'CIPASign', icon: PenTool, color: 'text-amber-400' },
         { id: 'gestao', label: 'Gestão CIPA & Atas', icon: ClipboardList, color: 'text-sky-400' },
         { id: 'lembretes', label: 'Lembretes e Reuniões', icon: CalendarClock, color: 'text-rose-400' }
       ];
@@ -169,7 +169,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       { id: 'dimensionamento', label: 'Módulo 1: Dimensionamento', icon: Calculator, color: 'text-blue-400' },
       { id: 'eleicao', label: 'Módulo 2: Eleição Online', icon: Vote, color: 'text-purple-400' },
       { id: 'gestao', label: 'Módulo 3: Gestão CIPA', icon: ClipboardList, color: 'text-sky-400' },
-      { id: 'assinaturas', label: 'Portal de Assinaturas', icon: PenTool, color: 'text-amber-400' },
+      { id: 'assinaturas', label: 'CIPASign', icon: PenTool, color: 'text-amber-400' },
       { id: 'lembretes', label: 'Lembretes & Alertas', icon: CalendarClock, color: 'text-rose-400' }
     );
 

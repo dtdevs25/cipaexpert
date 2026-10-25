@@ -217,11 +217,8 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight leading-tight">
-              Assinaturas Digitais
+              CIPASign
             </h2>
-            <p className="text-xs text-slate-600 font-mono">
-              Gestão de envelopes, signatários e trilha de auditoria
-            </p>
           </div>
         </div>
 
@@ -440,11 +437,13 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setSigningTarget({ envelope: env, signer: nextPendingSigner })}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                                className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white border border-emerald-600 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                 title={`Assinar como ${nextPendingSigner.name}`}
                               >
-                                <FileCheck className="w-3 h-3" />
-                                <span>Assinar</span>
+                                <FileCheck className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-white" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                  Assinar
+                                </span>
                               </button>
                             )}
 
@@ -453,10 +452,13 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleResendInvitation(env.id)}
-                                className="px-2.5 py-1 rounded-lg text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 font-medium text-xs transition-colors cursor-pointer"
+                                className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-600 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                 title="Reenviar e-mails para pendentes"
                               >
-                                <span>Reenviar</span>
+                                <Send className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-slate-500 group-hover:text-emerald-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                  Reenviar
+                                </span>
                               </button>
                             )}
 
@@ -464,43 +466,52 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
                             <button
                               type="button"
                               onClick={() => setViewingPlacementEnvelope(env)}
-                              className="px-2.5 py-1 rounded-lg text-slate-700 hover:text-emerald-800 bg-slate-100 hover:bg-emerald-50 border border-slate-200 font-medium text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-slate-100 hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Posicionamento de Assinaturas"
                             >
-                              <MapPin className="w-3 h-3 text-emerald-600" />
-                              <span>Posições</span>
+                              <MapPin className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Posições
+                              </span>
                             </button>
 
                             {/* Ver */}
                             <button
                               type="button"
                               onClick={() => handleViewDocument(env)}
-                              className="px-2.5 py-1 rounded-lg text-slate-700 hover:text-blue-800 bg-slate-100 hover:bg-blue-50 border border-slate-200 font-medium text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-20 rounded-xl bg-slate-100 hover:bg-blue-50 active:scale-95 text-slate-700 hover:text-blue-800 border border-slate-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Visualizar Documento"
                             >
-                              <Eye className="w-3 h-3 text-blue-600" />
-                              <span>Ver</span>
+                              <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Ver
+                              </span>
                             </button>
 
                             {/* Histórico */}
                             <button
                               type="button"
                               onClick={() => setViewingAuditEnvelope(env)}
-                              className="px-2.5 py-1 rounded-lg text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-26 rounded-xl bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-800 border border-emerald-200 hover:border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Trilha de Auditoria & Hashes"
                             >
-                              <ShieldCheck className="w-3 h-3 text-emerald-700" />
-                              <span>Histórico</span>
+                              <ShieldCheck className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Histórico
+                              </span>
                             </button>
 
                             {/* Excluir */}
                             <button
                               type="button"
                               onClick={() => setEnvelopeToDelete(env)}
-                              className="p-1 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                              className="group flex items-center h-8 w-8 hover:w-24 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                               title="Excluir Envelope"
                             >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                              <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                Excluir
+                              </span>
                             </button>
 
                           </div>
