@@ -48,6 +48,9 @@ export const SignaturePlacementModal: React.FC<SignaturePlacementModalProps> = (
     }, 800);
   };
 
+  const hasAnySignerSigned = envelope.signers.some(s => s.status === 'assinado');
+  const isLocked = envelope.status === 'concluido' || hasAnySignerSigned;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[94vh]">
@@ -59,9 +62,16 @@ export const SignaturePlacementModal: React.FC<SignaturePlacementModalProps> = (
               <PenTool className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-black text-emerald-950 leading-tight">
-                Posicionamento de Assinaturas
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-emerald-950 leading-tight">
+                  Posicionamento de Assinaturas
+                </h3>
+                {isLocked && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                    Bloqueado (Assinaturas iniciadas)
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-600 font-mono truncate max-w-md">
                 {envelope.title} · {envelope.companyName}
               </p>
@@ -84,10 +94,19 @@ export const SignaturePlacementModal: React.FC<SignaturePlacementModalProps> = (
             companyName={envelope.companyName}
             cnpj={envelope.cnpj}
             normativeCode={envelope.normativeCode}
-            signers={envelope.signers.map(s => ({ name: s.name, email: s.email, role: s.role }))}
+            signers={envelope.signers.map(s => ({
+              name: s.name,
+              email: s.email,
+              role: s.role,
+              signatureType: s.signatureType,
+              signatureDataUrl: s.signatureDataUrl,
+              status: s.status,
+              signedAt: s.signedAt,
+              hash: s.hash
+            }))}
             positions={positions}
             onChangePositions={setPositions}
-            readOnly={envelope.status === 'concluido'}
+            readOnly={isLocked}
           />
         </div>
 
@@ -106,7 +125,7 @@ export const SignaturePlacementModal: React.FC<SignaturePlacementModalProps> = (
               Fechar
             </button>
 
-            {envelope.status !== 'concluido' && (
+            {!isLocked && (
               <button
                 type="button"
                 onClick={handleSave}

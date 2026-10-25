@@ -228,6 +228,10 @@ export default function App() {
           email: s.email,
           role: s.role,
           signedAt: s.signedAt,
+          signatureType: s.signatureType,
+          signatureDataUrl: s.signatureDataUrl,
+          hash: s.hash,
+          status: s.status,
           signatureStyle: s.signatureType === 'padrao_cursiva' ? s.name : (s.status === 'assinado' ? s.name : undefined)
         }));
 

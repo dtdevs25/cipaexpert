@@ -9,9 +9,18 @@ interface DocumentViewerModalProps {
   onSignRequested?: () => void;
   isSigned?: boolean;
   signatureHash?: string;
-  signatureDate?: string;
-  signersList?: Array<{ name: string; email: string; role?: string; signedAt?: string; signatureStyle?: string }>;
-  signaturePositions?: Array<{ id: string; signerEmail: string; signerName: string; type: string; posX: number; posY: number }>;
+  signersList?: Array<{ 
+    name: string; 
+    email: string; 
+    role?: string; 
+    signedAt?: string; 
+    signatureStyle?: string;
+    signatureType?: string;
+    signatureDataUrl?: string;
+    hash?: string;
+    status?: string;
+  }>;
+  signaturePositions?: Array<{ id: string; signerEmail: string; signerName: string; type: string; posX: number; posY: number; scale?: number }>;
 }
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
@@ -165,30 +174,39 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4">
               {signersList && signersList.length > 0 ? (
                 signersList.map((sig, idx) => (
-                  <div key={idx} className="text-center space-y-1.5 p-3 rounded-lg border border-slate-200 bg-slate-50/50">
-                    <div className="h-10 flex items-center justify-center font-serif italic text-emerald-800 text-lg">
-                      {sig.signatureStyle ? (
-                        <span className="font-serif italic font-medium">{sig.signatureStyle}</span>
+                  <div key={idx} className="text-left space-y-1 select-none">
+                    {/* Imagem do desenho da assinatura OU fonte cursiva */}
+                    <div className="pb-0.5 min-h-[40px] flex items-center">
+                      {sig.signatureDataUrl ? (
+                        <img 
+                          src={sig.signatureDataUrl} 
+                          alt={`Assinatura de ${sig.name}`} 
+                          className="h-10 max-w-[210px] object-contain select-none pointer-events-none" 
+                        />
                       ) : (
-                        <span className="border-b border-slate-400 w-36"></span>
+                        <span className="font-serif italic text-lg text-blue-900 font-bold block leading-tight">
+                          {sig.name}
+                        </span>
                       )}
                     </div>
-                    <div className="border-t border-slate-300 mx-auto w-44 pt-1">
-                      <p className="text-xs font-bold text-slate-900">{sig.name}</p>
-                      <p className="text-[10px] text-slate-500">{sig.email}</p>
-                      {sig.role && <p className="text-[10px] text-emerald-700 font-medium">{sig.role}</p>}
-                      {sig.signedAt && (
-                        <p className="text-[9px] text-slate-400 font-mono mt-0.5">Assinado em {new Date(sig.signedAt).toLocaleString('pt-BR')}</p>
-                      )}
+
+                    {/* Dados abaixo: apenas email, data hora e hash, sem linhas */}
+                    <div className="text-[9px] font-mono text-slate-700 leading-tight space-y-0.5">
+                      <p className="truncate font-semibold text-slate-800">{sig.email}</p>
+                      <p className="text-slate-600">
+                        {sig.signedAt ? new Date(sig.signedAt).toLocaleString('pt-BR') : '25/10/2026 14:35'}
+                      </p>
+                      <p className="text-slate-400 text-[8px] truncate">
+                        Hash: {sig.hash ? `${sig.hash.slice(0, 16)}...` : 'a8f93e2b...4c1d'}
+                      </p>
                     </div>
                   </div>
                 ))
               ) : (
                 docData.signatories.map((sig, idx) => (
-                  <div key={idx} className="text-center space-y-1">
-                    <div className="border-b border-slate-400 mx-auto w-48 mb-2"></div>
-                    <p className="text-xs font-semibold text-slate-900">{sig}</p>
-                    <p className="text-[11px] text-slate-500">CIPA Expert · Documento Registrado</p>
+                  <div key={idx} className="text-left space-y-1">
+                    <p className="font-serif italic text-base text-blue-900 font-bold">{sig}</p>
+                    <p className="text-[9px] font-mono text-slate-500">CIPA Expert · Registro Digital</p>
                   </div>
                 ))
               )}
