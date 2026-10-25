@@ -10,22 +10,17 @@ import {
   ArrowUpDown, 
   CheckCircle2, 
   Shield, 
-  Sparkles,
-  Info,
-  Clock,
-  Layers,
-  ArrowRight,
-  ArrowLeft,
-  PenTool,
-  MapPin
+  Info, 
+  ArrowRight, 
+  ArrowLeft, 
+  MapPin,
+  Check
 } from 'lucide-react';
 import { 
   SignatureService, 
-  getAvailableSystemTemplates, 
   SignatureEnvelope,
   SignatureTagPosition
 } from '../../services/signatureService';
-import { generateCipaDocument } from '../../data/documentTemplates';
 import { ApiService } from '../../services/apiService';
 import { SignaturePlacementEditor } from './SignaturePlacementEditor';
 
@@ -50,29 +45,27 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   
-  // Etapa Atual do Wizard (1: Documento, 2: Signatários, 3: Posicionar Assinaturas)
+  // Etapa Atual do Wizard (1: Upload do Documento, 2: Signatários, 3: Posicionar Assinaturas)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  const [sourceType, setSourceType] = useState<'sistema' | 'upload'>('sistema');
-  const [selectedTemplateDocType, setSelectedTemplateDocType] = useState('ata_reuniao');
-  
-  // Dados do Documento
-  const [title, setTitle] = useState('Ata da Reunião Mensal Ordinária da CIPA');
-  const [category, setCategory] = useState('Atas Mensais Obrigatórias');
-  const [normativeCode, setNormativeCode] = useState('NR-5 Item 5.6.1 · Lei 14.457/2022');
+  // Dados do Documento (Apenas Upload)
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('Documento Externo CIPA');
+  const [normativeCode, setNormativeCode] = useState('Gestão Documental CIPA · MP 2.200-2/2001');
   const [documentContent, setDocumentContent] = useState<string[]>([]);
   
   // Upload state
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedFileSize, setUploadedFileSize] = useState<number>(0);
   const [uploadedFileUrl, setUploadedFileUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Sequência e Signatários
   const [sendSequence, setSendSequence] = useState<'todos_juntos' | 'sequencial'>('todos_juntos');
   const [signers, setSigners] = useState<Array<{ name: string; email: string; cpf?: string; role: string }>>([
     { name: 'Carlos Alberto Mendes', email: 'carlos.mendes@empresa.com.br', cpf: '123.456.789-01', role: 'Presidente da CIPA' },
-    { name: 'Mariana Fonseca de Souza', email: 'mariana.fonseca@empresa.com.br', cpf: '987.654.321-09', role: 'Vice-Presidente da CIPA' },
-    { name: 'Fernanda Rocha Lima', email: 'fernanda.rocha@empresa.com.br', cpf: '456.789.123-55', role: 'Secretária da CIPA' }
+    { name: 'Mariana Fonseca de Souza', email: 'mariana.fonseca@empresa.com.br', cpf: '987.654.321-09', role: 'Vice-Presidente da CIPA' }
   ]);
 
   const [newSignerName, setNewSignerName] = useState('');
@@ -84,36 +77,15 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
   // Posições das Assinaturas no Documento (Estilo DocuSign / D4Sign)
   const [signaturePositions, setSignaturePositions] = useState<SignatureTagPosition[]>([]);
 
-  const systemTemplates = getAvailableSystemTemplates();
-
-  // Quando escolhe um template do sistema, preenche automaticamente os dados e signatários sugeridos
-  const handleSelectTemplate = (docType: string) => {
-    setSelectedTemplateDocType(docType);
-    const tmpl = systemTemplates.find(t => t.docType === docType);
-    if (tmpl) {
-      setTitle(tmpl.title);
-      setCategory(tmpl.category);
-      setNormativeCode(tmpl.normativeCode);
-      const generated = generateCipaDocument(docType, companyName, cnpj);
-      setDocumentContent(generated.content);
-
-      // Preenche os signatários sugeridos pelo template
-      const suggestedSigners = tmpl.defaultRoles.map((role, idx) => ({
-        name: idx === 0 ? 'Carlos Alberto Mendes' : idx === 1 ? 'Mariana Fonseca' : `Signatário ${idx + 1}`,
-        email: idx === 0 ? 'carlos.mendes@empresa.com.br' : idx === 1 ? 'mariana.fonseca@empresa.com.br' : `signatario${idx + 1}@empresa.com.br`,
-        role
-      }));
-      setSigners(suggestedSigners);
-    }
-  };
-
   const handleFileUpload = async (file: File) => {
     if (!file) return;
     setIsUploading(true);
     setUploadedFileName(file.name);
-    setTitle(`Documento: ${file.name.replace(/\.[^/.]+$/, '')}`);
-    setCategory('Documento Externo Anexado');
-    setNormativeCode('Gestão Documental CIPA');
+    setUploadedFileSize(file.size);
+    
+    // Sugere o título automaticamente removendo a extensão do arquivo
+    const cleanTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    setTitle(cleanTitle);
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -125,13 +97,43 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
         setUploadedFileUrl(dataUrl);
       }
       setDocumentContent([
-        `Documento oficial enviado para coleta de assinaturas digitais: ${file.name}`,
+        `Documento oficial protocolado: ${file.name}`,
         `Tamanho do arquivo: ${(file.size / 1024).toFixed(1)} KB`,
-        `Este documento possui integridade criptográfica SHA-256 e foi protocolado no CIPA Expert.`
+        `Empresa: ${companyName} · CNPJ: ${cnpj}`,
+        `Documento encaminhado para coleta de assinaturas digitais com integridade criptográfica SHA-256 e conformidade regulamentar conforme MP 2.200-2/2001 e Lei 14.063/2020.`
       ]);
       setIsUploading(false);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFileName('');
+    setUploadedFileSize(0);
+    setUploadedFileUrl('');
+    setTitle('');
+    setDocumentContent([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleAddSigner = (e: React.FormEvent) => {
@@ -150,21 +152,17 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
 
     setNewSignerName('');
     setNewSignerEmail('');
+    setNewSignerRole('Membro da CIPA');
     setNewSignerCpf('');
   };
 
   const handleRemoveSigner = (index: number) => {
-    setSigners(signers.filter((_, i) => i !== index));
-  };
-
-  const handleMoveSigner = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= signers.length) return;
-    const copy = [...signers];
-    const temp = copy[index];
-    copy[index] = copy[targetIndex];
-    copy[targetIndex] = temp;
-    setSigners(copy);
+    const signerToRemove = signers[index];
+    setSigners(signers.filter((_, idx) => idx !== index));
+    // Remove tags do signatário excluído
+    if (signerToRemove) {
+      setSignaturePositions(prev => prev.filter(p => p.signerEmail !== signerToRemove.email));
+    }
   };
 
   // Garante posições default ao avançar para a etapa 3 de posicionamento
@@ -192,6 +190,10 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
   };
 
   const handleSubmitEnvelope = async () => {
+    if (!uploadedFileName) {
+      alert('Faça upload de um documento antes de enviar.');
+      return;
+    }
     if (signers.length === 0) {
       alert('Adicione pelo menos um signatário para o envelope.');
       return;
@@ -201,15 +203,18 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
     try {
       const finalContent = documentContent.length > 0 
         ? documentContent 
-        : generateCipaDocument(selectedTemplateDocType, companyName, cnpj).content;
+        : [
+            `Documento oficial protocolado: ${uploadedFileName}`,
+            `Empresa: ${companyName} · CNPJ: ${cnpj}`,
+            `Documento submetido para coleta de assinaturas digitais conforme MP 2.200-2/2001 e Lei 14.063/2020.`
+          ];
 
       const created = await SignatureService.createEnvelope({
-        title,
-        category,
+        title: title.trim() || uploadedFileName.replace(/\.[^/.]+$/, ''),
+        category: category.trim() || 'Documento Externo CIPA',
         normativeCode,
-        sourceType,
-        docType: sourceType === 'sistema' ? selectedTemplateDocType : undefined,
-        fileName: uploadedFileName || undefined,
+        sourceType: 'upload',
+        fileName: uploadedFileName,
         fileUrl: uploadedFileUrl || undefined,
         content: finalContent,
         companyName,
@@ -240,14 +245,14 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
         <div className="px-5 sm:px-6 py-3.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center ring-1 ring-emerald-200 shadow-2xs">
-              <Send className="w-4 h-4 text-emerald-700" />
+              <Upload className="w-4 h-4 text-emerald-700" />
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
-                Novo Envelope
+                Novo Envelope · Upload de Documento
               </h3>
               <p className="text-[11px] text-slate-600 font-mono">
-                {currentStep === 1 && 'Etapa 1 de 3: Seleção do documento'}
+                {currentStep === 1 && 'Etapa 1 de 3: Upload do documento e dados do envelope'}
                 {currentStep === 2 && 'Etapa 2 de 3: Signatários e ordem de assinatura'}
                 {currentStep === 3 && 'Etapa 3 de 3: Posicionamento das assinaturas'}
               </p>
@@ -278,7 +283,7 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               }`}>
                 1
               </span>
-              <span>Documento</span>
+              <span>Upload Documento</span>
             </button>
 
             <span className="text-slate-300">/</span>
@@ -286,9 +291,12 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
             {/* Step 2 */}
             <button
               type="button"
-              onClick={() => setCurrentStep(2)}
+              onClick={() => {
+                if (uploadedFileName) setCurrentStep(2);
+              }}
+              disabled={!uploadedFileName}
               className={`flex items-center gap-1.5 font-bold transition-all cursor-pointer ${
-                currentStep === 2 ? 'text-emerald-800' : 'text-slate-500 hover:text-slate-800'
+                currentStep === 2 ? 'text-emerald-800' : 'text-slate-500 hover:text-slate-800 disabled:opacity-40'
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
@@ -304,9 +312,12 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
             {/* Step 3 */}
             <button
               type="button"
-              onClick={handleProceedToPlacement}
+              onClick={() => {
+                if (uploadedFileName) handleProceedToPlacement();
+              }}
+              disabled={!uploadedFileName || signers.length === 0}
               className={`flex items-center gap-1.5 font-bold transition-all cursor-pointer ${
-                currentStep === 3 ? 'text-emerald-800' : 'text-slate-500 hover:text-slate-800'
+                currentStep === 3 ? 'text-emerald-800' : 'text-slate-500 hover:text-slate-800 disabled:opacity-40'
               }`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
@@ -328,118 +339,141 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
         <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs flex-1 [scrollbar-width:thin]">
           
           {/* ========================================================================= */}
-          {/* ETAPA 1: DOCUMENTO */}
+          {/* ETAPA 1: UPLOAD DO DOCUMENTO */}
           {/* ========================================================================= */}
           {currentStep === 1 && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                  1. Selecionar Documento a ser Assinado
-                </span>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleFileUpload(e.target.files[0]);
+                  }
+                }}
+                className="hidden"
+              />
 
-                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setSourceType('sistema')}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      sourceType === 'sistema'
-                        ? 'bg-white text-emerald-950 shadow-xs ring-1 ring-slate-200'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Documento do Sistema CIPA</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSourceType('upload')}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      sourceType === 'upload'
-                        ? 'bg-white text-emerald-950 shadow-xs ring-1 ring-slate-200'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Fazer Upload de Arquivo</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* OPÇÃO A: DOCUMENTO NATIVO DO SISTEMA CIPA */}
-              {sourceType === 'sistema' ? (
-                <div className="space-y-3 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-950">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Modelos Oficiais do Sistema CIPA Expert (Sem necessidade de upload)</span>
+              {!uploadedFileName ? (
+                /* ÁREA DE DRAG & DROP / SELEÇÃO */
+                <div 
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-3 ${
+                    isDragOver 
+                      ? 'border-emerald-500 bg-emerald-50/60 scale-[1.01]' 
+                      : 'border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/20 bg-slate-50/50'
+                  }`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center shadow-xs">
+                    <Upload className="w-7 h-7" />
                   </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {systemTemplates.map((t) => (
-                      <button
-                        key={t.docType}
-                        type="button"
-                        onClick={() => handleSelectTemplate(t.docType)}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                          selectedTemplateDocType === t.docType
-                            ? 'bg-white border-emerald-500 shadow-xs ring-2 ring-emerald-200 text-emerald-950'
-                            : 'bg-white/80 border-slate-200 hover:bg-white text-slate-700'
-                        }`}
-                      >
-                        <p className="font-bold text-xs leading-tight mb-1">{t.title}</p>
-                        <p className="text-[11px] text-slate-500 font-mono">{t.category}</p>
-                        <p className="text-[10px] text-emerald-700 mt-1 font-medium">{t.defaultRoles.join(', ')}</p>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="p-3 bg-white rounded-xl border border-emerald-200 text-[11px] text-slate-600 space-y-1">
-                    <div className="font-bold text-slate-800">{title}</div>
-                    <p className="text-slate-500 font-mono">Normativa: {normativeCode}</p>
-                    <p className="text-emerald-700 font-medium">Os signatários e cargos recomendados pela NR-5 serão pré-configurados automaticamente na próxima etapa.</p>
-                  </div>
-                </div>
-              ) : (
-                /* OPÇÃO B: UPLOAD DE ARQUIVOS EXTERNOS */
-                <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                    <Upload className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Upload de Arquivo Externo (PDF, DOCX, TXT ou Imagem)</span>
-                  </div>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        handleFileUpload(e.target.files[0]);
-                      }
-                    }}
-                    className="hidden"
-                  />
-
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/30 rounded-2xl p-6 text-center transition-colors cursor-pointer space-y-2"
-                  >
-                    <Upload className="w-8 h-8 text-slate-400 mx-auto" />
-                    <div className="text-xs font-bold text-slate-800">
-                      {isUploading ? 'Processando e enviando para o MinIO...' : uploadedFileName ? `Arquivo: ${uploadedFileName}` : 'Clique aqui para selecionar seu arquivo'}
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      Formatos aceitos: PDF, DOCX, DOC, TXT, PNG, JPG (Armazenamento seguro MinIO e hash SHA-256)
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">
+                      {isUploading ? 'Processando arquivo...' : 'Arraste o arquivo ou clique para selecionar'}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1 max-w-md">
+                      Formatos aceitos: PDF, DOCX, DOC, TXT, PNG, JPG. O documento receberá integridade criptográfica SHA-256 e conformidade regulamentar.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    className="mt-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all pointer-events-none"
+                  >
+                    Selecionar Arquivo
+                  </button>
+                </div>
+              ) : (
+                /* CARD DE ARQUIVO JÁ ANEXADO */
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-extrabold text-xs text-emerald-950 truncate">
+                            {uploadedFileName}
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full shrink-0">
+                            <Check className="w-3 h-3" /> Pronto
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          {(uploadedFileSize / 1024).toFixed(1)} KB · Armazenamento Seguro MinIO
+                        </p>
+                      </div>
+                    </div>
 
-                  <div className="space-y-2 pt-2">
-                    <label className="text-xs font-bold text-slate-700 block">Título do Envelope</label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Ex: Contrato de Prestação de Serviços SST"
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-all cursor-pointer shadow-2xs"
+                      >
+                        Trocar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                        title="Remover arquivo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CAMPOS DE METADADOS DO ENVELOPE */}
+                  <div className="space-y-3 bg-white p-4 border border-slate-200 rounded-2xl shadow-xs">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 block mb-1">
+                        Título do Documento / Envelope
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Ex: Ata de Reunião CIPA, Contrato SST..."
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium text-slate-800"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          Categoria do Documento
+                        </label>
+                        <select
+                          value={category}
+                          onChange={(e) => setCategory(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium text-slate-800"
+                        >
+                          <option value="Documento Externo CIPA">Documento Externo CIPA</option>
+                          <option value="Atas Mensais Obrigatórias">Atas Mensais Obrigatórias</option>
+                          <option value="Processo Eleitoral">Processo Eleitoral</option>
+                          <option value="Treinamento e Capacitação">Treinamento e Capacitação</option>
+                          <option value="Certificados SST">Certificados SST</option>
+                          <option value="Outros">Outros</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          Referência Normativa / Legal
+                        </label>
+                        <input
+                          type="text"
+                          value={normativeCode}
+                          onChange={(e) => setNormativeCode(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium text-slate-800"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -450,136 +484,99 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
           {/* ETAPA 2: SIGNATÁRIOS & SEQUÊNCIA */}
           {/* ========================================================================= */}
           {currentStep === 2 && (
-            <div className="space-y-5 animate-in fade-in duration-150">
+            <div className="space-y-4 animate-in fade-in duration-150">
               
-              {/* Modo de Envio: Todos ao mesmo tempo ou Sequencial */}
-              <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                  Ordem e Modo de Assinatura
+              {/* Ordem de Envio */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Fluxo e Ordem de Assinatura</span>
                 </span>
-
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setSendSequence('todos_juntos')}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       sendSequence === 'todos_juntos'
-                        ? 'bg-emerald-50/60 border-emerald-500 shadow-xs ring-2 ring-emerald-200 text-emerald-950'
-                        : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                        ? 'bg-white border-emerald-500 shadow-xs ring-2 ring-emerald-200'
+                        : 'bg-white/80 border-slate-200 hover:bg-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2 font-bold text-xs mb-1">
-                      <Users className="w-4 h-4 text-emerald-600" />
-                      <span>Todos ao Mesmo Tempo (Paralelo)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      Dispara e-mail para todos os signatários simultaneamente. Quem assinar primeiro já computa no envelope.
-                    </p>
+                    <p className="font-bold text-xs text-slate-900">Em Paralelo (Todos Juntos)</p>
+                    <p className="text-[11px] text-slate-500">Todos os signatários recebem o documento ao mesmo tempo.</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSendSequence('sequencial')}
-                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       sendSequence === 'sequencial'
-                        ? 'bg-emerald-50/60 border-emerald-500 shadow-xs ring-2 ring-emerald-200 text-emerald-950'
-                        : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+                        ? 'bg-white border-emerald-500 shadow-xs ring-2 ring-emerald-200'
+                        : 'bg-white/80 border-slate-200 hover:bg-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2 font-bold text-xs mb-1">
-                      <Clock className="w-4 h-4 text-emerald-600" />
-                      <span>Sequência de Assinatura (1 a 1)</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500">
-                      O 2º só recebe o convite após o 1º assinar, garantindo estrita hierarquia de validação.
-                    </p>
+                    <p className="font-bold text-xs text-slate-900">Sequencial (Ordem da Lista)</p>
+                    <p className="text-[11px] text-slate-500">O próximo signatário só é notificado após o anterior assinar.</p>
                   </button>
                 </div>
               </div>
 
-              {/* Lista de Signatários Configurados */}
+              {/* Lista Atual de Signatários */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                    Signatários do Envelope ({signers.length})
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Signatários deste Envelope ({signers.length})</span>
                   </span>
-                  <span className="text-[11px] text-slate-500">
-                    {sendSequence === 'sequencial' ? 'Ordem de cima para baixo' : 'Envio simultâneo'}
-                  </span>
+                  <span className="text-[10px] text-slate-400">Arraste para reordenar se for sequencial</span>
                 </div>
 
                 <div className="space-y-2">
-                  {signers.map((s, idx) => (
+                  {signers.map((signer, index) => (
                     <div 
-                      key={idx} 
-                      className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs"
+                      key={index} 
+                      className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs hover:border-slate-300 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0 font-mono">
-                          {idx + 1}º
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-bold font-mono shrink-0">
+                          {index + 1}
                         </span>
-                        <div>
-                          <p className="font-bold text-slate-900 leading-tight">{s.name}</p>
-                          <p className="text-[11px] text-slate-600 font-mono">{s.email}</p>
-                          <p className="text-[10px] text-emerald-700 font-medium">{s.role}</p>
+                        <div className="min-w-0">
+                          <p className="font-bold text-xs text-slate-900 truncate">{signer.name}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{signer.email} · <span className="text-emerald-700 font-semibold">{signer.role}</span></p>
+                          {signer.cpf && <p className="text-[10px] text-slate-400 font-mono">CPF: {signer.cpf}</p>}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        {sendSequence === 'sequencial' && (
-                          <div className="flex flex-col mr-1">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveSigner(idx, 'up')}
-                              disabled={idx === 0}
-                              className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-20 cursor-pointer"
-                              title="Subir na fila"
-                            >
-                              ▲
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveSigner(idx, 'down')}
-                              disabled={idx === signers.length - 1}
-                              className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-20 cursor-pointer"
-                              title="Descer na fila"
-                            >
-                              ▼
-                            </button>
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSigner(idx)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Remover signatário"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSigner(index)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                        title="Remover signatário"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Adicionar Novo Signatário */}
-              <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 space-y-2">
-                <span className="text-xs font-bold text-slate-700 block">
-                  Adicionar Outro Signatário
-                </span>
-                
+              {/* Formulário para Adicionar Novo Signatário */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <span className="text-xs font-bold text-slate-800 block">Adicionar Novo Signatário</span>
                 <form onSubmit={handleAddSigner} className="space-y-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="Nome Completo *"
+                      placeholder="Nome completo do signatário *"
                       value={newSignerName}
                       onChange={(e) => setNewSignerName(e.target.value)}
                       className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                     />
                     <input
                       type="email"
-                      placeholder="E-mail Corporativo *"
+                      placeholder="E-mail corporativo ou pessoal *"
                       value={newSignerEmail}
                       onChange={(e) => setNewSignerEmail(e.target.value)}
                       className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
@@ -588,14 +585,14 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="Função / Cargo (ex: Cipeiro Titular)"
+                      placeholder="Cargo (ex: Presidente da CIPA, Titular Eleito)"
                       value={newSignerRole}
                       onChange={(e) => setNewSignerRole(e.target.value)}
                       className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                     />
                     <input
                       type="text"
-                      placeholder="CPF (opcional)"
+                      placeholder="CPF (Opcional para validação legal)"
                       value={newSignerCpf}
                       onChange={(e) => setNewSignerCpf(e.target.value)}
                       className="px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
@@ -629,7 +626,7 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
                     <span>Onde cada pessoa assina no documento</span>
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    Clique na folha para adicionar a tag do signatário selecionado, ou use o botão rápido de distribuir no rodapé.
+                    Posicione as marcas de assinatura onde cada signatário deve assinar no documento.
                   </p>
                 </div>
 
@@ -640,11 +637,15 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
 
               {/* Editor Visual de Posicionamento */}
               <SignaturePlacementEditor
-                documentTitle={title}
+                documentTitle={title || uploadedFileName}
                 documentContent={
                   documentContent.length > 0 
                     ? documentContent 
-                    : generateCipaDocument(selectedTemplateDocType, companyName, cnpj).content
+                    : [
+                        `Documento oficial protocolado: ${uploadedFileName}`,
+                        `Empresa: ${companyName} · CNPJ: ${cnpj}`,
+                        `Protocolo digital de assinaturas com conformidade legal.`
+                      ]
                 }
                 companyName={companyName}
                 cnpj={cnpj}
@@ -686,9 +687,10 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+              disabled={!uploadedFileName || isUploading}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
-              <span>Avançar</span>
+              <span>{isUploading ? 'Processando...' : 'Avançar'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
@@ -713,7 +715,7 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
               className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Enviando...' : 'Enviar'}</span>
+              <span>{isSubmitting ? 'Enviando...' : 'Enviar Envelope'}</span>
             </button>
           )}
 

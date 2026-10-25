@@ -247,44 +247,89 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
         </button>
       </div>
 
-      {/* 2. Cartões de Métricas e Indicadores de Assinatura */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total de Envelopes</span>
-            <FileText className="w-4 h-4 text-emerald-600" />
+      {/* 2. Cartões de Métricas e Indicadores de Assinatura (Estilo Dashboard) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 w-full">
+        {/* KPI 1: Total de Envelopes */}
+        <div 
+          onClick={() => setFilter('todos')}
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-blue-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Total de Envelopes
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight font-mono group-hover:text-blue-600 transition-colors leading-none block">
+                {totalEnvelopes}
+              </span>
+              <span className="text-xs text-slate-400 block mt-1 font-medium truncate">
+                documentos gerenciados
+              </span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">{totalEnvelopes}</div>
-          <span className="text-[10px] text-slate-400 mt-0.5 block">Documentos gerenciados</span>
+          <FileText className="w-8 h-8 text-blue-600 group-hover:scale-110 group-hover:text-blue-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Assinados (100%)</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        {/* KPI 2: Assinados (100%) */}
+        <div 
+          onClick={() => setFilter('concluidos')}
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-emerald-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Assinados (100%)
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-emerald-950 tracking-tight font-mono group-hover:text-emerald-600 transition-colors leading-none block">
+                {concluidosCount}
+              </span>
+              <span className="text-xs text-emerald-600 block mt-1 font-semibold truncate">
+                homologados com fé pública
+              </span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-emerald-700 font-mono">{concluidosCount}</div>
-          <span className="text-[10px] text-emerald-600 font-semibold mt-0.5 block">Homologados com fé pública</span>
+          <CheckCircle2 className="w-8 h-8 text-emerald-600 group-hover:scale-110 group-hover:text-emerald-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pendentes de Assinatura</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+        {/* KPI 3: Pendentes de Assinatura */}
+        <div 
+          onClick={() => setFilter('pendentes')}
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-amber-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Pendentes
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-amber-950 tracking-tight font-mono group-hover:text-amber-600 transition-colors leading-none block">
+                {pendentesCount}
+              </span>
+              <span className="text-xs text-amber-600 block mt-1 font-semibold truncate">
+                aguardando signatários
+              </span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-amber-600 font-mono">{pendentesCount}</div>
-          <span className="text-[10px] text-amber-700 font-semibold mt-0.5 block">Aguardando signatários</span>
+          <Clock className="w-8 h-8 text-amber-500 group-hover:scale-110 group-hover:text-amber-600 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Progresso de Assinaturas</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        {/* KPI 4: Progresso de Assinaturas */}
+        <div 
+          className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 border-l-[6px] border-l-purple-500 shadow-xs hover:shadow-lg hover:-translate-y-1 hover:border-slate-300 transition-all duration-200 cursor-pointer group flex items-start justify-between gap-3"
+        >
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide block truncate">
+              Taxa de Conclusão
+            </span>
+            <div className="mt-1.5">
+              <span className="text-3xl sm:text-4xl font-black text-purple-950 tracking-tight font-mono group-hover:text-purple-600 transition-colors leading-none block">
+                {globalCompletionRate}%
+              </span>
+              <span className="text-xs text-slate-400 block mt-1 font-medium truncate">
+                {totalSignaturesColetadas} de {totalSignaturesNecessarias} assinaturas
+              </span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-emerald-950 font-mono">{globalCompletionRate}%</div>
-          <span className="text-[10px] text-slate-500 mt-0.5 block">
-            {totalSignaturesColetadas} de {totalSignaturesNecessarias} assinaturas
-          </span>
+          <ShieldCheck className="w-8 h-8 text-purple-600 group-hover:scale-110 group-hover:text-purple-700 transition-all duration-200 shrink-0 mt-0.5" />
         </div>
       </div>
 
