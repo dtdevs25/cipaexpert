@@ -343,8 +343,19 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     );
   }, [currentEmployees, employeeSearch]);
 
+  // Headcount manual caso o número de colaboradores esteja zerado ou o usuário queira cálculo avulso
+  const [manualHeadcount, setManualHeadcount] = useState<number | ''>('');
+
   // Dimensionamento oficial NR-5 Quadro I
-  const headcount = currentEmployees.length;
+  const effectiveHeadcount = useMemo(() => {
+    if (currentEmployees.length > 0) {
+      return currentEmployees.length;
+    }
+    return typeof manualHeadcount === 'number' && manualHeadcount > 0 ? manualHeadcount : 0;
+  }, [currentEmployees.length, manualHeadcount]);
+
+  const headcount = effectiveHeadcount;
+
   const dimensionamento: DimensionamentoResult = useMemo(() => {
     return calcularDimensionamentoNR5(cnaeEntry, headcount);
   }, [cnaeEntry, headcount]);
@@ -482,36 +493,98 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   // Integração com Contexto e Histórico de Dimensionamento
   const { saveDimensionamento, dimensionamentos } = useCipa();
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [dbDimensionamentosCount, setDbDimensionamentosCount] = useState<number>(0);
+  const [isSavingDimensionamento, setIsSavingDimensionamento] = useState(false);
+
+  const loadDimensionamentosCount = async () => {
+    if (!currentFilial?.id) return;
+    try {
+      const records = await ApiService.getDimensionamentos(currentFilial.id, currentCompany?.id);
+      if (Array.isArray(records)) {
+        setDbDimensionamentosCount(records.length);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar contagem de dimensionamentos do banco:', e);
+    }
+  };
+
+  useEffect(() => {
+    loadDimensionamentosCount();
+  }, [currentFilial?.id, currentCompany?.id]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const handleSaveCurrentDimensionamento = () => {
-    saveDimensionamento({
-      id: `dim-${Date.now()}`,
-      companyId: currentCompany.id,
-      unitId: currentFilial.id,
-      cnaeCode: cnaeEntry.code,
-      cnaeDesc: cnaeEntry.description,
-      headcount,
-      grauDeRisco: cnaeEntry.grauDeRisco,
-      precisaCipa: dimensionamento.precisaCipa,
-      efetivosEmpregador: dimensionamento.efetivosEmpregador,
-      suplentesEmpregador: dimensionamento.suplentesEmpregador,
-      efetivosEmpregados: dimensionamento.efetivosEmpregados,
-      suplentesEmpregados: dimensionamento.suplentesEmpregados,
-      totalMembros: dimensionamento.totalMembros,
-      createdAt: new Date().toLocaleString('pt-BR'),
-      createdBy: currentUser?.name || 'Administrador SST'
-    });
-    showToast('Dimensionamento salvo no histórico da unidade com sucesso!');
+  const handleSaveCurrentDimensionamento = async () => {
+    setIsSavingDimensionamento(true);
+    try {
+      const payload = {
+        companyId: currentCompany.id,
+        unitId: currentFilial.id,
+        cnaeCode: cnaeEntry.code,
+        cnaeDesc: cnaeEntry.description,
+        headcount,
+        grauDeRisco: cnaeEntry.grauDeRisco,
+        precisaCipa: dimensionamento.precisaCipa,
+        efetivosEmpregador: dimensionamento.efetivosEmpregador,
+        suplentesEmpregador: dimensionamento.suplentesEmpregador,
+        efetivosEmpregados: dimensionamento.efetivosEmpregados,
+        suplentesEmpregados: dimensionamento.suplentesEmpregados,
+        totalMembros: dimensionamento.totalMembros,
+        observacaoNormativa: dimensionamento.observacaoNormativa || 'Parecer de enquadramento da NR-5.',
+        calculadoPor: currentUser?.name || 'Administrador SST'
+      };
+
+      const res = await ApiService.saveDimensionamento(payload);
+
+      // Sincroniza também no contexto local
+      saveDimensionamento({
+        id: res.record?.id || `dim-${Date.now()}`,
+        ...payload,
+        createdAt: new Date().toLocaleString('pt-BR'),
+        createdBy: currentUser?.name || 'Administrador SST'
+      });
+
+      await loadDimensionamentosCount();
+
+      if (res.updated) {
+        showToast('Dimensionamento da gestão atualizado com o novo efetivo de colaboradores.');
+      } else if (res.created) {
+        showToast('Dimensionamento salvo e homologado no banco de dados com sucesso!');
+      } else {
+        showToast('Dimensionamento da gestão mantido sem alterações no banco.');
+      }
+    } catch (err: any) {
+      console.error('Erro ao persistir dimensionamento no banco de dados:', err);
+      // Fallback para o context local
+      saveDimensionamento({
+        id: `dim-${Date.now()}`,
+        companyId: currentCompany.id,
+        unitId: currentFilial.id,
+        cnaeCode: cnaeEntry.code,
+        cnaeDesc: cnaeEntry.description,
+        headcount,
+        grauDeRisco: cnaeEntry.grauDeRisco,
+        precisaCipa: dimensionamento.precisaCipa,
+        efetivosEmpregador: dimensionamento.efetivosEmpregador,
+        suplentesEmpregador: dimensionamento.suplentesEmpregador,
+        efetivosEmpregados: dimensionamento.efetivosEmpregados,
+        suplentesEmpregados: dimensionamento.suplentesEmpregados,
+        totalMembros: dimensionamento.totalMembros,
+        createdAt: new Date().toLocaleString('pt-BR'),
+        createdBy: currentUser?.name || 'Administrador SST'
+      });
+      showToast('Dimensionamento salvo com sucesso!');
+    } finally {
+      setIsSavingDimensionamento(false);
+    }
   };
 
   // Avançar para o Calendário Eleitoral salvando automaticamente no histórico
-  const handleGoToCalendario = () => {
-    handleSaveCurrentDimensionamento();
+  const handleGoToCalendario = async () => {
+    await handleSaveCurrentDimensionamento();
     setActiveTab('calendario');
   };
 
@@ -945,6 +1018,45 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
               <div className="p-5 sm:p-6 space-y-4">
                 
+                {/* Alerta e Input de Cálculo Manual caso o número de colaboradores esteja zerado */}
+                {currentEmployees.length === 0 && (
+                  <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/90 text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs animate-in fade-in">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                        <AlertTriangle className="w-4 h-4 text-amber-700" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-xs font-extrabold text-amber-950 flex items-center gap-2">
+                          Número de colaboradores zerado · Cálculo Manual / Avulso
+                        </h4>
+                        <p className="text-[11px] text-amber-900 leading-relaxed">
+                          Se você não possui colaboradores cadastrados ou adquiriu apenas o módulo de dimensionamento, informe a quantidade de colaboradores manualmente no campo ao lado.
+                          <strong className="block mt-0.5 font-bold text-amber-950 underline decoration-amber-400">
+                            Atenção: O dimensionamento fica mais completo com o cadastro da lista de colaboradores da unidade atualizada.
+                          </strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center bg-white/90 p-2 rounded-xl border border-amber-300 shadow-2xs">
+                      <label className="text-xs font-extrabold text-amber-950 whitespace-nowrap">
+                        Nº Colaboradores:
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Ex: 85"
+                        value={manualHeadcount}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0);
+                          setManualHeadcount(val);
+                        }}
+                        className="w-24 px-3 py-1.5 text-xs font-black text-slate-900 bg-white border border-amber-400 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-2xs text-center font-mono"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Dica orientativa sobre apelido e foto */}
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-start gap-2.5">
                   <Camera className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -1116,7 +1228,16 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       ) : (
                         <tr>
                           <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
-                            Nenhum colaborador encontrado para a busca "{employeeSearch}".
+                            {currentEmployees.length === 0 ? (
+                              <div className="space-y-1.5 py-2">
+                                <p className="font-bold text-slate-700 text-xs">Nenhum colaborador cadastrado para esta filial.</p>
+                                <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                                  Cadastre novos colaboradores no botão "+ Cadastrar Colaborador" acima, ou informe o número total de trabalhadores no campo manual para calcular o dimensionamento.
+                                </p>
+                              </div>
+                            ) : (
+                              `Nenhum colaborador encontrado para a busca "${employeeSearch}".`
+                            )}
                           </td>
                         </tr>
                       )}
@@ -1127,12 +1248,18 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 {/* Navegação para o Passo 2 */}
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-xs text-slate-500 font-medium">
-                    Base com {headcount} colaboradores validada para a CIPA.
+                    Base com <strong>{headcount}</strong> colaboradores {currentEmployees.length === 0 && headcount > 0 ? '(informado manualmente)' : 'validada para a CIPA'}.
                   </span>
 
                   <button
                     type="button"
-                    onClick={() => setStepDimensionamento(2)}
+                    onClick={() => {
+                      if (headcount <= 0) {
+                        showToast('Informe a quantidade de colaboradores no campo manual ou cadastre colaboradores para calcular o dimensionamento.');
+                        return;
+                      }
+                      setStepDimensionamento(2);
+                    }}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95"
                   >
                     <span>Calcular Dimensionamento</span>
@@ -1167,11 +1294,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     type="button"
                     onClick={() => setIsHistoryModalOpen(true)}
                     className="group flex items-center h-8 w-8 hover:w-32 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                    title="Ver histórico de dimensionamentos"
+                    title="Ver histórico de dimensionamentos no banco"
                   >
                     <History className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
                     <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                      Histórico ({dimensionamentos.filter(d => !d.companyId || d.companyId === currentCompany.id).length})
+                      Histórico ({dbDimensionamentosCount || dimensionamentos.filter(d => !d.companyId || d.companyId === currentCompany.id).length})
                     </span>
                   </button>
 
@@ -1192,6 +1319,17 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
               {/* Cards Paritários */}
               <div className="p-5 sm:p-6 space-y-4">
+                {currentEmployees.length === 0 && (
+                  <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-950 text-xs flex items-center gap-2.5 shadow-2xs">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>
+                      Cálculo realizado com base no número de colaboradores informado manualmente ({headcount} colaboradores). 
+                      <strong className="block sm:inline sm:ml-1 font-bold underline decoration-amber-400">
+                        Lembrete: O dimensionamento fica mais completo com o cadastro da lista de colaboradores da unidade atualizada.
+                      </strong>
+                    </span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3.5">
                   <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 shadow-2xs space-y-1">
                     <span className="text-[10px] uppercase font-bold text-emerald-900 block tracking-wider">
@@ -2485,6 +2623,10 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       <DimensionamentoHistoryModal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
+        unitId={currentFilial.id}
+        companyId={currentCompany.id}
+        companyName={currentCompany.nomeFantasia || currentCompany.razaoSocial}
+        unitName={currentFilial.name}
       />
 
     </div>

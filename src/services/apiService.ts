@@ -338,5 +338,22 @@ export const ApiService = {
     return this.request(`/api/employees/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // 11. Histórico e Registro de Dimensionamentos NR-5 (PostgreSQL Inteligente)
+  async getDimensionamentos(unitId?: string, companyId?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (unitId) params.append('unitId', unitId);
+    if (companyId) params.append('companyId', companyId);
+    const qs = params.toString();
+    return this.request<any[]>(`/api/dimensionamentos${qs ? `?${qs}` : ''}`);
+  },
+
+  async saveDimensionamento(data: any): Promise<{ success: boolean; updated?: boolean; created?: boolean; message: string; record?: any }> {
+    return this.request('/api/dimensionamentos', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   }
 };
+

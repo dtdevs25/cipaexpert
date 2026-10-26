@@ -1,27 +1,82 @@
-import React from 'react';
-import { X, History, Calculator, Calendar, Printer, Building2, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  X, 
+  History, 
+  Calculator, 
+  Calendar, 
+  Printer, 
+  Building2, 
+  ShieldCheck, 
+  Loader2, 
+  RefreshCw, 
+  Database,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import { useCipa } from '../../../context/CipaContext';
 import { SavedDimensionamento } from '../../../services/mockStorage';
+import { ApiService } from '../../../services/apiService';
 
 interface DimensionamentoHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectDimensionamento?: (dim: SavedDimensionamento) => void;
+  onSelectDimensionamento?: (dim: any) => void;
+  unitId?: string;
+  companyId?: string;
+  companyName?: string;
+  unitName?: string;
 }
 
 export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalProps> = ({
   isOpen,
   onClose,
-  onSelectDimensionamento
+  onSelectDimensionamento,
+  unitId,
+  companyId,
+  companyName,
+  unitName
 }) => {
-  const { dimensionamentos, activeCompany, activeUnit } = useCipa();
+  const { dimensionamentos: localDimensionamentos, activeCompany, activeUnit } = useCipa();
+  const [dbRecords, setDbRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const targetCompanyId = companyId || activeCompany.id;
+  const targetUnitId = unitId || activeUnit?.id;
+  const displayCompanyName = companyName || activeCompany.nomeFantasia || activeCompany.razaoSocial;
+
+  // Carregar histórico real do banco de dados PostgreSQL
+  const fetchHistory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await ApiService.getDimensionamentos(targetUnitId, targetCompanyId);
+      if (Array.isArray(data)) {
+        setDbRecords(data);
+      } else {
+        setDbRecords([]);
+      }
+    } catch (err: any) {
+      console.warn('Erro ao carregar histórico do banco:', err);
+      setError('Não foi possível carregar os registros diretamente do banco. Mostrando dados locais.');
+      // Fallback para os dados locais do contexto
+      const fallback = localDimensionamentos.filter(
+        d => (!targetCompanyId || d.companyId === targetCompanyId) &&
+             (!targetUnitId || d.unitId === targetUnitId)
+      );
+      setDbRecords(fallback);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchHistory();
+    }
+  }, [isOpen, targetUnitId, targetCompanyId]);
 
   if (!isOpen) return null;
-
-  // Filtrar pela empresa ativa
-  const companyDimensions = dimensionamentos.filter(
-    d => !d.companyId || d.companyId === activeCompany.id
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -34,37 +89,65 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
               <History className="w-4 h-4 text-emerald-700" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
-                Histórico de Dimensionamentos NR-5
-              </h3>
-              <p className="text-xs text-slate-600">
-                Cálculos e enquadramentos paritários homologados para {activeCompany.nomeFantasia}
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-extrabold text-emerald-950 leading-tight">
+                  Histórico de Dimensionamentos NR-5
+                </h3>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 text-[10px] font-bold">
+                  <Database className="w-3 h-3" />
+                  PostgreSQL
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Cálculos paritários homologados para {displayCompanyName} {unitName ? `· ${unitName}` : ''}
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchHistory}
+              disabled={loading}
+              className="p-1.5 text-slate-500 hover:text-emerald-700 rounded-lg hover:bg-white/60 transition-colors cursor-pointer disabled:opacity-50"
+              title="Atualizar dados do banco"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-5 overflow-y-auto space-y-3.5 flex-1 [scrollbar-width:thin]">
-          {companyDimensions.length === 0 ? (
+          {error && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="text-center py-12 px-4">
+              <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-600">Consultando dimensionamentos no banco de dados...</p>
+            </div>
+          ) : dbRecords.length === 0 ? (
             <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
               <Calculator className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-700">Nenhum dimensionamento salvo ainda</p>
+              <p className="text-sm font-bold text-slate-700">Nenhum dimensionamento homologado para esta filial</p>
               <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                Ao concluir o Passo 2 do cálculo normativo, clique em "Salvar no Histórico" para arquivar o parecer técnico desta unidade.
+                Ao avançar no Passo 2 ou ir para o Calendário Eleitoral, o sistema salva e homologa automaticamente o dimensionamento da gestão no banco de dados.
               </p>
             </div>
           ) : (
-            companyDimensions.map((dim) => (
+            dbRecords.map((dim, idx) => (
               <div 
-                key={dim.id}
+                key={dim.id || idx}
                 className="p-4 rounded-xl border border-slate-200 hover:border-emerald-300 bg-white hover:bg-emerald-50/20 transition-all shadow-2xs space-y-3"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
@@ -76,8 +159,12 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
                       Grau de Risco {dim.grauDeRisco}
                     </span>
                     <span className="text-xs text-slate-400">•</span>
-                    <span className="text-xs text-slate-500 font-medium">
+                    <span className="text-xs text-slate-600 font-bold">
                       {dim.headcount} colaboradores
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      Gestão Vigente
                     </span>
                   </div>
 
@@ -106,10 +193,17 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
                   </div>
                 </div>
 
+                {dim.observacaoNormativa && (
+                  <div className="p-2 rounded-lg bg-slate-50/80 border border-slate-200/60 text-[11px] text-slate-600">
+                    <span className="font-bold text-slate-700">Parecer Normativo NR-5: </span>
+                    {dim.observacaoNormativa}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Calculado por: <strong>{dim.createdBy}</strong></span>
+                    <span>Calculado e homologado por: <strong>{dim.createdBy || dim.calculadoPor || 'Administrador SST'}</strong></span>
                   </div>
 
                   {onSelectDimensionamento && (
@@ -133,7 +227,7 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
         {/* Footer */}
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
           <span className="text-xs text-slate-500">
-            Total de registros: <strong>{companyDimensions.length}</strong>
+            Total de dimensionamentos da gestão: <strong>{dbRecords.length}</strong>
           </span>
           <button
             type="button"

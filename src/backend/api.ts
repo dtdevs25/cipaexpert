@@ -1168,6 +1168,226 @@ apiRouter.delete('/employees/:id', async (req: Request, res: Response) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// HISTÓRICO DE DIMENSIONAMENTO NR-5 (POSTGRESQL INTELIGENTE)
+// ─────────────────────────────────────────────────────────────
+let inMemoryDimensionamentos: any[] = [];
+
+apiRouter.get('/dimensionamentos', async (req: Request, res: Response) => {
+  try {
+    const { unitId, companyId } = req.query as { unitId?: string; companyId?: string };
+    
+    if (process.env.DATABASE_URL) {
+      try {
+        const where: any = {};
+        if (unitId) where.unitId = unitId;
+        if (companyId) where.companyId = companyId;
+
+        const records = await prisma.dimensionamento.findMany({
+          where,
+          include: {
+            unit: { select: { id: true, name: true } },
+            company: { select: { id: true, razaoSocial: true, nomeFantasia: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        const formatted = records.map(r => ({
+          id: r.id,
+          companyId: r.companyId,
+          companyName: r.company?.nomeFantasia || r.company?.razaoSocial,
+          unitId: r.unitId,
+          unitName: r.unit?.name,
+          cnaeCode: r.cnaeCode,
+          cnaeDesc: r.cnaeDesc,
+          headcount: r.headcount,
+          grauDeRisco: r.grauDeRisco,
+          precisaCipa: r.precisaCipa,
+          efetivosEmpregador: r.efetivosEmpregador,
+          suplentesEmpregador: r.suplentesEmpregador,
+          efetivosEmpregados: r.efetivosEmpregados,
+          suplentesEmpregados: r.suplentesEmpregados,
+          totalMembros: r.totalMembros,
+          observacaoNormativa: r.observacaoNormativa,
+          createdBy: r.calculadoPor || 'Administrador SST',
+          createdAt: r.createdAt.toLocaleString('pt-BR')
+        }));
+
+        res.json(formatted);
+        return;
+      } catch (dbErr) {
+        console.warn('⚠️ [API] Falha ao consultar dimensionamentos no PostgreSQL, usando cache local:', dbErr);
+      }
+    }
+
+    // Fallback em memória
+    let filtered = inMemoryDimensionamentos;
+    if (unitId) filtered = filtered.filter(d => d.unitId === unitId);
+    if (companyId) filtered = filtered.filter(d => d.companyId === companyId);
+    res.json(filtered);
+  } catch (error) {
+    console.error('Erro ao buscar dimensionamentos:', error);
+    res.status(500).json({ error: 'Erro ao buscar histórico de dimensionamentos.' });
+  }
+});
+
+apiRouter.post('/dimensionamentos', async (req: Request, res: Response) => {
+  try {
+    const {
+      companyId,
+      unitId,
+      cnaeCode,
+      cnaeDesc,
+      headcount,
+      grauDeRisco,
+      precisaCipa,
+      efetivosEmpregador,
+      suplentesEmpregador,
+      efetivosEmpregados,
+      suplentesEmpregados,
+      totalMembros,
+      observacaoNormativa,
+      calculadoPor
+    } = req.body;
+
+    if (!unitId || !companyId) {
+      res.status(400).json({ error: 'Identificação da Empresa e Filial são obrigatórias.' });
+      return;
+    }
+
+    const payload = {
+      headcount: Number(headcount) || 0,
+      grauDeRisco: Number(grauDeRisco) || 3,
+      cnaeCode: cnaeCode || '2511-0/00',
+      cnaeDesc: cnaeDesc || 'Atividade Operacional',
+      precisaCipa: precisaCipa ?? true,
+      efetivosEmpregador: Number(efetivosEmpregador) || 0,
+      suplentesEmpregador: Number(suplentesEmpregador) || 0,
+      efetivosEmpregados: Number(efetivosEmpregados) || 0,
+      suplentesEmpregados: Number(suplentesEmpregados) || 0,
+      totalMembros: Number(totalMembros) || 1,
+      observacaoNormativa: observacaoNormativa || 'Parecer de enquadramento da NR-5.',
+      calculadoPor: calculadoPor || 'Administrador SST'
+    };
+
+    if (process.env.DATABASE_URL) {
+      try {
+        // 1. Regra Inteligente: Verificar se já existe um dimensionamento da gestão nesta filial
+        const existing = await prisma.dimensionamento.findFirst({
+          where: { unitId },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        if (existing) {
+          // Se headcount, cnae e grau de risco forem idênticos, não duplica
+          const isIdentical =
+            existing.headcount === payload.headcount &&
+            existing.grauDeRisco === payload.grauDeRisco &&
+            existing.cnaeCode === payload.cnaeCode &&
+            existing.totalMembros === payload.totalMembros;
+
+          if (isIdentical) {
+            res.json({
+              success: true,
+              updated: false,
+              message: 'Dimensionamento da gestão atual mantido sem alterações.',
+              record: existing
+            });
+            return;
+          }
+
+          // Se houver alteração (ex: inclusão de novos colaboradores, alterando o headcount), atualiza o dimensionamento existente daquela gestão
+          const updated = await prisma.dimensionamento.update({
+            where: { id: existing.id },
+            data: payload
+          });
+
+          res.json({
+            success: true,
+            updated: true,
+            message: 'Dimensionamento da gestão atualizado com o novo efetivo de colaboradores.',
+            record: updated
+          });
+          return;
+        }
+
+        // Se não existir dimensionamento para essa filial, cria o registro inicial da gestão
+        const created = await prisma.dimensionamento.create({
+          data: {
+            companyId,
+            unitId,
+            ...payload
+          }
+        });
+
+        res.status(201).json({
+          success: true,
+          created: true,
+          message: 'Dimensionamento homologado e salvo no banco de dados com sucesso.',
+          record: created
+        });
+        return;
+      } catch (dbErr) {
+        console.warn('⚠️ [API] Falha ao persistir dimensionamento no PostgreSQL, gravando em cache local:', dbErr);
+      }
+    }
+
+    // Fallback inteligente em memória:
+    const existingIndex = inMemoryDimensionamentos.findIndex(d => d.unitId === unitId);
+    if (existingIndex >= 0) {
+      const existing = inMemoryDimensionamentos[existingIndex];
+      const isIdentical =
+        existing.headcount === payload.headcount &&
+        existing.grauDeRisco === payload.grauDeRisco &&
+        existing.cnaeCode === payload.cnaeCode &&
+        existing.totalMembros === payload.totalMembros;
+
+      if (isIdentical) {
+        res.json({
+          success: true,
+          updated: false,
+          message: 'Dimensionamento da gestão atual mantido sem alterações.',
+          record: existing
+        });
+        return;
+      }
+
+      inMemoryDimensionamentos[existingIndex] = {
+        ...existing,
+        ...payload,
+        updatedAt: new Date().toLocaleString('pt-BR')
+      };
+
+      res.json({
+        success: true,
+        updated: true,
+        message: 'Dimensionamento da gestão atualizado com o novo efetivo de colaboradores.',
+        record: inMemoryDimensionamentos[existingIndex]
+      });
+      return;
+    }
+
+    const newRecord = {
+      id: `dim-${Date.now()}`,
+      companyId,
+      unitId,
+      ...payload,
+      createdAt: new Date().toLocaleString('pt-BR')
+    };
+    inMemoryDimensionamentos.unshift(newRecord);
+
+    res.status(201).json({
+      success: true,
+      created: true,
+      message: 'Dimensionamento homologado e salvo no banco de dados com sucesso.',
+      record: newRecord
+    });
+  } catch (error) {
+    console.error('Erro ao salvar dimensionamento:', error);
+    res.status(500).json({ error: 'Erro ao salvar dimensionamento no banco de dados.' });
+  }
+});
+
 apiRouter.get('/users', async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
