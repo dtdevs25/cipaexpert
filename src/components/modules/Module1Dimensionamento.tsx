@@ -509,6 +509,12 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     showToast('Dimensionamento salvo no histórico da unidade com sucesso!');
   };
 
+  // Avançar para o Calendário Eleitoral salvando automaticamente no histórico
+  const handleGoToCalendario = () => {
+    handleSaveCurrentDimensionamento();
+    setActiveTab('calendario');
+  };
+
   // Abrir Modal de Criação Limpo
   const handleOpenCreateModal = () => {
     setEditingEmployee(null);
@@ -1140,52 +1146,46 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           {/* PASSO 2: DIMENSIONAMENTO HOMOLOGADO */}
           {stepDimensionamento === 2 && (
             <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden">
-              <div className="bg-emerald-600 text-white p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-xs">
-                    <Check className="w-7 h-7 text-white stroke-[3]" />
+              <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-4 border-b border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
                   </div>
                   <div>
-                    <span className="text-xs uppercase tracking-wider font-extrabold text-emerald-200 block">
-                      Passo 2 · Homologação Normativa Concluída
-                    </span>
-                    <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                      Dimensionamento Paritário Homologado ✓
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      Passo 2 - Dimensionamento Paritário Normativo
                     </h3>
-                    <p className="text-xs text-emerald-100 mt-0.5">
+                    <p className="text-[11px] text-slate-500 font-medium">
                       {headcount} colaboradores · Grau de Risco {cnaeEntry.grauDeRisco} ({cnaeEntry.code})
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
-                  <button
-                    type="button"
-                    onClick={handleSaveCurrentDimensionamento}
-                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer flex items-center gap-2 active:scale-95 border border-emerald-400/40"
-                    title="Salvar este parecer técnico no histórico local da unidade"
-                  >
-                    <BookmarkCheck className="w-4 h-4" />
-                    <span>Salvar no Histórico</span>
-                  </button>
-
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Botão Histórico - Recolhível / Expansível no hover */}
                   <button
                     type="button"
                     onClick={() => setIsHistoryModalOpen(true)}
-                    className="px-4 py-2.5 rounded-xl bg-slate-900/40 hover:bg-slate-900/60 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-xs cursor-pointer flex items-center gap-2 active:scale-95 border border-white/20"
-                    title="Ver dimensionamentos salvos anteriormente"
+                    className="group flex items-center h-8 w-8 hover:w-32 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                    title="Ver histórico de dimensionamentos"
                   >
-                    <History className="w-4 h-4 text-emerald-300" />
-                    <span>Histórico ({dimensionamentos.filter(d => !d.companyId || d.companyId === currentCompany.id).length})</span>
+                    <History className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                      Histórico ({dimensionamentos.filter(d => !d.companyId || d.companyId === currentCompany.id).length})
+                    </span>
                   </button>
 
+                  {/* Botão Calendário Eleitoral - Fechado por padrão, abre ao passar o mouse, e salva automaticamente */}
                   <button
                     type="button"
-                    onClick={() => setActiveTab('calendario')}
-                    className="px-5 py-2.5 rounded-xl bg-white text-emerald-950 font-black text-xs uppercase tracking-wider hover:bg-emerald-50 transition-all shadow-sm cursor-pointer flex items-center gap-2 active:scale-95"
+                    onClick={handleGoToCalendario}
+                    className="group flex items-center h-8 w-8 hover:w-44 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                    title="Ir para o Calendário Eleitoral (Salva automaticamente)"
                   >
-                    <span>Ir para o Calendário Eleitoral</span>
-                    <ArrowRight className="w-4 h-4 text-emerald-800" />
+                    <CalendarDays className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-white" />
+                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                      Calendário Eleitoral
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1254,27 +1254,6 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <strong className="text-slate-900 font-bold block">Parecer Conclusivo NR-5:</strong>
                     <span>{dimensionamento.observacaoNormativa}</span>
                   </div>
-                </div>
-
-                {/* Navegação */}
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setStepDimensionamento(1)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition-all"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Voltar: Colaboradores</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('calendario')}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95"
-                  >
-                    <span>Ir para o Calendário Eleitoral</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             </div>

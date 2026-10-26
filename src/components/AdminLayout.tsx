@@ -397,13 +397,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                     )}
                     {(activeCompany.units || []).map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} {u.cnpj ? `(CNPJ: ${u.cnpj})` : ''}
+                        {u.name}
                       </option>
                     ))}
                   </select>
                 ) : (
                   <span className="font-semibold text-emerald-950 bg-white/90 px-2.5 py-1 rounded-lg border border-emerald-300/80 shadow-2xs">
-                    {activeUnit?.name} {activeUnit?.cnpj ? `(CNPJ: ${activeUnit.cnpj})` : ''}
+                    {activeUnit?.name}
                   </span>
                 )}
               </div>
