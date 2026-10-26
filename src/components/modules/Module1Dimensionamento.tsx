@@ -875,7 +875,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                   </div>
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900">
-                      Passo 1 · Gestão de Colaboradores ({currentFilial.name})
+                      Passo 1 - Cadastro de Colaboradores
                     </h3>
                     <p className="text-[11px] text-slate-500">
                       Base efetiva de votantes e possíveis candidatos à CIPA
@@ -884,29 +884,37 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Botão Baixar Modelo - Expansível com ícone e texto no hover */}
                   <button
                     type="button"
                     onClick={handleDownloadTemplate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold cursor-pointer transition-all shadow-2xs"
-                    title="Baixar planilha modelo CSV"
+                    className="group flex items-center h-8 w-8 hover:w-36 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                    title="Baixar planilha modelo com cabeçalho"
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Baixar Modelo (.csv)</span>
+                    <Download className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-600" />
+                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                      Baixar Modelo
+                    </span>
                   </button>
 
+                  {/* Botão Subir Planilha - Expansível com ícone e texto no hover */}
                   <button
                     type="button"
                     onClick={() => setIsBatchImportModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold cursor-pointer transition-all shadow-2xs"
+                    className="group flex items-center h-8 w-8 hover:w-38 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                    title="Subir / Importar Planilha de Colaboradores"
                   >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Importar Planilha</span>
+                    <Upload className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                      Subir Planilha
+                    </span>
                   </button>
 
+                  {/* Botão Cadastrar Colaborador - Mantém fixo */}
                   <button
                     type="button"
                     onClick={handleOpenCreateModal}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer transition-all shadow-2xs"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer transition-all shadow-2xs shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Cadastrar Colaborador</span>
@@ -1106,7 +1114,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     onClick={() => setStepDimensionamento(2)}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95"
                   >
-                    <span>Calcular Dimensionamento Oficial NR-5</span>
+                    <span>Calcular Dimensionamento</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
