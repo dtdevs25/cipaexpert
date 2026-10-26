@@ -223,25 +223,40 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   // Abas simples
   const [activeTab, setActiveTab] = useState<'dimensionamento' | 'calendario'>('dimensionamento');
 
+  // Empresas reais do banco de dados PostgreSQL
+  const [dbCompanies, setDbCompanies] = useState<Company[]>(companies);
+
+  useEffect(() => {
+    ApiService.getCompanies()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setDbCompanies(data);
+        }
+      })
+      .catch((err) => console.log('Aviso ao sincronizar empresas no módulo:', err));
+  }, []);
+
+  const effectiveCompanies = (dbCompanies && dbCompanies.length > 0) ? dbCompanies : companies;
+
   // Passo a passo na aba Dimensionamento: 1 = Colaboradores, 2 = Dimensionamento NR-5
   const [stepDimensionamento, setStepDimensionamento] = useState<1 | 2>(1);
 
   // Empresas liberadas (respeita permissões: se Master vê todas; se outro papel, vê apenas as liberadas)
   const availableCompanies = useMemo(() => {
-    if (!currentUser || currentUser.role === 'master') return companies;
+    if (!currentUser || currentUser.role === 'master') return effectiveCompanies;
     const allowedCompanyIds = (currentUser.companyIds && currentUser.companyIds.length > 0)
       ? currentUser.companyIds
       : (currentUser.companyId ? [currentUser.companyId] : []);
-    if (allowedCompanyIds.length === 0) return companies;
-    return companies.filter(c => allowedCompanyIds.includes(c.id));
-  }, [companies, currentUser]);
+    if (allowedCompanyIds.length === 0) return effectiveCompanies;
+    return effectiveCompanies.filter(c => allowedCompanyIds.includes(c.id));
+  }, [effectiveCompanies, currentUser]);
 
   // Sincronização da Empresa: usa a selecionada globalmente ou a primeira liberada
-  const activeCompanyId = propSelectedCompanyId || availableCompanies[0]?.id || companies[0]?.id || '';
+  const activeCompanyId = propSelectedCompanyId || availableCompanies[0]?.id || effectiveCompanies[0]?.id || '';
   
   const currentCompany = useMemo(() => {
-    return availableCompanies.find(c => c.id === activeCompanyId) || availableCompanies[0] || companies[0];
-  }, [availableCompanies, companies, activeCompanyId]);
+    return availableCompanies.find(c => c.id === activeCompanyId) || availableCompanies[0] || effectiveCompanies[0];
+  }, [availableCompanies, effectiveCompanies, activeCompanyId]);
 
   // Filiais liberadas para o usuário nesta empresa
   const availableUnits = useMemo(() => {
@@ -767,7 +782,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               Dimensionamento + Processo Eleitoral
             </h2>
             <p className="text-[11px] text-emerald-800 font-mono font-medium">
-              CNAE {cnaeEntry.code} · CNPJ: {currentCompany.cnpj}
+              CNAE {cnaeEntry.code} · CNPJ: {currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '-'}
             </p>
           </div>
         </div>

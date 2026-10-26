@@ -1,11 +1,31 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, Plugin } from 'vite';
+import express from 'express';
+import { apiRouter } from './src/backend/api';
+
+const createApiPlugin = (): Plugin => {
+  const apiApp = express();
+  apiApp.use(express.json({ limit: '10mb' }));
+  apiApp.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  apiApp.use(apiRouter);
+
+  return {
+    name: 'vite-plugin-express-api',
+    configureServer(server) {
+      server.middlewares.use('/api', apiApp);
+    }
+  };
+};
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(), 
+      tailwindcss(),
+      createApiPlugin()
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -20,3 +40,4 @@ export default defineConfig(() => {
     },
   };
 });
+

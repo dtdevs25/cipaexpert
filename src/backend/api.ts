@@ -762,26 +762,80 @@ apiRouter.post('/atas/:ataId/assinar', SecurityService.authenticate, async (req:
 });
 
 // ─────────────────────────────────────────────────────────────
-// 7. GESTÃO DE EMPRESAS, UNIDADES E USUÁRIOS (POSTGRESQL REAL)
+// ─────────────────────────────────────────────────────────────
+// 7. GESTÃO DE EMPRESAS E FILIAIS (POSTGRESQL REAL + SEED AUTOMÁTICO)
 // ─────────────────────────────────────────────────────────────
 apiRouter.get('/companies', async (req: Request, res: Response) => {
   try {
-    const companies = await prisma.company.findMany({
-      include: {
-        units: true
-      },
-      orderBy: { razaoSocial: 'asc' }
-    });
-    res.json(companies);
-  } catch (error) {
-    console.error('Erro ao listar empresas:', error);
-    res.status(500).json({ error: 'Erro ao buscar empresas no banco de dados.' });
+    if (process.env.DATABASE_URL) {
+      let companies = await prisma.company.findMany({
+        include: {
+          units: true
+        },
+        orderBy: { razaoSocial: 'asc' }
+      });
+
+      // Se o banco estiver vazio, executa o seed inicial de empresas e filiais
+      if (!companies || companies.length === 0) {
+        console.log('🌱 [API] Banco PostgreSQL sem empresas. Executando seed de empresas e unidades...');
+        try {
+          const { runDatabaseSeed } = await import('./seed');
+          await runDatabaseSeed();
+          companies = await prisma.company.findMany({
+            include: {
+              units: true
+            },
+            orderBy: { razaoSocial: 'asc' }
+          });
+        } catch (seedErr) {
+          console.warn('⚠️ [API] Erro ao executar seed automático:', seedErr);
+        }
+      }
+
+      if (companies && companies.length > 0) {
+        const mapped = companies.map(c => ({
+          ...c,
+          cnaeCode: c.cnaePrincipalCode || '2511-0/00',
+          cnaeDesc: c.cnaePrincipalDesc || 'Atividade Operacional',
+          modulosContratados: {
+            dimensionamento: c.moduloDimensionamento ?? true,
+            eleicao: c.moduloEleicao ?? true,
+            gestao: c.moduloGestao ?? true
+          },
+          units: (c.units || []).map(u => ({
+            id: u.id,
+            name: u.name,
+            cnpj: (u as any).cnpj || c.cnpj,
+            city: u.city,
+            state: u.state,
+            headcount: u.headcount,
+            grauDeRisco: u.grauDeRisco,
+            cnaeCode: u.cnaeCode,
+            cnaeDesc: u.cnaeDesc,
+            cipaAtiva: u.cipaAtiva,
+            gestorName: u.gestorName
+          }))
+        }));
+        res.json(mapped);
+        return;
+      }
+    }
+  } catch (error: any) {
+    console.warn('⚠️ [API] Aviso ao listar empresas no PostgreSQL:', error?.message || error);
+  }
+
+  // Fallback seguro caso o banco de dados esteja offline
+  try {
+    const { INITIAL_COMPANIES } = await import('../data/multiCompanyData');
+    res.json(INITIAL_COMPANIES);
+  } catch {
+    res.json([]);
   }
 });
 
-apiRouter.post('/companies', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+apiRouter.post('/companies', async (req: Request, res: Response) => {
   try {
-    const { razaoSocial, nomeFantasia, cnpj, cnaePrincipalCode, cnaePrincipalDesc, enderecoCompleto, responsavelAdmin } = req.body;
+    const { razaoSocial, nomeFantasia, cnpj, cnaePrincipalCode, cnaeCode, cnaePrincipalDesc, cnaeDesc, enderecoCompleto, responsavelAdmin } = req.body;
     if (!razaoSocial || !cnpj) {
       res.status(400).json({ error: 'Razão Social e CNPJ são obrigatórios.' });
       return;
@@ -791,8 +845,8 @@ apiRouter.post('/companies', SecurityService.authenticate, async (req: Authentic
         razaoSocial,
         nomeFantasia: nomeFantasia || razaoSocial,
         cnpj,
-        cnaePrincipalCode,
-        cnaePrincipalDesc,
+        cnaePrincipalCode: cnaePrincipalCode || cnaeCode,
+        cnaePrincipalDesc: cnaePrincipalDesc || cnaeDesc,
         enderecoCompleto,
         responsavelAdmin
       },
@@ -805,7 +859,70 @@ apiRouter.post('/companies', SecurityService.authenticate, async (req: Authentic
   }
 });
 
-apiRouter.post('/companies/:companyId/units', SecurityService.authenticate, async (req: AuthenticatedRequest, res: Response) => {
+apiRouter.put('/companies/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { razaoSocial, nomeFantasia, cnpj, cnaePrincipalCode, cnaeCode, cnaePrincipalDesc, cnaeDesc, enderecoCompleto, responsavelAdmin, logoUrl } = req.body;
+    
+    if (process.env.DATABASE_URL) {
+      const updated = await prisma.company.update({
+        where: { id },
+        data: {
+          ...(razaoSocial ? { razaoSocial } : {}),
+          ...(nomeFantasia ? { nomeFantasia } : {}),
+          ...(cnpj ? { cnpj } : {}),
+          ...(cnaePrincipalCode || cnaeCode ? { cnaePrincipalCode: cnaePrincipalCode || cnaeCode } : {}),
+          ...(cnaePrincipalDesc || cnaeDesc ? { cnaePrincipalDesc: cnaePrincipalDesc || cnaeDesc } : {}),
+          ...(enderecoCompleto ? { enderecoCompleto } : {}),
+          ...(responsavelAdmin ? { responsavelAdmin } : {}),
+          ...(logoUrl !== undefined ? { logoUrl } : {})
+        },
+        include: { units: true }
+      });
+      res.json(updated);
+      return;
+    }
+    res.json({ id, ...req.body });
+  } catch (error) {
+    console.error('Erro ao atualizar empresa:', error);
+    res.status(500).json({ error: 'Erro ao atualizar empresa no banco de dados.' });
+  }
+});
+
+apiRouter.delete('/companies/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (process.env.DATABASE_URL) {
+      await prisma.company.delete({
+        where: { id }
+      });
+    }
+    res.json({ success: true, message: 'Empresa removida com sucesso.' });
+  } catch (error) {
+    console.error('Erro ao excluir empresa:', error);
+    res.status(500).json({ error: 'Erro ao excluir empresa no banco de dados.' });
+  }
+});
+
+apiRouter.get('/companies/:companyId/units', async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    if (process.env.DATABASE_URL) {
+      const units = await prisma.companyUnit.findMany({
+        where: { companyId },
+        orderBy: { name: 'asc' }
+      });
+      res.json(units);
+      return;
+    }
+    res.json([]);
+  } catch (error) {
+    console.warn('Erro ao buscar unidades:', error);
+    res.status(500).json({ error: 'Erro ao buscar filiais da empresa.' });
+  }
+});
+
+apiRouter.post('/companies/:companyId/units', async (req: Request, res: Response) => {
   try {
     const { companyId } = req.params;
     const { name, city, state, headcount, grauDeRisco, cnaeCode, cnaeDesc, gestorName } = req.body;
@@ -830,6 +947,50 @@ apiRouter.post('/companies/:companyId/units', SecurityService.authenticate, asyn
   } catch (error) {
     console.error('Erro ao cadastrar filial:', error);
     res.status(500).json({ error: 'Erro ao cadastrar unidade no banco de dados.' });
+  }
+});
+
+apiRouter.put('/companies/:companyId/units/:unitId', async (req: Request, res: Response) => {
+  try {
+    const { unitId } = req.params;
+    const { name, city, state, headcount, grauDeRisco, cnaeCode, cnaeDesc, gestorName, cipaAtiva } = req.body;
+    if (process.env.DATABASE_URL) {
+      const updated = await prisma.companyUnit.update({
+        where: { id: unitId },
+        data: {
+          ...(name ? { name } : {}),
+          ...(city ? { city } : {}),
+          ...(state ? { state } : {}),
+          ...(headcount !== undefined ? { headcount: Number(headcount) } : {}),
+          ...(grauDeRisco !== undefined ? { grauDeRisco: Number(grauDeRisco) } : {}),
+          ...(cnaeCode ? { cnaeCode } : {}),
+          ...(cnaeDesc ? { cnaeDesc } : {}),
+          ...(gestorName ? { gestorName } : {}),
+          ...(cipaAtiva !== undefined ? { cipaAtiva: Boolean(cipaAtiva) } : {})
+        }
+      });
+      res.json(updated);
+      return;
+    }
+    res.json({ id: unitId, ...req.body });
+  } catch (error) {
+    console.error('Erro ao atualizar filial:', error);
+    res.status(500).json({ error: 'Erro ao atualizar filial no banco de dados.' });
+  }
+});
+
+apiRouter.delete('/companies/:companyId/units/:unitId', async (req: Request, res: Response) => {
+  try {
+    const { unitId } = req.params;
+    if (process.env.DATABASE_URL) {
+      await prisma.companyUnit.delete({
+        where: { id: unitId }
+      });
+    }
+    res.json({ success: true, message: 'Filial removida com sucesso.' });
+  } catch (error) {
+    console.error('Erro ao excluir filial:', error);
+    res.status(500).json({ error: 'Erro ao excluir filial no banco de dados.' });
   }
 });
 

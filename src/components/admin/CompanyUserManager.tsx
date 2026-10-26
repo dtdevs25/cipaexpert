@@ -709,6 +709,20 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
       });
 
       onUpdateCompanies(updatedCompanies);
+
+      // Persiste no PostgreSQL
+      await ApiService.updateUnit(editingFilial.companyId, editingFilial.filial.id, {
+        name: editingFilial.filial.name,
+        cnpj: editingFilial.filial.cnpj,
+        city: editingFilial.filial.city,
+        state: editingFilial.filial.state,
+        headcount: editingFilial.filial.headcount,
+        grauDeRisco: editingFilial.filial.grauDeRisco,
+        cnaeCode: editingFilial.filial.cnaeCode,
+        cnaeDesc: editingFilial.filial.cnaeDesc,
+        gestorName: editingFilial.filial.gestorName
+      }).catch(err => console.log('Aviso ao atualizar filial no backend:', err));
+
       const unitName = editingFilial.filial.name;
       setEditingFilial(null);
       showFeedback('Filial Atualizada!', `Os dados da filial "${unitName}" foram salvos com sucesso.`);
@@ -717,7 +731,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     }
   };
 
-  // Save Edit Company (Funcional)
+  // Save Edit Company (Funcional com persistência no PostgreSQL)
   const handleSaveEditCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCompany || isSubmitting) return;
@@ -740,6 +754,19 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     try {
       const updated = companies.map(c => c.id === editingCompany.id ? editingCompany : c);
       onUpdateCompanies(updated);
+
+      // Persiste no PostgreSQL
+      await ApiService.updateCompany(editingCompany.id, {
+        razaoSocial: editingCompany.razaoSocial,
+        nomeFantasia: editingCompany.nomeFantasia,
+        cnpj: editingCompany.cnpj,
+        cnaePrincipalCode: editingCompany.cnaeCode,
+        cnaePrincipalDesc: editingCompany.cnaeDesc,
+        enderecoCompleto: editingCompany.enderecoCompleto,
+        responsavelAdmin: editingCompany.responsavelAdmin,
+        logoUrl: editingCompany.logoUrl
+      }).catch(err => console.log('Aviso ao atualizar empresa no backend:', err));
+
       const name = editingCompany.nomeFantasia;
       setEditingCompany(null);
       showFeedback('Empresa Atualizada!', `Os dados cadastrais de "${name}" foram atualizados com sucesso.`);
@@ -825,6 +852,11 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
     });
 
     onUpdateCompanies(updatedCompanies);
+
+    // Persiste no PostgreSQL
+    ApiService.deleteUnit(filialToDelete.companyId, filialToDelete.filial.id)
+      .catch(err => console.log('Aviso ao deletar filial no backend:', err));
+
     const deletedName = filialToDelete.filial.name;
     setFilialToDelete(null);
     showFeedback('Filial Excluída', `O estabelecimento "${deletedName}" foi removido do sistema.`);

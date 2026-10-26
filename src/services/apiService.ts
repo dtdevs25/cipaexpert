@@ -184,10 +184,40 @@ export const ApiService = {
     });
   },
 
+  async updateCompany(id: string, companyData: Partial<Company>): Promise<Company> {
+    return this.request<Company>(`/api/companies/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(companyData)
+    });
+  },
+
+  async deleteCompany(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/companies/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async getUnits(companyId: string): Promise<any[]> {
+    return this.request<any[]>(`/api/companies/${companyId}/units`);
+  },
+
   async createUnit(companyId: string, unitData: any): Promise<any> {
     return this.request<any>(`/api/companies/${companyId}/units`, {
       method: 'POST',
       body: JSON.stringify(unitData)
+    });
+  },
+
+  async updateUnit(companyId: string, unitId: string, unitData: any): Promise<any> {
+    return this.request<any>(`/api/companies/${companyId}/units/${unitId}`, {
+      method: 'PUT',
+      body: JSON.stringify(unitData)
+    });
+  },
+
+  async deleteUnit(companyId: string, unitId: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/companies/${companyId}/units/${unitId}`, {
+      method: 'DELETE'
     });
   },
 

@@ -67,7 +67,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             units: Array.isArray(c.units) ? c.units.map(u => ({
               id: u.id,
               name: u.name,
-              cnpj: u.cnpj || (u as any).cnpj,
+              cnpj: u.cnpj || (u as any).cnpj || c.cnpj,
               city: u.city,
               state: u.state,
               headcount: u.headcount,
@@ -79,10 +79,29 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             })) : []
           }));
           setCompanies(mappedCompanies as any);
+
+          // Sincroniza a seleção ativa com o banco de dados
+          setSelectedCompanyId(prevCompId => {
+            const hasPrev = mappedCompanies.some(c => c.id === prevCompId);
+            if (hasPrev) return prevCompId;
+            const userComp = mappedCompanies.find(c => c.id === currentUser.companyId);
+            const targetComp = userComp || mappedCompanies[0];
+            
+            // Sincroniza a unidade da empresa selecionada
+            if (targetComp && targetComp.units && targetComp.units.length > 0) {
+              setSelectedUnitId(prevUnitId => {
+                const hasPrevUnit = targetComp.units.some(u => u.id === prevUnitId);
+                if (hasPrevUnit) return prevUnitId;
+                const userUnit = targetComp.units.find(u => u.id === currentUser.unitId);
+                return userUnit?.id || targetComp.units[0].id;
+              });
+            }
+            return targetComp ? targetComp.id : prevCompId;
+          });
         }
       })
       .catch((err) => console.log('Aviso ao sincronizar empresas:', err));
-  }, []);
+  }, [currentUser.companyId, currentUser.unitId]);
   
   // Selected Company for operations
   const initialCompany = companies.find(c => c.id === currentUser.companyId) || companies[0];
