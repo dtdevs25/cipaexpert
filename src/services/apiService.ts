@@ -279,5 +279,34 @@ export const ApiService = {
       method: 'POST',
       body: JSON.stringify(params)
     });
+  },
+
+  // 10. Colaboradores (Dimensionamento e Processo Eleitoral NR-5)
+  async getEmployees(unitId?: string, companyId?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (unitId) params.append('unitId', unitId);
+    if (companyId) params.append('companyId', companyId);
+    const qs = params.toString();
+    return this.request<any[]>(`/api/employees${qs ? `?${qs}` : ''}`);
+  },
+
+  async createEmployee(data: any): Promise<any> {
+    return this.request('/api/employees', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateEmployee(id: string, data: any): Promise<any> {
+    return this.request(`/api/employees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteEmployee(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request(`/api/employees/${id}`, {
+      method: 'DELETE'
+    });
   }
 };

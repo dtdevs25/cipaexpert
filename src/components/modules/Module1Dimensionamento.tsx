@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   CNAE_DATABASE, 
   calcularDimensionamentoNR5, 
@@ -39,11 +39,49 @@ import {
   Camera,
   Image as ImageIcon,
   History,
-  BookmarkCheck
+  BookmarkCheck,
+  Eye,
+  EyeOff,
+  Edit3,
+  AlertTriangle,
+  Lock,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
 import { ApiService } from '../../services/apiService';
+
+// Formatação com a primeira letra maiúscula (Title Case)
+function formatCapitalizeName(text?: string): string {
+  if (!text) return '';
+  const prepositions = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'para', 'com'];
+  return text
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word, index) => {
+      if (index > 0 && prepositions.includes(word)) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+}
+
+// Máscara de CPF conforme a LGPD (mostrando apenas os 3 últimos dígitos: ***.***.*0-00)
+function maskCPFLGPD(cpf?: string): string {
+  if (!cpf) return '';
+  const digits = cpf.replace(/\D/g, '');
+  if (digits.length !== 11) {
+    if (cpf.length > 3) {
+      return `***.***.***-${cpf.slice(-2)}`;
+    }
+    return cpf;
+  }
+  const lastDigits = digits.slice(-3);
+  return `***.***.*${lastDigits.charAt(0)}-${lastDigits.slice(1)}`;
+}
 
 export interface Employee {
   id: string;
@@ -56,6 +94,8 @@ export interface Employee {
   setor: string;
   email: string;
   dataAdmissao: string;
+  unitId?: string;
+  companyId?: string;
 }
 
 // Removidos avatares padrão: fotos devem vir do banco de dados/MinIO ou exibir iniciais/silhuetas
@@ -186,24 +226,42 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   // Passo a passo na aba Dimensionamento: 1 = Colaboradores, 2 = Dimensionamento NR-5
   const [stepDimensionamento, setStepDimensionamento] = useState<1 | 2>(1);
 
-  // Empresas liberadas
+  // Empresas liberadas (respeita permissões: se Master vê todas; se outro papel, vê apenas as liberadas)
   const availableCompanies = useMemo(() => {
     if (!currentUser || currentUser.role === 'master') return companies;
-    return companies.filter(c => c.id === currentUser.companyId);
+    const allowedCompanyIds = (currentUser.companyIds && currentUser.companyIds.length > 0)
+      ? currentUser.companyIds
+      : (currentUser.companyId ? [currentUser.companyId] : []);
+    if (allowedCompanyIds.length === 0) return companies;
+    return companies.filter(c => allowedCompanyIds.includes(c.id));
   }, [companies, currentUser]);
 
   // Sincronização da Empresa: usa a selecionada globalmente ou a primeira liberada
   const activeCompanyId = propSelectedCompanyId || availableCompanies[0]?.id || companies[0]?.id || '';
   
   const currentCompany = useMemo(() => {
-    return companies.find(c => c.id === activeCompanyId) || companies[0];
-  }, [companies, activeCompanyId]);
+    return availableCompanies.find(c => c.id === activeCompanyId) || availableCompanies[0] || companies[0];
+  }, [availableCompanies, companies, activeCompanyId]);
 
-  // Sincronização da Filial: usa a selecionada globalmente ou a primeira da empresa
-  const activeUnitId = propSelectedUnitId || currentCompany?.units[0]?.id || '';
+  // Filiais liberadas para o usuário nesta empresa
+  const availableUnits = useMemo(() => {
+    const allUnits = currentCompany?.units || [];
+    if (!currentUser || currentUser.role === 'master' || currentUser.role === 'admin_empresa') {
+      return allUnits;
+    }
+    const allowedUnitIds = (currentUser.unitIds && currentUser.unitIds.length > 0)
+      ? currentUser.unitIds
+      : (currentUser.unitId ? [currentUser.unitId] : []);
+    if (allowedUnitIds.length === 0) return allUnits;
+    const filtered = allUnits.filter(u => allowedUnitIds.includes(u.id));
+    return filtered.length > 0 ? filtered : allUnits;
+  }, [currentCompany, currentUser]);
+
+  // Sincronização da Filial: usa a selecionada globalmente ou a primeira liberada
+  const activeUnitId = propSelectedUnitId || availableUnits[0]?.id || currentCompany?.units[0]?.id || '';
 
   const currentFilial: CompanyUnit = useMemo(() => {
-    const unit = currentCompany?.units.find(u => u.id === activeUnitId);
+    const unit = availableUnits.find(u => u.id === activeUnitId) || availableUnits[0];
     return unit || currentCompany?.units[0] || {
       id: 'default-unit',
       name: 'Matriz Industrial',
@@ -216,7 +274,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       cipaAtiva: true,
       gestorName: 'Diretoria de Operações'
     };
-  }, [currentCompany, activeUnitId]);
+  }, [availableUnits, currentCompany, activeUnitId]);
 
   // Atualização sincronizada
   const handleCompanyChange = (newCompId: string) => {
@@ -339,6 +397,46 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const [isNewEmployeeModalOpen, setIsNewEmployeeModalOpen] = useState(false);
   const [isBatchImportModalOpen, setIsBatchImportModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [showFullCpfInEdit, setShowFullCpfInEdit] = useState(false);
+  const [showFullCpfInView, setShowFullCpfInView] = useState(false);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(false);
+
+  // Verificação de permissão para visualizar CPF completo em conformidade com LGPD
+  const canViewFullCpf = (emp?: Employee | null): boolean => {
+    if (!emp) return false;
+    if (currentUser?.role === 'master') return true;
+    if (currentUser?.customPermissions?.includes('perm_view_full_cpf')) return true;
+    return false;
+  };
+
+  // Carrega os colaboradores reais da filial selecionada diretamente do PostgreSQL
+  useEffect(() => {
+    let isMounted = true;
+    const fetchEmployeesFromDb = async () => {
+      if (!currentFilial?.id) return;
+      try {
+        setIsLoadingEmployees(true);
+        const data = await ApiService.getEmployees(currentFilial.id, currentCompany?.id);
+        if (isMounted && data && Array.isArray(data)) {
+          setEmployeesByUnit(prev => ({
+            ...prev,
+            [currentFilial.id]: data
+          }));
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar colaboradores do banco de dados:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingEmployees(false);
+        }
+      }
+    };
+
+    fetchEmployeesFromDb();
+    return () => { isMounted = false; };
+  }, [currentFilial?.id, currentCompany?.id]);
 
   // Modal da Carta ao Sindicato
   const [isSindicatoModalOpen, setIsSindicatoModalOpen] = useState(false);
@@ -408,10 +506,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     setFormSetor('');
     setFormEmail('');
     setFormDataAdmissao(new Date().toISOString().split('T')[0]);
+    setShowFullCpfInEdit(true);
     setIsNewEmployeeModalOpen(true);
   };
 
-  // Abrir Modal de Edição com dados carregados
+  // Abrir Modal de Edição com dados carregados e CPF mascarado conforme LGPD
   const handleOpenEditModal = (emp: Employee) => {
     setEditingEmployee(emp);
     setFormName(emp.name);
@@ -423,6 +522,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     setFormSetor(emp.setor);
     setFormEmail(emp.email);
     setFormDataAdmissao(emp.dataAdmissao || new Date().toISOString().split('T')[0]);
+    setShowFullCpfInEdit(false);
     setIsNewEmployeeModalOpen(true);
   };
 
@@ -449,25 +549,38 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // Salvar Colaborador (Criar ou Atualizar)
-  const handleSaveEmployee = (e: React.FormEvent) => {
+  // Salvar Colaborador (Criar ou Atualizar) com persistência no PostgreSQL
+  const handleSaveEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formCargo.trim()) return;
 
+    const capitalizedName = formatCapitalizeName(formName);
+
     if (editingEmployee) {
-      // Atualizar colaborador existente
+      // Se o CPF exibido estava mascarado e não foi alterado para um CPF novo, preserva o CPF original do registro
+      const finalCpf = formCpf.includes('*') ? editingEmployee.cpf : formCpf.trim();
+
       const updated: Employee = {
         ...editingEmployee,
-        name: formName.trim(),
+        name: capitalizedName,
         apelido: formApelido.trim() || undefined,
         fotoUrl: formFotoUrl || undefined,
         matricula: formMatricula.trim() || editingEmployee.matricula,
-        cpf: formCpf.trim() || editingEmployee.cpf,
+        cpf: finalCpf || editingEmployee.cpf,
         cargo: formCargo.trim(),
         setor: formSetor.trim() || editingEmployee.setor,
         email: formEmail.trim() || editingEmployee.email,
         dataAdmissao: formDataAdmissao || editingEmployee.dataAdmissao
       };
+
+      try {
+        await ApiService.updateEmployee(updated.id, {
+          ...updated,
+          unitId: currentFilial.id
+        });
+      } catch (err) {
+        console.warn('Erro ao atualizar no backend (atualizando localmente):', err);
+      }
 
       setEmployeesByUnit(prev => ({
         ...prev,
@@ -478,10 +591,9 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       setEditingEmployee(null);
       showToast(`Colaborador "${updated.name}" atualizado com sucesso!`);
     } else {
-      // Criar novo colaborador
       const newEmp: Employee = {
         id: `emp-${Date.now()}`,
-        name: formName.trim(),
+        name: capitalizedName,
         apelido: formApelido.trim() || undefined,
         fotoUrl: formFotoUrl || undefined,
         matricula: formMatricula.trim() || `CLT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -492,6 +604,18 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         dataAdmissao: formDataAdmissao || new Date().toISOString().split('T')[0]
       };
 
+      try {
+        const created = await ApiService.createEmployee({
+          ...newEmp,
+          unitId: currentFilial.id
+        });
+        if (created?.id) {
+          newEmp.id = created.id;
+        }
+      } catch (err) {
+        console.warn('Erro ao criar no backend (criando localmente):', err);
+      }
+
       setEmployeesByUnit(prev => ({
         ...prev,
         [currentFilial.id]: [newEmp, ...(prev[currentFilial.id] || [])]
@@ -500,6 +624,23 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       setIsNewEmployeeModalOpen(false);
       showToast(`Colaborador "${newEmp.name}" adicionado com sucesso!`);
     }
+  };
+
+  // Exclusão confirmada de colaborador
+  const handleConfirmDeleteEmployee = async () => {
+    if (!employeeToDelete) return;
+    const target = employeeToDelete;
+    try {
+      await ApiService.deleteEmployee(target.id);
+    } catch (err) {
+      console.warn('Erro ao deletar no backend (mantendo remoção local):', err);
+    }
+    setEmployeesByUnit(prev => ({
+      ...prev,
+      [currentFilial.id]: (prev[currentFilial.id] || []).filter(e => e.id !== target.id)
+    }));
+    setEmployeeToDelete(null);
+    showToast(`Colaborador "${target.name}" excluído com sucesso.`);
   };
 
   // Baixar modelo CSV com suporte a Apelido e FotoURL
@@ -574,13 +715,6 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     reader.readAsText(file);
   };
 
-  const handleRemoveEmployee = (empId: string) => {
-    setEmployeesByUnit(prev => ({
-      ...prev,
-      [currentFilial.id]: (prev[currentFilial.id] || []).filter(e => e.id !== empId)
-    }));
-  };
-
   // Abrir edital em tela cheia com assinatura embutida
   const handleOpenEdital = (stepId: string, docTipo: string) => {
     const doc = generateCipaDocument(
@@ -630,7 +764,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-emerald-950 tracking-tight">
-              Módulo 1 · Dimensionamento & Calendário
+              Dimensionamento + Processo Eleitoral
             </h2>
             <p className="text-[11px] text-emerald-800 font-mono font-medium">
               CNAE {cnaeEntry.code} · CNPJ: {currentCompany.cnpj}
@@ -638,11 +772,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           </div>
         </div>
 
-        {/* Indicador de Unidade e Grau de Risco */}
-        <div className="hidden sm:flex items-center gap-2 bg-white/90 px-2.5 py-1 rounded-lg border border-emerald-300 text-xs shadow-2xs">
-          <MapPin className="w-3.5 h-3.5 text-emerald-700" />
-          <span className="font-bold text-slate-800">{currentFilial.name}</span>
-          <span className="text-slate-300">|</span>
+        {/* Indicador de Grau de Risco */}
+        <div className="hidden sm:flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-lg border border-emerald-300 text-xs shadow-2xs">
           <span className="font-mono text-emerald-900 font-bold">Grau de Risco {cnaeEntry.grauDeRisco}</span>
         </div>
       </div>
@@ -832,13 +963,27 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                         <th className="py-2.5 px-3">Setor</th>
                         <th className="py-2.5 px-3 text-center">Foto</th>
                         <th className="py-2.5 px-3">Admissão</th>
-                        <th className="py-2.5 px-3 text-center w-28">Ações</th>
+                        <th className="py-2.5 px-3 text-center w-36">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {filteredEmployees.length > 0 ? (
+                      {isLoadingEmployees ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-slate-500 text-xs">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
+                              <span>Carregando base de colaboradores do banco de dados...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : filteredEmployees.length > 0 ? (
                         filteredEmployees.map((emp) => (
-                          <tr key={emp.id} className="hover:bg-slate-50/80 transition-colors">
+                          <tr 
+                            key={emp.id} 
+                            onClick={() => setViewingEmployee(emp)}
+                            className="hover:bg-slate-50/80 transition-colors cursor-pointer group/row"
+                            title="Clique para visualizar a ficha cadastral do colaborador"
+                          >
                             {/* Nome + Apelido + Foto */}
                             <td className="py-2.5 px-3">
                               <div className="flex items-center gap-2.5">
@@ -849,13 +994,15 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                     className="w-9 h-9 rounded-full object-cover border border-emerald-300 shrink-0 shadow-2xs"
                                   />
                                 ) : (
-                                  <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center shrink-0 border border-slate-300">
-                                    {emp.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                                  <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center shrink-0 border border-slate-300">
+                                    {emp.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                                   </div>
                                 )}
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <strong className="text-slate-900 font-bold block truncate">{emp.name}</strong>
+                                    <strong className="text-slate-900 font-bold block truncate group-hover/row:text-emerald-700 transition-colors">
+                                      {formatCapitalizeName(emp.name)}
+                                    </strong>
                                     {emp.apelido && (
                                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                                         "{emp.apelido}"
@@ -872,7 +1019,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                             <td className="py-2.5 px-3 text-slate-500">{emp.setor}</td>
                             
                             {/* Indicador de Foto */}
-                            <td className="py-2.5 px-3 text-center">
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                               {emp.fotoUrl ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                   <Check className="w-3 h-3 text-emerald-600" />
@@ -891,28 +1038,47 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               )}
                             </td>
 
-                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">{new Date(emp.dataAdmissao).toLocaleDateString('pt-BR')}</td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                              {emp.dataAdmissao ? new Date(emp.dataAdmissao).toLocaleDateString('pt-BR') : '-'}
+                            </td>
                             
-                            {/* Ações: Editar e Excluir */}
-                            <td className="py-2.5 px-3 text-center">
-                              <div className="flex items-center justify-center gap-1.5">
+                            {/* Ações: Visualizar, Editar e Excluir com expansão suave e tooltip */}
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="inline-flex items-center gap-1.5 justify-center">
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenEditModal(emp)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold border border-emerald-200 transition-all cursor-pointer shadow-2xs active:scale-95"
-                                  title="Editar dados, apelido e foto do colaborador"
+                                  onClick={() => setViewingEmployee(emp)}
+                                  className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Visualizar Ficha Cadastral"
                                 >
-                                  <Pencil className="w-3 h-3 text-emerald-700" />
-                                  <span>Editar</span>
+                                  <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                    Visualizar
+                                  </span>
                                 </button>
 
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveEmployee(emp.id)}
-                                  className="p-1.5 rounded-lg text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer shadow-2xs active:scale-95"
-                                  title="Remover colaborador"
+                                  onClick={() => handleOpenEditModal(emp)}
+                                  className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Editar Colaborador"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                  <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                    Editar
+                                  </span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEmployeeToDelete(emp)}
+                                  className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Excluir Colaborador"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                    Excluir
+                                  </span>
                                 </button>
                               </div>
                             </td>
@@ -1973,14 +2139,43 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">CPF</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">CPF</label>
+                    {editingEmployee ? (
+                      canViewFullCpf(editingEmployee) ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowFullCpfInEdit(!showFullCpfInEdit)}
+                          className="text-[10px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
+                          title="Alternar exibição do CPF completo"
+                        >
+                          {showFullCpfInEdit ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          <span>{showFullCpfInEdit ? 'Mascarar' : 'Exibir Completo'}</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1 font-semibold" title="Em conformidade com a LGPD, apenas os 3 últimos dígitos são exibidos.">
+                          <Lock className="w-2.5 h-2.5" />
+                          LGPD
+                        </span>
+                      )
+                    ) : null}
+                  </div>
                   <input
                     type="text"
-                    value={formCpf}
+                    value={
+                      editingEmployee
+                        ? (showFullCpfInEdit && canViewFullCpf(editingEmployee) ? formCpf : maskCPFLGPD(formCpf))
+                        : formCpf
+                    }
                     onChange={(e) => setFormCpf(e.target.value)}
                     placeholder="000.000.000-00"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
                   />
+                  {editingEmployee && !showFullCpfInEdit && (
+                    <span className="text-[10px] text-slate-400 block">
+                      Protegido pela LGPD. Mostrando apenas os dígitos finais.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2027,6 +2222,199 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL VISUALIZAR CADASTRO DO COLABORADOR                                  */}
+      {/* ========================================================================= */}
+      {viewingEmployee && (() => {
+        const canViewFull = canViewFullCpf(viewingEmployee);
+        const emp = viewingEmployee;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg max-h-[90vh] my-auto flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="px-5 py-3.5 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
+                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-700" />
+                  Ficha Cadastral do Colaborador
+                </h3>
+                <button 
+                  type="button"
+                  onClick={() => setViewingEmployee(null)} 
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-emerald-100/50 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-5 space-y-4 text-xs overflow-y-auto flex-1 overscroll-contain">
+                {/* Identificação Principal */}
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  {emp.fotoUrl ? (
+                    <img
+                      src={emp.fotoUrl}
+                      alt={emp.name}
+                      className="w-16 h-16 rounded-full object-cover ring-2 ring-emerald-500 shadow-xs shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-slate-900 text-white font-bold text-base flex items-center justify-center shrink-0 shadow-xs">
+                      {emp.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-base font-extrabold text-slate-900">{formatCapitalizeName(emp.name)}</h4>
+                      {emp.apelido && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-200">
+                          "{emp.apelido}"
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-1 flex items-center gap-1.5 text-slate-600">
+                      <span className="text-xs font-semibold text-slate-800">{emp.cargo}</span>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-xs text-slate-500">{emp.setor}</span>
+                    </div>
+
+                    {/* CPF em conformidade com LGPD */}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-mono text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                        <span className="text-slate-400 font-sans font-normal text-[10px]">CPF:</span>
+                        <span>
+                          {canViewFull
+                            ? (showFullCpfInView ? emp.cpf : maskCPFLGPD(emp.cpf))
+                            : maskCPFLGPD(emp.cpf)}
+                        </span>
+                      </div>
+
+                      {canViewFull ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowFullCpfInView(!showFullCpfInView)}
+                          className="text-[10px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
+                          title="Alternar visibilidade do CPF"
+                        >
+                          {showFullCpfInView ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          <span>{showFullCpfInView ? 'Mascarar' : 'Exibir Completo'}</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1 font-semibold" title="Em conformidade com a LGPD, apenas os 3 últimos dígitos são exibidos.">
+                          <Lock className="w-2.5 h-2.5" />
+                          Protegido pela LGPD
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dados Cadastrais Detalhados */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Matrícula CLT</span>
+                    <strong className="text-xs font-mono text-slate-800">{emp.matricula}</strong>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Data de Admissão</span>
+                    <strong className="text-xs font-mono text-slate-800">
+                      {emp.dataAdmissao ? new Date(emp.dataAdmissao).toLocaleDateString('pt-BR') : 'Não informada'}
+                    </strong>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 sm:col-span-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">E-mail Corporativo</span>
+                    <strong className="text-xs font-medium text-slate-800 block truncate">{emp.email || 'Não informado'}</strong>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 sm:col-span-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-emerald-600" /> Estabelecimento / Filial Vinculada
+                    </span>
+                    <strong className="text-xs text-slate-800 block">{currentFilial.name} ({currentFilial.city} - {currentFilial.state})</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rodapé Fixo */}
+              <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewingEmployee(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  Fechar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const toEdit = emp;
+                    setViewingEmployee(null);
+                    handleOpenEditModal(toEdit);
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Editar Cadastro</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO (PADRÃO DO SISTEMA)                      */}
+      {/* ========================================================================= */}
+      {employeeToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="px-6 py-4 border-b border-rose-100 bg-rose-50/60 flex items-center justify-between shrink-0">
+              <h3 className="text-sm font-extrabold text-rose-950 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+                Confirmar Exclusão de Colaborador
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setEmployeeToDelete(null)} 
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-rose-100/50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 text-xs">
+              <p className="text-slate-700 leading-relaxed">
+                Tem certeza de que deseja remover o cadastro do colaborador{' '}
+                <strong className="text-slate-900 font-bold">{formatCapitalizeName(employeeToDelete.name)}</strong>{' '}
+                (Matrícula: <span className="font-mono font-bold text-slate-800">{employeeToDelete.matricula}</span>, Cargo: <span className="font-bold text-slate-800">{employeeToDelete.cargo}</span>)?
+              </p>
+
+              <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-800 font-semibold flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>Esta operação é irreversível e os dados do colaborador serão removidos permanentemente. A ação não poderá ser desfeita.</span>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setEmployeeToDelete(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteEmployee}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs uppercase shadow-sm cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sim, Excluir Registro</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

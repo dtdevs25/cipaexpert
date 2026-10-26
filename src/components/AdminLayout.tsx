@@ -177,7 +177,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     }
 
     items.push(
-      { id: 'dimensionamento', label: 'Módulo 1: Dimensionamento', icon: Calculator, color: 'text-blue-400' },
+      { id: 'dimensionamento', label: 'Dimensionamento + Processo Eleitoral', icon: Calculator, color: 'text-blue-400' },
       { id: 'eleicao', label: 'Módulo 2: Eleição Online', icon: Vote, color: 'text-purple-400' },
       { id: 'gestao', label: 'Módulo 3: Gestão CIPA', icon: ClipboardList, color: 'text-sky-400' },
       { id: 'assinaturas', label: 'CIPASign', icon: PenTool, color: 'text-amber-400' },

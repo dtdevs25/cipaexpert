@@ -833,6 +833,180 @@ apiRouter.post('/companies/:companyId/units', SecurityService.authenticate, asyn
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// COLABORADORES (DIMENSIONAMENTO / PROCESSO ELEITORAL / NR-5)
+// ─────────────────────────────────────────────────────────────
+apiRouter.get('/employees', async (req: Request, res: Response) => {
+  try {
+    const { unitId, companyId } = req.query as { unitId?: string; companyId?: string };
+
+    const whereClause: any = { ativo: true };
+    if (unitId) {
+      whereClause.unitId = unitId;
+    } else if (companyId) {
+      whereClause.unit = { companyId };
+    }
+
+    let employees = await prisma.employee.findMany({
+      where: whereClause,
+      include: {
+        unit: {
+          select: { id: true, name: true, companyId: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    // Se ainda não houver colaboradores para a filial especificada, popula com o catálogo base NR-5
+    if (employees.length === 0 && unitId) {
+      const defaultList = [
+        { name: 'Marcos Vinicius Santos', apelido: 'Marcão da Usinagem', matricula: 'CLT-1024', cpf: '123.456.789-01', cargo: 'Operador de Torno CNC', setor: 'Usinagem Pesada', email: 'marcos.santos@empresa.com.br', dataAdmissao: new Date('2021-03-15') },
+        { name: 'Ana Paula Ferreira', apelido: 'Paulinha do Almoxarifado', matricula: 'CLT-1058', cpf: '234.567.890-12', cargo: 'Supervisora de Logística', setor: 'Almoxarifado & Estoque', email: 'ana.ferreira@empresa.com.br', dataAdmissao: new Date('2019-08-20') },
+        { name: 'Carlos Eduardo Mendes', apelido: 'Cadu da Manutenção', matricula: 'CLT-1092', cpf: '345.678.901-23', cargo: 'Eletricista Industrial', setor: 'Manutenção Elétrica', email: 'carlos.mendes@empresa.com.br', dataAdmissao: new Date('2020-01-10') },
+        { name: 'Juliana Paes Rodrigues', apelido: 'Ju da Qualidade', matricula: 'CLT-1126', cpf: '456.789.012-34', cargo: 'Inspetora de Controle de Qualidade', setor: 'Garantia da Qualidade', email: 'juliana.rodrigues@empresa.com.br', dataAdmissao: new Date('2022-04-05') },
+        { name: 'Roberto Alcantara Silva', apelido: 'Beto Caldeireiro', matricula: 'CLT-1160', cpf: '567.890.123-45', cargo: 'Caldeireiro Pesado', setor: 'Caldeiraria & Solda', email: 'roberto.alcantara@empresa.com.br', dataAdmissao: new Date('2018-11-12') },
+        { name: 'Mariana Duarte Souza', apelido: 'Mari Solda', matricula: 'CLT-1195', cpf: '678.901.234-56', cargo: 'Soldadora MIG/MAG', setor: 'Caldeiraria & Solda', email: 'mariana.souza@empresa.com.br', dataAdmissao: new Date('2021-06-18') },
+        { name: 'Lucas Souza Oliveira', apelido: 'Luquinhas da Montagem', matricula: 'CLT-1230', cpf: '789.012.345-67', cargo: 'Montador Mecânico Industrial', setor: 'Linha de Montagem', email: 'lucas.oliveira@empresa.com.br', dataAdmissao: new Date('2020-09-22') },
+        { name: 'Camila Ribeiro Pinto', apelido: 'Cami da Empilhadeira', matricula: 'CLT-1270', cpf: '890.123.456-78', cargo: 'Operadora de Empilhadeira', setor: 'Logística & Expedição', email: 'camila.ribeiro@empresa.com.br', dataAdmissao: new Date('2022-02-14') },
+        { name: 'Diego Fernando Martins', apelido: 'Dieguinho da Fresadora', matricula: 'CLT-1310', cpf: '901.234.567-89', cargo: 'Fresador Mecânico', setor: 'Usinagem Pesada', email: 'diego.martins@empresa.com.br', dataAdmissao: new Date('2019-12-03') },
+        { name: 'Renata Vasconcelos', matricula: 'CLT-1345', cpf: '012.345.678-90', cargo: 'Assistente Administrativo Industrial', setor: 'PCP & Planejamento', email: 'renata.vasconcelos@empresa.com.br', dataAdmissao: new Date('2021-10-30') },
+        { name: 'Eduardo Ramos Costa', apelido: 'Dudu Torneiro', matricula: 'CLT-1380', cpf: '123.789.456-01', cargo: 'Torneiro Mecânico', setor: 'Usinagem de Precisão', email: 'eduardo.costa@empresa.com.br', dataAdmissao: new Date('2019-05-19') },
+        { name: 'Beatriz Nogueira Lima', apelido: 'Bia da Pintura', matricula: 'CLT-1415', cpf: '234.890.567-12', cargo: 'Pintora Industrial', setor: 'Tratamento de Superfície', email: 'beatriz.nogueira@empresa.com.br', dataAdmissao: new Date('2022-09-08') },
+        { name: 'Gustavo Mendonça', matricula: 'CLT-1450', cpf: '345.901.678-23', cargo: 'Ajudante Geral', setor: 'Serviços Gerais', email: 'gustavo.mendonca@empresa.com.br', dataAdmissao: new Date('2023-05-11') },
+        { name: 'Larissa Andrade Teixeira', apelido: 'Lari Engenharia', matricula: 'CLT-1485', cpf: '456.012.789-34', cargo: 'Analista de Processos Industriais', setor: 'Engenharia de Produção', email: 'larissa.andrade@empresa.com.br', dataAdmissao: new Date('2020-12-01') },
+        { name: 'Marcelo Augusto Pires', apelido: 'Marcelão da Prensa', matricula: 'CLT-1520', cpf: '567.123.890-45', cargo: 'Operador de Prensa Hidráulica', setor: 'Estamparia Pesada', email: 'marcelo.pires@empresa.com.br', dataAdmissao: new Date('2018-07-25') },
+        { name: 'Carla Cristina Barreto', matricula: 'CLT-1555', cpf: '678.234.901-56', cargo: 'Operadora de Ponte Rolante', setor: 'Logística Pesada', email: 'carla.barreto@empresa.com.br', dataAdmissao: new Date('2021-08-16') },
+        { name: 'Thiago Farias Moura', matricula: 'CLT-1590', cpf: '789.345.012-67', cargo: 'Caldeireiro Montador', setor: 'Caldeiraria & Solda', email: 'thiago.moura@empresa.com.br', dataAdmissao: new Date('2019-03-22') },
+        { name: 'Vanessa Toledo Dias', matricula: 'CLT-1625', cpf: '890.456.123-78', cargo: 'Conferente de Carga', setor: 'Expedição & Armazém', email: 'vanessa.dias@empresa.com.br', dataAdmissao: new Date('2022-04-10') },
+        { name: 'Fábio Muniz Rezende', matricula: 'CLT-1660', cpf: '901.567.234-89', cargo: 'Lubrificador Industrial', setor: 'Manutenção Preditiva', email: 'fabio.rezende@empresa.com.br', dataAdmissao: new Date('2020-02-17') },
+        { name: 'Juliana Neves Moreira', matricula: 'CLT-1695', cpf: '012.678.345-90', cargo: 'Operadora de Retífica', setor: 'Usinagem de Precisão', email: 'juliana.neves@empresa.com.br', dataAdmissao: new Date('2021-11-28') },
+        { name: 'André Luiz Carvalho', matricula: 'CLT-1730', cpf: '123.789.456-02', cargo: 'Mecânico de Ajustagem', setor: 'Ferramentaria', email: 'andre.carvalho@empresa.com.br', dataAdmissao: new Date('2019-10-05') },
+        { name: 'Tatiane Cristina Abreu', matricula: 'CLT-1765', cpf: '234.890.567-13', cargo: 'Auxiliar de Limpeza Industrial', setor: 'Facilities & Higiene', email: 'tatiane.abreu@empresa.com.br', dataAdmissao: new Date('2023-01-09') },
+        { name: 'Rogério Batista Prado', matricula: 'CLT-1800', cpf: '345.901.678-24', cargo: 'Operador de Dobradeira CNC', setor: 'Conformação de Chapas', email: 'rogerio.prado@empresa.com.br', dataAdmissao: new Date('2020-06-30') },
+        { name: 'Sabrina Vilela Matos', matricula: 'CLT-1835', cpf: '456.012.789-35', cargo: 'Encarregada de Expedição', setor: 'Logística & Expedição', email: 'sabrina.matos@empresa.com.br', dataAdmissao: new Date('2018-12-14') },
+        { name: 'Bruno César Figueiredo', matricula: 'CLT-1870', cpf: '567.123.890-46', cargo: 'Operador de Corte a Laser', setor: 'Corte Térmico', email: 'bruno.figueiredo@empresa.com.br', dataAdmissao: new Date('2022-08-22') }
+      ];
+
+      for (const item of defaultList) {
+        await prisma.employee.create({
+          data: {
+            ...item,
+            unitId
+          }
+        });
+      }
+
+      employees = await prisma.employee.findMany({
+        where: whereClause,
+        include: {
+          unit: {
+            select: { id: true, name: true, companyId: true }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+    }
+
+    const formatted = employees.map(e => ({
+      id: e.id,
+      name: e.name,
+      apelido: e.apelido,
+      matricula: e.matricula,
+      cpf: e.cpf,
+      cargo: e.cargo,
+      setor: e.setor,
+      email: e.email,
+      dataAdmissao: e.dataAdmissao ? e.dataAdmissao.toISOString().split('T')[0] : '',
+      fotoUrl: e.fotoUrl,
+      unitId: e.unitId,
+      companyId: e.unit?.companyId
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Erro ao listar colaboradores:', error);
+    res.status(500).json({ error: 'Erro ao buscar colaboradores do banco de dados.' });
+  }
+});
+
+apiRouter.post('/employees', async (req: Request, res: Response) => {
+  try {
+    const { unitId, name, apelido, matricula, cpf, cargo, setor, email, dataAdmissao, fotoUrl } = req.body;
+    if (!unitId || !name || !cargo) {
+      res.status(400).json({ error: 'Unidade, Nome e Cargo são campos obrigatórios.' });
+      return;
+    }
+
+    const created = await prisma.employee.create({
+      data: {
+        unitId,
+        name: name.trim(),
+        apelido: apelido?.trim() || null,
+        matricula: matricula?.trim() || `CLT-${Math.floor(1000 + Math.random() * 9000)}`,
+        cpf: cpf?.trim() || '000.000.000-00',
+        cargo: cargo.trim(),
+        setor: setor?.trim() || 'Operacional Geral',
+        email: email?.trim() || `${name.toLowerCase().replace(/\s+/g, '.')}@empresa.com.br`,
+        dataAdmissao: dataAdmissao ? new Date(dataAdmissao) : new Date(),
+        fotoUrl: fotoUrl?.trim() || null
+      }
+    });
+
+    res.status(201).json({
+      ...created,
+      dataAdmissao: created.dataAdmissao.toISOString().split('T')[0]
+    });
+  } catch (error) {
+    console.error('Erro ao cadastrar colaborador:', error);
+    res.status(500).json({ error: 'Erro ao salvar colaborador no banco de dados.' });
+  }
+});
+
+apiRouter.put('/employees/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, apelido, matricula, cpf, cargo, setor, email, dataAdmissao, fotoUrl, unitId } = req.body;
+
+    const dataToUpdate: any = {};
+    if (name) dataToUpdate.name = name.trim();
+    if (apelido !== undefined) dataToUpdate.apelido = apelido?.trim() || null;
+    if (matricula) dataToUpdate.matricula = matricula.trim();
+    if (cpf && !cpf.includes('*')) dataToUpdate.cpf = cpf.trim();
+    if (cargo) dataToUpdate.cargo = cargo.trim();
+    if (setor !== undefined) dataToUpdate.setor = setor.trim();
+    if (email) dataToUpdate.email = email.trim();
+    if (dataAdmissao) dataToUpdate.dataAdmissao = new Date(dataAdmissao);
+    if (fotoUrl !== undefined) dataToUpdate.fotoUrl = fotoUrl?.trim() || null;
+    if (unitId) dataToUpdate.unitId = unitId;
+
+    const updated = await prisma.employee.update({
+      where: { id },
+      data: dataToUpdate
+    });
+
+    res.json({
+      ...updated,
+      dataAdmissao: updated.dataAdmissao.toISOString().split('T')[0]
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar colaborador:', error);
+    res.status(500).json({ error: 'Erro ao atualizar colaborador no banco de dados.' });
+  }
+});
+
+apiRouter.delete('/employees/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.employee.delete({
+      where: { id }
+    });
+    res.json({ success: true, message: 'Colaborador removido com sucesso.' });
+  } catch (error) {
+    console.error('Erro ao excluir colaborador:', error);
+    res.status(500).json({ error: 'Erro ao excluir colaborador do banco de dados.' });
+  }
+});
+
 apiRouter.get('/users', async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({

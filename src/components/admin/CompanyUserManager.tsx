@@ -1024,7 +1024,7 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Filiais & Unidades ({allFiliaisWithCompany.length})
+            Filiais ({allFiliaisWithCompany.length})
           </button>
 
           <button
