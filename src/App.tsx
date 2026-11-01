@@ -12,6 +12,7 @@ import { AuthUser } from './types/auth';
 import { DEMO_USERS } from './data/multiCompanyData';
 import { ApiService } from './services/apiService';
 import { SignatureService } from './services/signatureService';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'login' | 'admin'>('landing');
@@ -165,13 +166,15 @@ export default function App() {
             onBackToLanding={() => handleNavigate('landing')}
           />
         ) : (
-          <AdminLayout
-            currentUser={currentUser || DEMO_USERS.master}
-            onOpenDocument={handleOpenDocument}
-            onOpenSignatureModal={handleOpenSignatureModal}
-            signedAtas={signedAtas}
-            initialTab={activeAdminTab}
-          />
+          <ErrorBoundary fallbackTitle="Erro ao carregar o painel administrativo">
+            <AdminLayout
+              currentUser={currentUser || DEMO_USERS.master}
+              onOpenDocument={handleOpenDocument}
+              onOpenSignatureModal={handleOpenSignatureModal}
+              signedAtas={signedAtas}
+              initialTab={activeAdminTab}
+            />
+          </ErrorBoundary>
         )}
       </main>
 

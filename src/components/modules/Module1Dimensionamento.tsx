@@ -411,6 +411,12 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     };
   }, [mandateEndDate]);
 
+  // Integração com Contexto e Histórico de Dimensionamento
+  const { saveDimensionamento, dimensionamentos } = useCipa();
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isSavingDimensionamento, setIsSavingDimensionamento] = useState(false);
+  const [dbDimensionamentosCount, setDbDimensionamentosCount] = useState<number>(0);
+
   // Validação de conclusão do dimensionamento para liberação do calendário
   const isDimensionamentoCompleted = useMemo(() => {
     return dbDimensionamentosCount > 0 || (effectiveHeadcount > 0 && !!dimensionamento);
@@ -522,11 +528,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const [batchCsvText, setBatchCsvText] = useState('');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Integração com Contexto e Histórico de Dimensionamento
-  const { saveDimensionamento, dimensionamentos } = useCipa();
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [dbDimensionamentosCount, setDbDimensionamentosCount] = useState<number>(0);
-  const [isSavingDimensionamento, setIsSavingDimensionamento] = useState(false);
+
 
   const loadDimensionamentosCount = async () => {
     if (!currentFilial?.id) return;

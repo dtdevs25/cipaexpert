@@ -443,21 +443,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
 
           {/* 3. MÓDULO 1: DIMENSIONAMENTO & CRONOGRAMA */}
           {activeTab === 'dimensionamento' && (
-            <Module1Dimensionamento
-              onOpenDocument={onOpenDocument}
-              onOpenSignatureModal={onOpenSignatureModal}
-              onNavigateTab={setActiveTab}
-              signedAtas={signedAtas}
-              companyName={activeCompany.razaoSocial}
-              cnpj={activeCompany.cnpj}
-              companies={companies}
-              currentUser={currentUser}
-              modulosContratados={activeCompany.modulosContratados}
-              selectedCompanyId={selectedCompanyId}
-              onSelectCompanyId={setSelectedCompanyId}
-              selectedUnitId={selectedUnitId}
-              onSelectUnitId={setSelectedUnitId}
-            />
+            <ErrorBoundary fallbackTitle="Erro ao carregar o Módulo de Dimensionamento">
+              <Module1Dimensionamento
+                onOpenDocument={onOpenDocument}
+                onOpenSignatureModal={onOpenSignatureModal}
+                onNavigateTab={setActiveTab}
+                signedAtas={signedAtas}
+                companyName={activeCompany.razaoSocial}
+                cnpj={activeCompany.cnpj}
+                companies={companies}
+                currentUser={currentUser}
+                modulosContratados={activeCompany.modulosContratados}
+                selectedCompanyId={selectedCompanyId}
+                onSelectCompanyId={setSelectedCompanyId}
+                selectedUnitId={selectedUnitId}
+                onSelectUnitId={setSelectedUnitId}
+              />
+            </ErrorBoundary>
           )}
 
           {/* 4. MÓDULO 2: ELEIÇÃO ONLINE & URNA */}
