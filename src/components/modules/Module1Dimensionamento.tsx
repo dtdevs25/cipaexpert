@@ -1469,95 +1469,140 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {etapasNormativas.map((etapa) => {
-                      const isDone = !!completedSteps[etapa.id];
-                      return (
-                        <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => toggleStepCompleted(etapa.id)}
-                              className="cursor-pointer transition-transform active:scale-90"
-                              title={isDone ? 'Marcar como pendente' : 'Marcar como concluída'}
-                            >
-                              {isDone ? (
-                                <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                              )}
-                            </button>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <strong className="text-slate-900 font-bold">
-                                {etapa.numero}. {etapa.titulo}
-                              </strong>
-                              {/* Ícone de Dica Legal / Explicativo */}
-                              <button
-                                type="button"
-                                onClick={() => setSelectedNormativeStep(etapa)}
-                                title="Ver fundamentação legal e regra da NR-5"
-                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white transition-all cursor-pointer border border-emerald-200 shadow-2xs"
-                              >
-                                <HelpCircle className="w-3 h-3" />
-                              </button>
+                      {isLoadingEmployees ? (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-slate-500 text-xs">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
+                              <span>Carregando base de colaboradores do banco de dados...</span>
                             </div>
-                            <span className="text-[11px] text-slate-500 block mt-0.5">
-                              {etapa.subtitulo}
-                            </span>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="font-mono text-[11px] font-bold text-slate-800 block">
-                              {etapa.dataCalculada}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {etapa.prazoLabel}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {etapa.acaoTipo === 'laudo_pdf' && (
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  await handleDownloadPdfDimensionamento();
-                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Printer className="w-3.5 h-3.5 text-emerald-700" />
-                                <span>{etapa.botaoTexto}</span>
-                              </button>
-                            )}
+                        </tr>
+                      ) : filteredEmployees.length > 0 ? (
+                        filteredEmployees.map((emp) => (
+                          <tr 
+                            key={emp.id} 
+                            onClick={() => setViewingEmployee(emp)}
+                            className="hover:bg-slate-50/80 transition-colors cursor-pointer group/row"
+                            title="Clique para visualizar a ficha cadastral do colaborador"
+                          >
+                            {/* Nome + Apelido + Foto */}
+                            <td className="py-2.5 px-3">
+                              <div className="flex items-center gap-2.5">
+                                {emp.fotoUrl ? (
+                                  <img 
+                                    src={emp.fotoUrl} 
+                                    alt={emp.name} 
+                                    className="w-9 h-9 rounded-full object-cover border border-emerald-300 shrink-0 shadow-2xs"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center shrink-0 border border-slate-300">
+                                    {emp.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <strong className="text-slate-900 font-bold block truncate group-hover/row:text-emerald-700 transition-colors">
+                                      {formatCapitalizeName(emp.name)}
+                                    </strong>
+                                    {emp.apelido && (
+                                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                        "{emp.apelido}"
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono block truncate">{emp.email}</span>
+                                </div>
+                              </div>
+                            </td>
 
-                            {etapa.acaoTipo === 'carta_sindicato' && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsSindicatoModalOpen(true);
-                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                <Send className="w-3.5 h-3.5" />
-                                <span>{etapa.botaoTexto}</span>
-                              </button>
-                            )}
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{emp.matricula}</td>
+                            <td className="py-2.5 px-3 font-medium text-slate-800">{emp.cargo}</td>
+                            <td className="py-2.5 px-3 text-slate-500">{emp.setor}</td>
+                            
+                            {/* Indicador de Foto */}
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              {emp.fotoUrl ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  <span>Com Foto</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(emp)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                  title="Clique para adicionar foto"
+                                >
+                                  <Camera className="w-3 h-3 text-slate-400" />
+                                  <span>+ Foto</span>
+                                </button>
+                              )}
+                            </td>
 
-                            {etapa.acaoTipo === 'documento_edital' && etapa.docTipo && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdital(etapa.id, etapa.docTipo!)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
-                              >
-                                {renderActionIcon(etapa.botaoIcone)}
-                                <span>{etapa.botaoTexto}</span>
-                              </button>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                              {emp.dataAdmissao ? new Date(emp.dataAdmissao).toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            
+                            {/* Ações: Visualizar, Editar e Excluir com expansão suave e tooltip */}
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="inline-flex items-center gap-1.5 justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingEmployee(emp)}
+                                  className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Visualizar Ficha Cadastral"
+                                >
+                                  <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                    Visualizar
+                                  </span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditModal(emp)}
+                                  className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Editar Colaborador"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                    Editar
+                                  </span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setEmployeeToDelete(emp)}
+                                  className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Excluir Colaborador"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
+                                    Excluir
+                                  </span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                            {currentEmployees.length === 0 ? (
+                              <div className="space-y-1.5 py-2">
+                                <p className="font-bold text-slate-700 text-xs">Nenhum colaborador cadastrado para esta filial.</p>
+                                <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                                  Cadastre novos colaboradores no botão "+ Cadastrar Colaborador" acima, ou informe o número total de trabalhadores no campo manual para calcular o dimensionamento.
+                                </p>
+                              </div>
+                            ) : (
+                              `Nenhum colaborador encontrado para a busca "${employeeSearch}".`
                             )}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
+                      )}
+                    </tbody>
                   </table>
                 </div>
 
@@ -1796,7 +1841,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-emerald-700" />
                 <h3 className="text-sm font-extrabold text-slate-900">
-                  Etapas do Calendário Eleitoral (Processo Legal NR-5)
+                  Etapas do Calendário Eleitoral
                 </h3>
               </div>
               <span className="text-xs text-emerald-950 font-bold bg-emerald-100 px-2.5 py-1 rounded-lg">
@@ -1816,385 +1861,94 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
-                    
-                    {/* ETAPA 1: COMUNICAR O SINDICATO */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-1')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                          title={completedSteps['etapa-1'] ? 'Marcar como pendente' : 'Marcar como concluída'}
-                        >
-                          {completedSteps['etapa-1'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">1. Comunicar o Sindicato</strong>
-                        <span className="text-[11px] text-slate-500">Envio da carta formal com os marcos e datas do pleito</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.convocacao}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsSindicatoModalOpen(true);
-                            setCompletedSteps(prev => ({ ...prev, ['etapa-1']: true }));
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>Carta ao Sindicato</span>
-                        </button>
-                      </td>
-                    </tr>
+                    {etapasNormativas.map((etapa) => {
+                      const isDone = !!completedSteps[etapa.id];
+                      return (
+                        <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => toggleStepCompleted(etapa.id)}
+                              className="cursor-pointer transition-transform active:scale-90"
+                              title={isDone ? 'Marcar como pendente' : 'Marcar como concluída'}
+                            >
+                              {isDone ? (
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
+                              ) : (
+                                <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <strong className="text-slate-900 font-bold">
+                                {etapa.numero}. {etapa.titulo}
+                              </strong>
+                              {/* Ícone de Dica Legal / Explicativo */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedNormativeStep(etapa)}
+                                title="Ver fundamentação legal e regra da NR-5"
+                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white transition-all cursor-pointer border border-emerald-200 shadow-2xs"
+                              >
+                                <HelpCircle className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <span className="text-[11px] text-slate-500 block mt-0.5">
+                              {etapa.subtitulo}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-mono text-[11px] font-bold text-slate-800 block">
+                              {etapa.dataCalculada}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {etapa.prazoLabel}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {etapa.acaoTipo === 'laudo_pdf' && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await handleDownloadPdfDimensionamento();
+                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>{etapa.botaoTexto}</span>
+                              </button>
+                            )}
 
-                    {/* ETAPA 2: CONVOCAÇÃO DA ELEIÇÃO */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-2')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-2'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">2. Convocação das Eleições</strong>
-                        <span className="text-[11px] text-slate-500">Publicação formal do edital de convocação na empresa</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.convocacao}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-2', 'edital_convocacao')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Edital</span>
-                        </button>
-                      </td>
-                    </tr>
+                            {etapa.acaoTipo === 'carta_sindicato' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsSindicatoModalOpen(true);
+                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>{etapa.botaoTexto}</span>
+                              </button>
+                            )}
 
-                    {/* ETAPA 3: COMISSÃO ELEITORAL */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-3')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-3'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">3. Comissão Eleitoral</strong>
-                        <span className="text-[11px] text-slate-500">Portaria paritária com os responsáveis pela condução</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        55 dias antes da posse
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-3', 'comissao_eleitoral')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <FileSignature className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Portaria</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 4: INSCRIÇÃO DE CANDIDATOS */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-4')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-4'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">4. Inscrição de Candidatos</strong>
-                        <span className="text-[11px] text-slate-500">Período mínimo de 15 dias corridos para candidatura livre</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.inscricaoInicio} a {datasPrincipais.inscricaoFim}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-4', 'edital_inscricao')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Edital</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 5: COMPROVANTE DE INSCRIÇÃO */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-5')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-5'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">5. Protocolo de Inscrição</strong>
-                        <span className="text-[11px] text-slate-500">Garantia provisória de emprego protocolada</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        No ato da inscrição
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-5', 'comprovante_inscricao')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <UserCheck className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Protocolo</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 6: LISTA OFICIAL DE CANDIDATOS */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-6')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-6'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">6. Lista de Candidatos</strong>
-                        <span className="text-[11px] text-slate-500">Divulgação de todos os concorrentes deferidos</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        35 dias antes da posse
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-6', 'lista_candidatos')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <Users className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Lista</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 7: ZERÉSIMA DA URNA */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-7')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-7'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">7. Zerésima da Urna Digital</strong>
-                        <span className="text-[11px] text-slate-500">Lacração e auditoria eletrônica da urna</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        30 dias antes da posse
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-7', 'cedula_urna')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <Vote className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Zerésima</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 8: ELEIÇÃO E APURAÇÃO */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-8')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-8'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">8. Ata de Eleição & Apuração</strong>
-                        <span className="text-[11px] text-slate-500">Validação do quórum 50%+1 e eleitos</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.eleicao}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-8', 'ata_eleicao')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Ata</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 9: TREINAMENTO */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-9')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-9'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">9. Certificado de Treinamento</strong>
-                        <span className="text-[11px] text-slate-500">Curso da NR-5 com Prevenção ao Assédio (Lei 14.457)</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.treinamento}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-9', 'certificado_treinamento')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <Award className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Certificado</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 10: ATA DE POSSE */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-10')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-10'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">10. Ata de Instalação e Posse</strong>
-                        <span className="text-[11px] text-slate-500">Sessão solene de transmissão do mandato</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.posse}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-10', 'ata_posse')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <Printer className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Ata</span>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* ETAPA 11: CALENDÁRIO ANUAL */}
-                    <tr className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleStepCompleted('etapa-11')}
-                          className="cursor-pointer transition-transform active:scale-90"
-                        >
-                          {completedSteps['etapa-11'] ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4">
-                        <strong className="text-slate-900 font-bold block">11. Calendário Anual de Reuniões</strong>
-                        <span className="text-[11px] text-slate-500">Agendamento das 12 reuniões ordinárias mensais</span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] font-bold text-slate-800">
-                        {datasPrincipais.posse}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdital('etapa-11', 'calendario_reunioes')}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs"
-                        >
-                          <CalendarDays className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Ver Calendário</span>
-                        </button>
-                      </td>
-                    </tr>
-
+                            {etapa.acaoTipo === 'documento_edital' && etapa.docTipo && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdital(etapa.id, etapa.docTipo!)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                {renderActionIcon(etapa.botaoIcone)}
+                                <span>{etapa.botaoTexto}</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
