@@ -554,29 +554,34 @@ export class PdfService {
       }
     }
 
-    // Identificação da Empresa (ao lado do logo)
+    // Identificação da Empresa (ao lado do logo, coluna esquerda delimitada)
     const textStartX = margin + logoRenderedWidth;
+    const maxLeftColW = 140; // Garante que a coluna da esquerda nunca invada a da direita
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42); // Slate-900
+    const companyNameTrimmed = companyName.length > 42 ? `${companyName.slice(0, 40)}...` : companyName.toUpperCase();
+    doc.text(companyNameTrimmed, textStartX, 14);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.2);
+    doc.setTextColor(71, 85, 105); // Slate-600
+    const unitSafe = unitName.length > 28 ? `${unitName.slice(0, 26)}...` : unitName;
+    doc.text(`CNPJ: ${cnpj}   ·   Unidade: ${unitSafe}`, textStartX, 18);
+    doc.text(`CNAE: ${cnaeCode}   ·   Grau de Risco: ${grauDeRisco}${localidade}`, textStartX, 22);
+
+    // Título Oficial e Metadados à Direita (coluna direita alinhada ao fim da página)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
-    doc.setTextColor(15, 23, 42); // Slate-900
-    doc.text(companyName.toUpperCase(), textStartX, 15);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105); // Slate-600
-    doc.text(`CNPJ: ${cnpj}   ·   Unidade: ${unitName}${localidade}   ·   CNAE Principal: ${cnaeCode}   ·   Grau de Risco: ${grauDeRisco}`, textStartX, 19.5);
-
-    // Título Oficial e Metadados à Direita
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
     doc.setTextColor(6, 78, 59); // Emerald-900
-    doc.text('CRONOGRAMA & CALENDÁRIO ELEITORAL CIPA', pageWidth - margin, 14.5, { align: 'right' });
+    doc.text('CRONOGRAMA & CALENDÁRIO ELEITORAL CIPA', pageWidth - margin, 14, { align: 'right' });
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.2);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Gestão ${gestao}   ·   Norma Regulamentadora nº 05 (NR-5 / MTE)   ·   Protocolo: ${protocolo}`, pageWidth - margin, 19, { align: 'right' });
-    doc.text(`Data de Emissão: ${dataEmissao}   ·   Chancela SHA-256: ${hash.slice(0, 20)}...`, pageWidth - margin, 23, { align: 'right' });
+    doc.text(`Gestão ${gestao}   ·   Portaria MTP nº 4.219/2022 (NR-05)`, pageWidth - margin, 18, { align: 'right' });
+    doc.text(`Data de Emissão: ${dataEmissao}   ·   Protocolo: ${protocolo}`, pageWidth - margin, 22, { align: 'right' });
 
     // Linha divisória sutil
     doc.setDrawColor(203, 213, 225);
@@ -594,14 +599,14 @@ export class PdfService {
     };
 
     const cardWidth = (contentWidth - 9) / 4;
-    const cardY = 28;
-    const cardH = 11;
+    const cardY = 27.5;
+    const cardH = 13.5; // Altura ideal para 3 linhas sem NENHUMA sobreposição de texto
 
     const marcos = [
-      { label: '1. CONVOCAÇÃO LEGAL', val: d.convocacao, sub: 'Pelo menos 60 dias antes da posse (NR-5 5.5.1)' },
-      { label: '2. PERÍODO DE INSCRIÇÕES', val: d.inscricoes, sub: 'Prazo mínimo de 15 dias corridos (NR-5 5.5.2.2)' },
-      { label: '3. ELEIÇÃO & APURAÇÃO', val: d.eleicao, sub: 'Pelo menos 30 dias antes da posse (NR-5 5.5.3)' },
-      { label: '4. INSTALAÇÃO E POSSE', val: d.posse, sub: '1º dia útil após término do mandato (NR-5 5.5.5)' }
+      { label: '1. CONVOCAÇÃO LEGAL', val: d.convocacao, sub: 'Pelo menos 60 dias antes da posse (Item 5.5.1)' },
+      { label: '2. PERÍODO DE INSCRIÇÕES', val: d.inscricoes, sub: 'Prazo mínimo de 15 dias corridos (Item 5.5.2.2)' },
+      { label: '3. ELEIÇÃO & APURAÇÃO', val: d.eleicao, sub: 'Pelo menos 30 dias antes da posse (Item 5.5.3)' },
+      { label: '4. INSTALAÇÃO E POSSE', val: d.posse, sub: '1º dia útil após término do mandato (Item 5.5.5)' }
     ];
 
     marcos.forEach((m, idx) => {
@@ -616,27 +621,30 @@ export class PdfService {
       doc.setFillColor(idx === 3 ? 16 : 5, idx === 3 ? 185 : 150, idx === 3 ? 129 : 105);
       doc.rect(cX + 0.5, cardY, cardWidth - 1, 1, 'F');
 
+      // Linha 1: Rótulo do Marco
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(15, 23, 42);
-      doc.text(m.label, cX + 2.5, cardY + 4);
+      doc.setFontSize(6.2);
+      doc.setTextColor(71, 85, 105);
+      doc.text(m.label, cX + 2.5, cardY + 4.2);
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
+      // Linha 2: Data Oficial em destaque
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(8);
       doc.setTextColor(6, 78, 59);
-      doc.text(m.val, cX + cardWidth - 2.5, cardY + 4, { align: 'right' });
+      doc.text(m.val, cX + 2.5, cardY + 8.2);
 
+      // Linha 3: Subtítulo Normativo
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.8);
+      doc.setFontSize(5.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(m.sub, cX + 2.5, cardY + 8.5);
+      doc.text(m.sub, cX + 2.5, cardY + 11.8);
     });
 
     // =========================================================================
     // TABELA DAS 13 ETAPAS NORMATIVAS (ESTRUTURA DE QUADRO EXECUTIVO HORIZONTAL)
     // =========================================================================
-    const tableY = 42;
-    const tableHeaderH = 6.5;
+    const tableY = 44.5;
+    const tableHeaderH = 6;
 
     // Colunas (largura total = 273 mm)
     const colW = {

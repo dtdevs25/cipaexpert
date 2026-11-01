@@ -2328,13 +2328,13 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
             <div className="p-5 sm:p-6 space-y-4">
               <div className="overflow-x-auto border border-slate-200 rounded-xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                <table className="w-full text-left text-xs">
+                <table className="w-full min-w-[880px] text-left text-xs">
                   <thead className="bg-slate-100 text-slate-700 font-bold text-[11px] uppercase tracking-wider">
                     <tr>
-                      <th className="py-3 px-3 text-center w-12">Status</th>
-                      <th className="py-3 px-4">Etapa do Processo</th>
-                      <th className="py-3 px-4">Prazo / Data Oficial</th>
-                      <th className="py-3 px-4 text-right min-w-[210px]">Ações</th>
+                      <th className="py-3 px-3 text-center w-14 shrink-0">Status</th>
+                      <th className="py-3 px-4 min-w-[280px]">Etapa do Processo</th>
+                      <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">Prazo / Data Oficial</th>
+                      <th className="py-3 px-4 text-right min-w-[260px] whitespace-nowrap">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -2379,7 +2379,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               {etapa.subtitulo}
                             </span>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             <span className="font-mono text-[11px] font-bold text-slate-800 block">
                               {etapa.dataCalculada}
                             </span>
@@ -2394,11 +2394,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleEditStep(etapa)}
-                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  className="group inline-flex items-center h-8 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                   title="Editar etapa e prazos"
                                 >
                                   <Pencil className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
                                     Editar
                                   </span>
                                 </button>
@@ -2408,11 +2408,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleViewStep(etapa)}
-                                className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                className="group inline-flex items-center h-8 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                 title="Visualizar documento oficial gerado"
                               >
                                 <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
-                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
                                   Visualizar
                                 </span>
                               </button>
@@ -2421,11 +2421,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleDownloadStepPdf(etapa)}
-                                className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border border-slate-300 hover:border-slate-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                className="group inline-flex items-center h-8 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border border-slate-300 hover:border-slate-400 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                 title="Baixar documento em PDF oficial"
                               >
                                 <Download className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-slate-700" />
-                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
                                   Baixar
                                 </span>
                               </button>
@@ -2436,11 +2436,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleViewSignedStep(etapa)}
-                                    className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-800 border border-emerald-300 hover:border-emerald-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                    className="group inline-flex items-center h-8 rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-800 border border-emerald-300 hover:border-emerald-400 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                     title="Documento 100% assinado por todos os signatários (Clique para baixar via oficial assinada)"
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
-                                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-emerald-800 transition-opacity duration-300">
+                                    <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold text-emerald-800 transition-all duration-200 ease-out">
                                       Assinado
                                     </span>
                                   </button>
@@ -2448,11 +2448,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleSendToSignaturePlatform(etapa)}
-                                    className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 hover:border-amber-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                    className="group inline-flex items-center h-8 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 hover:border-amber-400 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                     title="Envelope em andamento na plataforma (Clique para configurar signatários)"
                                   >
                                     <Send className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-amber-800 transition-opacity duration-300">
+                                    <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold text-amber-800 transition-all duration-200 ease-out">
                                       Em Coleta
                                     </span>
                                   </button>
@@ -2460,11 +2460,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   <button
                                     type="button"
                                     onClick={() => handleSendToSignaturePlatform(etapa)}
-                                    className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-700 border border-purple-200 hover:border-purple-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                    className="group inline-flex items-center h-8 rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-700 border border-purple-200 hover:border-purple-300 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
                                     title="Configurar signatários e enviar para assinatura digital"
                                   >
                                     <PenTool className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-purple-600" />
-                                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-purple-700 transition-opacity duration-300">
+                                    <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold text-purple-700 transition-all duration-200 ease-out">
                                       Assinar
                                     </span>
                                   </button>
@@ -2476,11 +2476,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEmailBroadcast(etapa)}
-                                  className={`group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl ${
+                                  className={`group inline-flex items-center h-8 rounded-xl ${
                                     stepCustomizations[etapa.id]?.dispatchedAt 
                                       ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300' 
                                       : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 hover:border-blue-300'
-                                  } active:scale-95 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0`}
+                                  } active:scale-95 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0`}
                                   title={
                                     stepCustomizations[etapa.id]?.dispatchedAt
                                       ? `Edital enviado por e-mail em ${stepCustomizations[etapa.id].dispatchedAt} (${stepCustomizations[etapa.id].dispatchCount || 'todos'} colaboradores). Clique para reenviar.`
@@ -2488,7 +2488,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   }
                                 >
                                   <Mail className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-blue-800 transition-opacity duration-300">
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold text-blue-800 transition-all duration-200 ease-out">
                                     {stepCustomizations[etapa.id]?.dispatchedAt ? 'Disparado' : 'Disparar E-mail'}
                                   </span>
                                 </button>
