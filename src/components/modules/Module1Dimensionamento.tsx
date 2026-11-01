@@ -49,13 +49,15 @@ import {
   Loader2,
   HelpCircle,
   Scale,
-  BookOpen
+  BookOpen,
+  PenTool,
+  Clock
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
 import { ApiService } from '../../services/apiService';
 import { PdfService } from '../../services/pdfService';
-import { computeSha256 } from '../../services/signatureService';
+import { SignatureService, SignatureEnvelope, computeSha256 } from '../../services/signatureService';
 
 // Formatação com a primeira letra maiúscula (Title Case)
 function formatCapitalizeName(text?: string): string {
@@ -452,6 +454,50 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     porQueExiste: string;
     impactoAuditoria: string;
   } | null>(null);
+
+  // Sincronização dos envelopes com a Plataforma de Assinaturas Integrada
+  const [envelopes, setEnvelopes] = useState<SignatureEnvelope[]>(() => {
+    return SignatureService.getEnvelopes(currentCompany?.id, currentFilial?.id, currentCompany?.razaoSocial, currentCompany?.cnpj);
+  });
+
+  const refreshEnvelopes = () => {
+    const envs = SignatureService.getEnvelopes(currentCompany?.id, currentFilial?.id, currentCompany?.razaoSocial, currentCompany?.cnpj);
+    setEnvelopes(envs);
+  };
+
+  useEffect(() => {
+    refreshEnvelopes();
+  }, [currentCompany?.id, currentFilial?.id, activeTab]);
+
+  useEffect(() => {
+    const handleStorageOrFocus = () => refreshEnvelopes();
+    window.addEventListener('focus', handleStorageOrFocus);
+    window.addEventListener('storage', handleStorageOrFocus);
+    return () => {
+      window.removeEventListener('focus', handleStorageOrFocus);
+      window.removeEventListener('storage', handleStorageOrFocus);
+    };
+  }, [currentCompany?.id, currentFilial?.id]);
+
+  // Customizações individuais das etapas do calendário (salvas localmente pelo usuário)
+  const [stepCustomizations, setStepCustomizations] = useState<Record<string, {
+    title?: string;
+    date?: string;
+    obs?: string;
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem('cipa_step_customizations');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Modal de edição de etapa
+  const [editingStep, setEditingStep] = useState<any | null>(null);
+  const [editStepTitle, setEditStepTitle] = useState('');
+  const [editStepDate, setEditStepDate] = useState('');
+  const [editStepObs, setEditStepObs] = useState('');
 
   const toggleStepCompleted = (stepId: string) => {
     setCompletedSteps(prev => ({ ...prev, [stepId]: !prev[stepId] }));
@@ -1172,7 +1218,279 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       botaoTexto: 'Calendário de Reuniões',
       botaoIcone: 'calendar' as const
     }
-  ], [datasPrincipais]);
+  ].map(e => {
+    const custom = stepCustomizations[e.id];
+    return {
+      ...e,
+      titulo: custom?.title || e.titulo,
+      dataCalculada: custom?.date || e.dataCalculada
+    };
+  }), [datasPrincipais, stepCustomizations]);
+
+  // Helper para localizar o envelope correspondente à etapa
+  const getStepEnvelope = (etapa: any) => {
+    return envelopes.find(env => {
+      if (env.id === `env-cipa-${etapa.id}` || env.id === `env-${etapa.id}`) return true;
+      if (etapa.docTipo && env.docType === etapa.docTipo) return true;
+      if (env.title && env.title.toLowerCase().includes(etapa.titulo.toLowerCase())) return true;
+      if (etapa.docTipo && env.title && env.title.toLowerCase().includes(etapa.docTipo.replace(/_/g, ' '))) return true;
+      return false;
+    });
+  };
+
+  // Verifica se o documento da etapa está 100% assinado por todos os signatários
+  const isStepSigned = (etapa: any) => {
+    const env = getStepEnvelope(etapa);
+    if (env) {
+      if (env.status === 'concluido') return true;
+      if (env.signers && env.signers.length > 0 && env.signers.every(s => s.status === 'assinado')) return true;
+    }
+    if (signedAtas[etapa.id] || (etapa.docTipo && signedAtas[etapa.docTipo])) {
+      return true;
+    }
+    return false;
+  };
+
+  // AÇÃO 1: EDITAR
+  const handleEditStep = (etapa: any) => {
+    if (etapa.id === 'etapa-1') {
+      setActiveTab('dimensionamento');
+      setStepDimensionamento(1);
+      showToast('Redirecionado para ajuste de efetivo, colaboradores e CNAE.');
+      return;
+    }
+    if (etapa.id === 'etapa-3') {
+      setIsSindicatoModalOpen(true);
+      return;
+    }
+    const custom = stepCustomizations[etapa.id];
+    setEditingStep(etapa);
+    setEditStepTitle(custom?.title || etapa.titulo);
+    setEditStepDate(custom?.date || etapa.dataCalculada);
+    setEditStepObs(custom?.obs || '');
+  };
+
+  const handleSaveStepEdit = () => {
+    if (!editingStep) return;
+    const updated = {
+      ...stepCustomizations,
+      [editingStep.id]: {
+        title: editStepTitle.trim() || editingStep.titulo,
+        date: editStepDate.trim() || editingStep.dataCalculada,
+        obs: editStepObs.trim()
+      }
+    };
+    setStepCustomizations(updated);
+    try {
+      localStorage.setItem('cipa_step_customizations', JSON.stringify(updated));
+    } catch {}
+    setEditingStep(null);
+    showToast(`Etapa "${editingStep.titulo}" atualizada com sucesso!`);
+  };
+
+  // AÇÃO 2: VISUALIZAR
+  const handleViewStep = (etapa: any) => {
+    if (etapa.id === 'etapa-1') {
+      const dimDoc: GeneratedDocument = {
+        title: 'LAUDO TÉCNICO DE DIMENSIONAMENTO DA CIPA (NR-5 / NR-4)',
+        category: 'Dimensionamento e Enquadramento',
+        normativeCode: 'NR-5 (Item 5.4.1 / Quadro I) e NR-4',
+        companyName: currentCompany.razaoSocial,
+        cnpj: currentFilial.cnpj || currentCompany.cnpj,
+        dateGenerated: new Date().toLocaleDateString('pt-BR'),
+        content: [
+          `ESTABELECIMENTO: ${currentFilial.name} · CNPJ: ${currentFilial.cnpj || currentCompany.cnpj}`,
+          `LOCALIDADE: ${currentFilial.city || 'São Paulo'} - ${currentFilial.state || 'SP'}`,
+          `ATIVIDADE ECONÔMICA (CNAE): ${cnaeEntry.code} - ${cnaeEntry.description}`,
+          `GRAU DE RISCO NORMATIVO: Grau ${cnaeEntry.grauDeRisco} (Portaria MTP nº 4.218/2022 - NR-04)`,
+          `EFETIVO CONSIDERADO: ${headcount} colaboradores ativos na unidade`,
+          `COMPOSIÇÃO PARITÁRIA OFICIAL:`,
+          `• Representantes do Empregador (Designados): ${dimensionamento.efetivos} Titular(es) e ${dimensionamento.suplentes} Suplente(s)`,
+          `• Representantes dos Empregados (Eleitos): ${dimensionamento.efetivos} Titular(es) e ${dimensionamento.suplentes} Suplente(s)`,
+          `• Total de Cipeiros Efetivos na Gestão: ${dimensionamento.totalMembros} membros`,
+          `PARECER LEGAL NORMATIVO:`,
+          dimensionamento.observacao
+        ],
+        signatories: [
+          'Responsável Técnico pelo Dimensionamento / SESMT',
+          'Diretoria Executiva / Representante Legal da Empresa'
+        ]
+      };
+      if (onOpenDocument) {
+        onOpenDocument(dimDoc);
+      } else {
+        setActiveEditalDoc({ stepId: 'etapa-1', doc: dimDoc });
+      }
+      return;
+    }
+
+    const docTipo = etapa.docTipo || (etapa.id === 'etapa-3' ? 'comunicado_sindicato' : 'edital_convocacao');
+    const doc = generateCipaDocument(
+      docTipo,
+      currentCompany.razaoSocial,
+      currentFilial.cnpj || currentCompany.cnpj,
+      mandateEndDate,
+      dimensionamento.totalMembros,
+      {
+        sindicatoNome,
+        sindicatoEmail,
+        cronogramaDatas: datasPrincipais
+      }
+    );
+
+    const custom = stepCustomizations[etapa.id];
+    if (custom?.obs) {
+      doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
+    }
+    if (custom?.title) {
+      doc.title = custom.title;
+    }
+
+    if (onOpenDocument) {
+      onOpenDocument(doc);
+    } else {
+      setActiveEditalDoc({ stepId: etapa.id, doc });
+    }
+  };
+
+  // AÇÃO 3: BAIXAR PDF
+  const handleDownloadStepPdf = async (etapa: any) => {
+    if (etapa.acaoTipo === 'laudo_pdf') {
+      await handleDownloadPdfDimensionamento();
+      return;
+    }
+
+    const docTipo = etapa.docTipo || 'comunicado_sindicato';
+    const doc = generateCipaDocument(
+      docTipo,
+      currentCompany.razaoSocial,
+      currentFilial.cnpj || currentCompany.cnpj,
+      mandateEndDate,
+      dimensionamento.totalMembros,
+      {
+        sindicatoNome,
+        sindicatoEmail,
+        cronogramaDatas: datasPrincipais
+      }
+    );
+
+    const custom = stepCustomizations[etapa.id];
+    if (custom?.obs) {
+      doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
+    }
+    if (custom?.title) {
+      doc.title = custom.title;
+    }
+
+    const existingEnv = getStepEnvelope(etapa);
+    const envToDownload: SignatureEnvelope = existingEnv || {
+      id: `env-${etapa.id}`,
+      title: doc.title,
+      category: doc.category,
+      normativeCode: doc.normativeCode,
+      sourceType: 'sistema',
+      docType: docTipo,
+      companyName: currentCompany.razaoSocial,
+      cnpj: currentFilial.cnpj || currentCompany.cnpj,
+      unitId: currentFilial.id,
+      unitName: currentFilial.name,
+      createdAt: new Date().toLocaleString('pt-BR'),
+      updatedAt: new Date().toLocaleString('pt-BR'),
+      content: doc.content,
+      signers: doc.signatories.map((sig, idx) => ({
+        id: `sig-${etapa.id}-${idx}`,
+        name: sig,
+        email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.')}@${currentCompany.razaoSocial.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
+        role: sig,
+        order: idx + 1,
+        status: 'pendente'
+      })),
+      sendSequence: 'todos_juntos',
+      status: 'rascunho',
+      documentHash: 'DOC-' + etapa.id.toUpperCase(),
+      auditEvents: []
+    };
+
+    PdfService.downloadEnvelopePdf(envToDownload);
+    showToast(`Download de "${doc.title}" iniciado em PDF!`);
+  };
+
+  // AÇÃO 4: ASSINAR / ENVIAR À PLATAFORMA DE ASSINATURAS
+  const handleSendToSignaturePlatform = async (etapa: any) => {
+    try {
+      let env = getStepEnvelope(etapa);
+
+      if (!env) {
+        const docTipo = etapa.docTipo || 'comunicado_sindicato';
+        const doc = generateCipaDocument(
+          docTipo,
+          currentCompany.razaoSocial,
+          currentFilial.cnpj || currentCompany.cnpj,
+          mandateEndDate,
+          dimensionamento.totalMembros,
+          {
+            sindicatoNome,
+            sindicatoEmail,
+            cronogramaDatas: datasPrincipais
+          }
+        );
+
+        const custom = stepCustomizations[etapa.id];
+        if (custom?.obs) {
+          doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
+        }
+
+        const signersList = doc.signatories.map((sig, idx) => ({
+          name: sig.includes('(') ? sig.split('(')[0].trim() : sig,
+          email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.').slice(0, 20)}@${currentCompany.razaoSocial.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
+          role: sig
+        }));
+
+        env = await SignatureService.createEnvelope({
+          title: `${etapa.numero}. ${doc.title}`,
+          category: 'Processo Eleitoral CIPA',
+          normativeCode: etapa.referenciaNormativa,
+          sourceType: 'sistema',
+          docType: docTipo,
+          content: doc.content,
+          companyId: currentCompany.id,
+          companyName: currentCompany.razaoSocial,
+          unitId: currentFilial.id,
+          unitName: currentFilial.name,
+          cnpj: currentFilial.cnpj || currentCompany.cnpj,
+          signers: signersList.length > 0 ? signersList : [
+            { name: 'Presidente da Comissão Eleitoral', email: 'presidente.cipa@empresa.com.br', role: 'Presidente' },
+            { name: 'Secretária da Comissão Eleitoral', email: 'secretaria.cipa@empresa.com.br', role: 'Secretária' }
+          ],
+          sendSequence: 'todos_juntos',
+          creatorName: currentUser?.name || 'Administrador CIPA',
+          creatorEmail: currentUser?.email || 'admin@empresa.com.br'
+        });
+
+        refreshEnvelopes();
+      }
+
+      showToast(`Documento enviado para a Plataforma Integrada de Assinaturas!`);
+
+      // Redireciona diretamente para o Portal de Assinaturas
+      if (onNavigateTab) {
+        onNavigateTab('assinaturas');
+      }
+    } catch (err) {
+      console.error('Erro ao integrar com plataforma de assinaturas:', err);
+      showToast('Erro ao criar envelope na plataforma de assinaturas.');
+    }
+  };
+
+  const handleViewSignedStep = (etapa: any) => {
+    const env = getStepEnvelope(etapa);
+    if (env) {
+      PdfService.downloadEnvelopePdf(env);
+      showToast(`Baixando via oficial assinada de "${env.title}"!`);
+    } else {
+      handleViewStep(etapa);
+    }
+  };
 
   const renderActionIcon = (icone: 'printer' | 'send' | 'fileText' | 'signature' | 'userCheck' | 'users' | 'vote' | 'checkCircle' | 'award' | 'calendar') => {
     switch (icone) {
@@ -1859,12 +2177,16 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       <th className="py-3 px-3 text-center w-12">Status</th>
                       <th className="py-3 px-4">Etapa do Processo</th>
                       <th className="py-3 px-4">Prazo / Data Oficial</th>
-                      <th className="py-3 px-4 text-right">Ação</th>
+                      <th className="py-3 px-4 text-right min-w-[210px]">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {etapasNormativas.map((etapa) => {
-                      const isDone = !!completedSteps[etapa.id];
+                      const isSigned = isStepSigned(etapa);
+                      const isDone = !!completedSteps[etapa.id] || isSigned;
+                      const env = getStepEnvelope(etapa);
+                      const isSent = !!env && !isSigned;
+
                       return (
                         <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3 px-3 text-center">
@@ -1872,7 +2194,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               type="button"
                               onClick={() => toggleStepCompleted(etapa.id)}
                               className="cursor-pointer transition-transform active:scale-90"
-                              title={isDone ? 'Marcar como pendente' : 'Marcar como concluída'}
+                              title={isDone ? 'Concluída (clique para alternar status)' : 'Marcar como concluída'}
                             >
                               {isDone ? (
                                 <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
@@ -1908,45 +2230,86 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               {etapa.prazoLabel}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right">
-                            {etapa.acaoTipo === 'laudo_pdf' && (
+                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="inline-flex items-center gap-1.5 justify-end">
+                              {/* 1. EDITAR */}
                               <button
                                 type="button"
-                                onClick={async () => {
-                                  await handleDownloadPdfDimensionamento();
-                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                                onClick={() => handleEditStep(etapa)}
+                                className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                title="Editar etapa e prazos"
                               >
-                                <Printer className="w-3.5 h-3.5 text-emerald-700" />
-                                <span>{etapa.botaoTexto}</span>
+                                <Pencil className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                  Editar
+                                </span>
                               </button>
-                            )}
 
-                            {etapa.acaoTipo === 'carta_sindicato' && (
+                              {/* 2. VISUALIZAR */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setIsSindicatoModalOpen(true);
-                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                                onClick={() => handleViewStep(etapa)}
+                                className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                title="Visualizar documento oficial gerado"
                               >
-                                <Send className="w-3.5 h-3.5" />
-                                <span>{etapa.botaoTexto}</span>
+                                <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                  Visualizar
+                                </span>
                               </button>
-                            )}
 
-                            {etapa.acaoTipo === 'documento_edital' && etapa.docTipo && (
+                              {/* 3. BAIXAR */}
                               <button
                                 type="button"
-                                onClick={() => handleOpenEdital(etapa.id, etapa.docTipo!)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                                onClick={() => handleDownloadStepPdf(etapa)}
+                                className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border border-slate-300 hover:border-slate-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                title="Baixar documento em PDF oficial"
                               >
-                                {renderActionIcon(etapa.botaoIcone)}
-                                <span>{etapa.botaoTexto}</span>
+                                <Download className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-slate-700" />
+                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                  Baixar
+                                </span>
                               </button>
-                            )}
+
+                              {/* 4. ASSINAR / ASSINADO */}
+                              {isSigned ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewSignedStep(etapa)}
+                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-800 border border-emerald-300 hover:border-emerald-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Documento 100% assinado por todos os signatários (Clique para baixar via oficial assinada)"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-emerald-800 transition-opacity duration-300">
+                                    Assinado
+                                  </span>
+                                </button>
+                              ) : isSent ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendToSignaturePlatform(etapa)}
+                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 hover:border-amber-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Envelope em andamento na plataforma (Clique para gerenciar no Portal)"
+                                >
+                                  <Send className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-amber-800 transition-opacity duration-300">
+                                    Em Coleta
+                                  </span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendToSignaturePlatform(etapa)}
+                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-700 border border-purple-200 hover:border-purple-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Enviar documento para a Plataforma Integrada de Assinaturas"
+                                >
+                                  <PenTool className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-purple-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-purple-700 transition-opacity duration-300">
+                                    Assinar
+                                  </span>
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -2048,6 +2411,90 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-all cursor-pointer shadow-xs"
                   >
                     Entendido / Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL DE EDIÇÃO DOS PARÂMETROS DA ETAPA */}
+          {editingStep && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
+                <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent px-5 py-4 border-b border-amber-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0">
+                      <Pencil className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
+                        Etapa {editingStep.numero} de 13 · {editingStep.referenciaNormativa}
+                      </span>
+                      <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                        Editar Parâmetros da Etapa
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingStep(null)}
+                    className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-5 space-y-4 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-800 block mb-1">Título da Etapa</label>
+                    <input
+                      type="text"
+                      value={editStepTitle}
+                      onChange={(e) => setEditStepTitle(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 block mb-1">Data / Prazo Oficial</label>
+                    <input
+                      type="text"
+                      value={editStepDate}
+                      onChange={(e) => setEditStepDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      placeholder="Ex: 15/10/2026 ou 01/10/2026 a 15/10/2026"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Prazo legal NR-5 sugerido: {editingStep.dataCalculada} ({editingStep.prazoLabel})
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 block mb-1">Observações Internas / Diretrizes da Empresa</label>
+                    <textarea
+                      rows={3}
+                      value={editStepObs}
+                      onChange={(e) => setEditStepObs(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
+                      placeholder="Instruções específicas para esta etapa (serão incluídas no documento oficial)..."
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStep(null)}
+                    className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-800 font-bold text-xs hover:bg-slate-200/60 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveStepEdit}
+                    className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    Salvar Alterações
                   </button>
                 </div>
               </div>
