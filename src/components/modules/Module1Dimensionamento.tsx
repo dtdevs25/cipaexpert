@@ -58,6 +58,7 @@ import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHi
 import { ApiService } from '../../services/apiService';
 import { PdfService } from '../../services/pdfService';
 import { SignatureService, SignatureEnvelope, computeSha256 } from '../../services/signatureService';
+import { NewEnvelopeModal, InitialEnvelopeData } from '../admin/NewEnvelopeModal';
 
 // Formatação com a primeira letra maiúscula (Title Case)
 function formatCapitalizeName(text?: string): string {
@@ -498,6 +499,10 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const [editStepTitle, setEditStepTitle] = useState('');
   const [editStepDate, setEditStepDate] = useState('');
   const [editStepObs, setEditStepObs] = useState('');
+
+  // Modal de Configuração de Assinatura Digital do Documento (Signatários e Posições)
+  const [isSignatureConfigModalOpen, setIsSignatureConfigModalOpen] = useState(false);
+  const [signatureConfigInitialData, setSignatureConfigInitialData] = useState<InitialEnvelopeData | null>(null);
 
   const toggleStepCompleted = (stepId: string) => {
     setCompletedSteps(prev => ({ ...prev, [stepId]: !prev[stepId] }));
@@ -1415,70 +1420,93 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     showToast(`Download de "${doc.title}" iniciado em PDF!`);
   };
 
-  // AÇÃO 4: ASSINAR / ENVIAR À PLATAFORMA DE ASSINATURAS
+  // AÇÃO 4: ASSINAR / CONFIGURAR NA PLATAFORMA DE ASSINATURAS (SIGNATÁRIOS + POSICIONAMENTO)
   const handleSendToSignaturePlatform = async (etapa: any) => {
     try {
-      let env = getStepEnvelope(etapa);
-
-      if (!env) {
-        const docTipo = etapa.docTipo || 'comunicado_sindicato';
-        const doc = generateCipaDocument(
-          docTipo,
-          currentCompany.razaoSocial,
-          currentFilial.cnpj || currentCompany.cnpj,
-          mandateEndDate,
-          dimensionamento.totalMembros,
-          {
-            sindicatoNome,
-            sindicatoEmail,
-            cronogramaDatas: datasPrincipais
-          }
-        );
-
-        const custom = stepCustomizations[etapa.id];
-        if (custom?.obs) {
-          doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
+      const docTipo = etapa.docTipo || 'comunicado_sindicato';
+      const doc = generateCipaDocument(
+        docTipo,
+        currentCompany.razaoSocial,
+        currentFilial.cnpj || currentCompany.cnpj,
+        mandateEndDate,
+        dimensionamento.totalMembros,
+        {
+          sindicatoNome,
+          sindicatoEmail,
+          cronogramaDatas: datasPrincipais
         }
+      );
 
-        const signersList = doc.signatories.map((sig, idx) => ({
-          name: sig.includes('(') ? sig.split('(')[0].trim() : sig,
-          email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.').slice(0, 20)}@${currentCompany.razaoSocial.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
-          role: sig
-        }));
-
-        env = await SignatureService.createEnvelope({
-          title: `${etapa.numero}. ${doc.title}`,
-          category: 'Processo Eleitoral CIPA',
-          normativeCode: etapa.referenciaNormativa,
-          sourceType: 'sistema',
-          docType: docTipo,
-          content: doc.content,
-          companyId: currentCompany.id,
-          companyName: currentCompany.razaoSocial,
-          unitId: currentFilial.id,
-          unitName: currentFilial.name,
-          cnpj: currentFilial.cnpj || currentCompany.cnpj,
-          signers: signersList.length > 0 ? signersList : [
-            { name: 'Presidente da Comissão Eleitoral', email: 'presidente.cipa@empresa.com.br', role: 'Presidente' },
-            { name: 'Secretária da Comissão Eleitoral', email: 'secretaria.cipa@empresa.com.br', role: 'Secretária' }
-          ],
-          sendSequence: 'todos_juntos',
-          creatorName: currentUser?.name || 'Administrador CIPA',
-          creatorEmail: currentUser?.email || 'admin@empresa.com.br'
-        });
-
-        refreshEnvelopes();
+      const custom = stepCustomizations[etapa.id];
+      if (custom?.obs) {
+        doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
       }
 
-      showToast(`Documento enviado para a Plataforma Integrada de Assinaturas!`);
+      const signersList = doc.signatories.map((sig, idx) => ({
+        name: sig.includes('(') ? sig.split('(')[0].trim() : sig,
+        email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.').slice(0, 20)}@${currentCompany.razaoSocial.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
+        role: sig
+      }));
 
-      // Redireciona diretamente para o Portal de Assinaturas
-      if (onNavigateTab) {
-        onNavigateTab('assinaturas');
-      }
+      // Abre o fluxo de configuração de assinaturas: escolhe quem vai assinar e posiciona rúbricas/assinaturas
+      setSignatureConfigInitialData({
+        title: `${etapa.numero}. ${doc.title}`,
+        category: 'Processo Eleitoral CIPA',
+        normativeCode: etapa.referenciaNormativa,
+        sourceType: 'sistema',
+        docType: docTipo,
+        documentContent: doc.content,
+        signers: signersList.length > 0 ? signersList : [
+          { name: 'Presidente da Comissão Eleitoral', email: 'presidente.cipa@empresa.com.br', role: 'Presidente' },
+          { name: 'Secretária da Comissão Eleitoral', email: 'secretaria.cipa@empresa.com.br', role: 'Secretária' }
+        ],
+        initialStep: 2 // Inicia diretamente na tela de configurar signatários e avançar para posicionar!
+      });
+      setIsSignatureConfigModalOpen(true);
     } catch (err) {
-      console.error('Erro ao integrar com plataforma de assinaturas:', err);
-      showToast('Erro ao criar envelope na plataforma de assinaturas.');
+      console.error('Erro ao abrir configuração de assinaturas:', err);
+      showToast('Erro ao abrir configurador de assinaturas.');
+    }
+  };
+
+  // DOWNLOAD DO CALENDÁRIO ELEITORAL COMPLETO EM PDF (A4 HORIZONTAL / PAISAGEM)
+  const handleDownloadCalendarioPdf = async () => {
+    try {
+      const gestaoAno = `${new Date(mandateEndDate).getFullYear() - 1}/${new Date(mandateEndDate).getFullYear()}`;
+
+      await PdfService.generateCalendarioPdf({
+        companyName: currentCompany.razaoSocial,
+        cnpj: currentFilial.cnpj || currentCompany.cnpj,
+        unitName: currentFilial.name,
+        city: currentFilial.city,
+        state: currentFilial.state,
+        cnaeCode: cnaeEntry.code,
+        cnaeDesc: cnaeEntry.description,
+        grauDeRisco: cnaeEntry.grauDeRisco,
+        mandateEndDate,
+        gestaoAno,
+        logoUrl: (currentFilial as any).logoUrl || (currentCompany as any).logoUrl,
+        datasDestaque: {
+          convocacao: datasPrincipais.convocacao,
+          inscricoes: `${datasPrincipais.inscricaoInicio} a ${datasPrincipais.inscricaoFim}`,
+          eleicao: datasPrincipais.eleicao,
+          posse: datasPrincipais.posse
+        },
+        etapas: etapasNormativas.map(e => ({
+          numero: e.numero,
+          titulo: e.titulo,
+          subtitulo: e.subtitulo,
+          prazoLabel: e.prazoLabel,
+          dataCalculada: e.dataCalculada,
+          referenciaNormativa: e.referenciaNormativa,
+          isConcluido: !!completedSteps[e.id] || isStepSigned(e)
+        }))
+      });
+
+      showToast('Download do Calendário Eleitoral iniciado em PDF (Horizontal A4)!');
+    } catch (err) {
+      console.error('Erro ao gerar PDF do calendário:', err);
+      showToast('Ocorreu um erro ao gerar o PDF do calendário.');
     }
   };
 
@@ -2157,16 +2185,27 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
           {/* TABELA DE ETAPAS DO CALENDÁRIO COM TICADOS E APENAS 1 BOTÃO DE AÇÃO */}
           <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex items-center justify-between flex-wrap gap-2.5">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-emerald-700" />
                 <h3 className="text-sm font-extrabold text-slate-900">
                   Etapas do Calendário Eleitoral
                 </h3>
               </div>
-              <span className="text-xs text-emerald-950 font-bold bg-emerald-100 px-2.5 py-1 rounded-lg">
-                {completedCount} de {etapasNormativas.length} concluídas
-              </span>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleDownloadCalendarioPdf}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-emerald-950 bg-white hover:bg-emerald-50 border border-emerald-300 hover:border-emerald-400 rounded-xl transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                  title="Baixar quadro completo do calendário oficial da CIPA em PDF (Formato A4 na Horizontal)"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Baixar Calendário (PDF A4)</span>
+                </button>
+                <span className="text-xs text-emerald-950 font-bold bg-emerald-200/70 border border-emerald-300/80 px-2.5 py-1 rounded-lg">
+                  {completedCount} de {etapasNormativas.length} concluídas
+                </span>
+              </div>
             </div>
 
             <div className="p-5 sm:p-6 space-y-4">
@@ -2232,18 +2271,20 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                           </td>
                           <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="inline-flex items-center gap-1.5 justify-end">
-                              {/* 1. EDITAR */}
-                              <button
-                                type="button"
-                                onClick={() => handleEditStep(etapa)}
-                                className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                title="Editar etapa e prazos"
-                              >
-                                <Pencil className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                                <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
-                                  Editar
-                                </span>
-                              </button>
+                              {/* 1. EDITAR (Oculto no Passo 1 de Dimensionamento) */}
+                              {etapa.id !== 'etapa-1' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditStep(etapa)}
+                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Editar etapa e prazos"
+                                >
+                                  <Pencil className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold transition-opacity duration-300">
+                                    Editar
+                                  </span>
+                                </button>
+                              )}
 
                               {/* 2. VISUALIZAR */}
                               <button
@@ -2271,43 +2312,45 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 </span>
                               </button>
 
-                              {/* 4. ASSINAR / ASSINADO */}
-                              {isSigned ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewSignedStep(etapa)}
-                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-800 border border-emerald-300 hover:border-emerald-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Documento 100% assinado por todos os signatários (Clique para baixar via oficial assinada)"
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-emerald-800 transition-opacity duration-300">
-                                    Assinado
-                                  </span>
-                                </button>
-                              ) : isSent ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendToSignaturePlatform(etapa)}
-                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 hover:border-amber-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Envelope em andamento na plataforma (Clique para gerenciar no Portal)"
-                                >
-                                  <Send className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-amber-800 transition-opacity duration-300">
-                                    Em Coleta
-                                  </span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendToSignaturePlatform(etapa)}
-                                  className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-700 border border-purple-200 hover:border-purple-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Enviar documento para a Plataforma Integrada de Assinaturas"
-                                >
-                                  <PenTool className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-purple-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-purple-700 transition-opacity duration-300">
-                                    Assinar
-                                  </span>
-                                </button>
+                              {/* 4. ASSINAR / ASSINADO (Oculto no Passo 1 de Dimensionamento) */}
+                              {etapa.id !== 'etapa-1' && (
+                                isSigned ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewSignedStep(etapa)}
+                                    className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-800 border border-emerald-300 hover:border-emerald-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                    title="Documento 100% assinado por todos os signatários (Clique para baixar via oficial assinada)"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-emerald-800 transition-opacity duration-300">
+                                      Assinado
+                                    </span>
+                                  </button>
+                                ) : isSent ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendToSignaturePlatform(etapa)}
+                                    className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-300 hover:border-amber-400 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                    title="Envelope em andamento na plataforma (Clique para configurar signatários)"
+                                  >
+                                    <Send className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
+                                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-amber-800 transition-opacity duration-300">
+                                      Em Coleta
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendToSignaturePlatform(etapa)}
+                                    className="group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl bg-purple-50 hover:bg-purple-100 active:scale-95 text-purple-700 border border-purple-200 hover:border-purple-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                    title="Configurar signatários e enviar para assinatura digital"
+                                  >
+                                    <PenTool className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-purple-600" />
+                                    <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-purple-700 transition-opacity duration-300">
+                                      Assinar
+                                    </span>
+                                  </button>
+                                )
                               )}
                             </div>
                           </td>
@@ -2500,6 +2543,29 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               </div>
             </div>
           )}
+
+          {/* MODAL DE CONFIGURAÇÃO DE ASSINATURA DIGITAL (SIGNATÁRIOS E POSICIONAMENTO) */}
+          <NewEnvelopeModal
+            isOpen={isSignatureConfigModalOpen}
+            onClose={() => {
+              setIsSignatureConfigModalOpen(false);
+              setSignatureConfigInitialData(null);
+            }}
+            companyId={currentCompany.id}
+            companyName={currentCompany.razaoSocial}
+            unitId={currentFilial.id}
+            unitName={currentFilial.name}
+            cnpj={currentFilial.cnpj || currentCompany.cnpj}
+            creatorName={currentUser?.name || 'Administrador CIPA'}
+            creatorEmail={currentUser?.email || 'admin@empresa.com.br'}
+            initialData={signatureConfigInitialData}
+            onEnvelopeCreated={(created) => {
+              refreshEnvelopes();
+              showToast(`Envelope "${created.title}" configurado e enviado para coleta de assinaturas!`);
+              setIsSignatureConfigModalOpen(false);
+              setSignatureConfigInitialData(null);
+            }}
+          />
 </div>
       )}
 

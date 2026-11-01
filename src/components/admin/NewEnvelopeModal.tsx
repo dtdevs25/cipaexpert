@@ -24,7 +24,18 @@ import {
 import { ApiService } from '../../services/apiService';
 import { SignaturePlacementEditor } from './SignaturePlacementEditor';
 
-interface NewEnvelopeModalProps {
+export interface InitialEnvelopeData {
+  title?: string;
+  category?: string;
+  normativeCode?: string;
+  docType?: string;
+  documentContent?: string[];
+  signers?: Array<{ name: string; email: string; cpf?: string; role: string }>;
+  initialStep?: 1 | 2 | 3;
+  sourceType?: 'sistema' | 'upload';
+}
+
+export interface NewEnvelopeModalProps {
   isOpen: boolean;
   onClose: () => void;
   companyId?: string;
@@ -35,6 +46,7 @@ interface NewEnvelopeModalProps {
   creatorName: string;
   creatorEmail: string;
   onEnvelopeCreated: (envelope: SignatureEnvelope) => void;
+  initialData?: InitialEnvelopeData | null;
 }
 
 export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
@@ -47,14 +59,15 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
   cnpj,
   creatorName,
   creatorEmail,
-  onEnvelopeCreated
+  onEnvelopeCreated,
+  initialData
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   
   // Etapa Atual do Wizard (1: Upload do Documento, 2: Signatários, 3: Posicionar Assinaturas)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  // Dados do Documento (Apenas Upload)
+  // Dados do Documento (Apenas Upload ou Sistema)
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Documento Externo CIPA');
   const [normativeCode, setNormativeCode] = useState('Gestão Documental CIPA · MP 2.200-2/2001');
@@ -82,6 +95,25 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
 
   // Posições das Assinaturas no Documento (Estilo DocuSign / D4Sign)
   const [signaturePositions, setSignaturePositions] = useState<SignatureTagPosition[]>([]);
+
+  // Inicializa com dados pré-preenchidos se fornecidos (ex: vindos do Calendário Eleitoral)
+  React.useEffect(() => {
+    if (isOpen && initialData) {
+      if (initialData.title) setTitle(initialData.title);
+      if (initialData.category) setCategory(initialData.category);
+      if (initialData.normativeCode) setNormativeCode(initialData.normativeCode);
+      if (initialData.documentContent && initialData.documentContent.length > 0) {
+        setDocumentContent(initialData.documentContent);
+        setUploadedFileName(`${(initialData.title || 'documento').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}.pdf`);
+      }
+      if (initialData.signers && initialData.signers.length > 0) {
+        setSigners(initialData.signers);
+      }
+      setCurrentStep(initialData.initialStep || 2);
+    } else if (isOpen && !initialData) {
+      setCurrentStep(1);
+    }
+  }, [isOpen, initialData]);
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
@@ -196,8 +228,8 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
   };
 
   const handleSubmitEnvelope = async () => {
-    if (!uploadedFileName) {
-      alert('Faça upload de um documento antes de enviar.');
+    if (!uploadedFileName && documentContent.length === 0) {
+      alert('Selecione ou faça upload de um documento antes de enviar.');
       return;
     }
     if (signers.length === 0) {
@@ -217,9 +249,10 @@ export const NewEnvelopeModal: React.FC<NewEnvelopeModalProps> = ({
 
       const created = await SignatureService.createEnvelope({
         title: title.trim() || uploadedFileName.replace(/\.[^/.]+$/, ''),
-        category: category.trim() || 'Documento Externo CIPA',
+        category: category.trim() || (initialData?.category || 'Documento CIPA'),
         normativeCode,
-        sourceType: 'upload',
+        sourceType: initialData?.sourceType || (uploadedFileUrl ? 'upload' : 'sistema'),
+        docType: initialData?.docType,
         fileName: uploadedFileName,
         fileUrl: uploadedFileUrl || undefined,
         content: finalContent,

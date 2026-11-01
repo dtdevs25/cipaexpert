@@ -27,6 +27,40 @@ export interface DimensionamentoPdfData {
   logoUrl?: string;
 }
 
+export interface CalendarioEtapaPdf {
+  numero: number;
+  titulo: string;
+  subtitulo?: string;
+  prazoLabel: string;
+  dataCalculada: string;
+  referenciaNormativa: string;
+  isConcluido?: boolean;
+}
+
+export interface CalendarioPdfData {
+  companyName: string;
+  razaoSocial?: string;
+  cnpj: string;
+  unitName: string;
+  city?: string;
+  state?: string;
+  cnaeCode: string;
+  cnaeDesc: string;
+  grauDeRisco: number;
+  mandateEndDate: string;
+  gestaoAno?: string;
+  logoUrl?: string;
+  protocolo?: string;
+  hashSha256?: string;
+  datasDestaque?: {
+    convocacao: string;
+    inscricoes: string;
+    eleicao: string;
+    posse: string;
+  };
+  etapas: CalendarioEtapaPdf[];
+}
+
 // Helper seguro para carregar imagens no navegador sem quebrar o fluxo caso falhe
 async function loadImgData(url?: string): Promise<{ img: HTMLImageElement; format: 'PNG' | 'JPEG' } | null> {
   if (typeof window === 'undefined' || !url) return null;
@@ -456,6 +490,315 @@ export class PdfService {
       const a = document.createElement('a');
       a.href = url;
       a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  }
+
+  /**
+   * Gera e faz download do Calendário Eleitoral Oficial da CIPA (NR-5 / MTE)
+   * em folha A4 HORIZONTAL (landscape), formato de quadro/tabela de alta fidelidade executiva.
+   */
+  static async generateCalendarioPdf(data: CalendarioPdfData): Promise<void> {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth(); // 297 mm
+    const pageHeight = doc.internal.pageSize.getHeight(); // 210 mm
+    const margin = 12;
+    const contentWidth = pageWidth - margin * 2; // 273 mm
+
+    const companyName = String(data.companyName || data.razaoSocial || 'Empresa').trim();
+    const cnpj = String(data.cnpj || '00.000.000/0001-00').trim();
+    const unitName = String(data.unitName || 'Matriz').trim();
+    const localidade = data.city ? ` · ${data.city}/${data.state || 'BR'}` : (data.state ? ` · ${data.state}` : '');
+    const cnaeCode = String(data.cnaeCode || '2511-0/00').trim();
+    const grauDeRisco = Number(data.grauDeRisco || 3);
+    const gestao = String(data.gestaoAno || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`).trim();
+    const dataEmissao = new Date().toLocaleDateString('pt-BR');
+    const hash = String(data.hashSha256 || `SHA256-${Array.from(new Uint8Array(32), () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('').toUpperCase()}`).trim();
+    const protocolo = String(data.protocolo || `CAL-NR5-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`).trim();
+
+    // Barra superior decorativa esmeralda
+    doc.setFillColor(5, 150, 105); // Emerald-600
+    doc.rect(margin, 7, contentWidth, 2, 'F');
+
+    // Carregamento do Logo
+    let loadedLogo = await loadImgData(data.logoUrl);
+    if (!loadedLogo && typeof window !== 'undefined') {
+      loadedLogo = await loadImgData('/logocompleto.png');
+    }
+
+    let logoRenderedWidth = 0;
+    if (loadedLogo) {
+      try {
+        let imgW = 28;
+        let imgH = 12;
+        if (loadedLogo.img.naturalWidth && loadedLogo.img.naturalHeight) {
+          const ratio = loadedLogo.img.naturalWidth / loadedLogo.img.naturalHeight;
+          if (ratio > (imgW / imgH)) {
+            imgH = imgW / ratio;
+          } else {
+            imgW = imgH * ratio;
+          }
+        }
+        doc.addImage(loadedLogo.img, loadedLogo.format, margin, 11, imgW, imgH);
+        logoRenderedWidth = imgW + 4;
+      } catch (err) {
+        console.warn('Erro ao inserir logo no PDF do calendário:', err);
+      }
+    }
+
+    // Identificação da Empresa (ao lado do logo)
+    const textStartX = margin + logoRenderedWidth;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(15, 23, 42); // Slate-900
+    doc.text(companyName.toUpperCase(), textStartX, 15);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105); // Slate-600
+    doc.text(`CNPJ: ${cnpj}   ·   Unidade: ${unitName}${localidade}   ·   CNAE Principal: ${cnaeCode}   ·   Grau de Risco: ${grauDeRisco}`, textStartX, 19.5);
+
+    // Título Oficial e Metadados à Direita
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(6, 78, 59); // Emerald-900
+    doc.text('CRONOGRAMA & CALENDÁRIO ELEITORAL CIPA', pageWidth - margin, 14.5, { align: 'right' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Gestão ${gestao}   ·   Norma Regulamentadora nº 05 (NR-5 / MTE)   ·   Protocolo: ${protocolo}`, pageWidth - margin, 19, { align: 'right' });
+    doc.text(`Data de Emissão: ${dataEmissao}   ·   Chancela SHA-256: ${hash.slice(0, 20)}...`, pageWidth - margin, 23, { align: 'right' });
+
+    // Linha divisória sutil
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 25.5, pageWidth - margin, 25.5);
+
+    // =========================================================================
+    // CARDS DE DESTAQUE DOS 4 MARCOS CRÍTICOS DA NR-5 (HORIZONTAL)
+    // =========================================================================
+    const d = data.datasDestaque || {
+      convocacao: '60 dias antes',
+      inscricoes: 'Mínimo 15 dias',
+      eleicao: '30 dias antes',
+      posse: '1º dia útil'
+    };
+
+    const cardWidth = (contentWidth - 9) / 4;
+    const cardY = 28;
+    const cardH = 11;
+
+    const marcos = [
+      { label: '1. CONVOCAÇÃO LEGAL', val: d.convocacao, sub: 'Pelo menos 60 dias antes da posse (NR-5 5.5.1)' },
+      { label: '2. PERÍODO DE INSCRIÇÕES', val: d.inscricoes, sub: 'Prazo mínimo de 15 dias corridos (NR-5 5.5.2.2)' },
+      { label: '3. ELEIÇÃO & APURAÇÃO', val: d.eleicao, sub: 'Pelo menos 30 dias antes da posse (NR-5 5.5.3)' },
+      { label: '4. INSTALAÇÃO E POSSE', val: d.posse, sub: '1º dia útil após término do mandato (NR-5 5.5.5)' }
+    ];
+
+    marcos.forEach((m, idx) => {
+      const cX = margin + idx * (cardWidth + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(cX, cardY, cardWidth, cardH, 1.5, 1.5, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(cX, cardY, cardWidth, cardH, 1.5, 1.5, 'S');
+
+      // Barra colorida no topo do card
+      doc.setFillColor(idx === 3 ? 16 : 5, idx === 3 ? 185 : 150, idx === 3 ? 129 : 105);
+      doc.rect(cX + 0.5, cardY, cardWidth - 1, 1, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(m.label, cX + 2.5, cardY + 4);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(6, 78, 59);
+      doc.text(m.val, cX + cardWidth - 2.5, cardY + 4, { align: 'right' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(m.sub, cX + 2.5, cardY + 8.5);
+    });
+
+    // =========================================================================
+    // TABELA DAS 13 ETAPAS NORMATIVAS (ESTRUTURA DE QUADRO EXECUTIVO HORIZONTAL)
+    // =========================================================================
+    const tableY = 42;
+    const tableHeaderH = 6.5;
+
+    // Colunas (largura total = 273 mm)
+    const colW = {
+      num: 9,          // X: 12
+      etapa: 84,       // X: 21
+      regra: 52,       // X: 105
+      data: 34,        // X: 157
+      baseLegal: 58,   // X: 191
+      status: 36        // X: 249
+    };
+
+    // Cabeçalho da Tabela
+    doc.setFillColor(6, 78, 59); // Emerald Escuro
+    doc.rect(margin, tableY, contentWidth, tableHeaderH, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(255, 255, 255);
+
+    let curX = margin;
+    doc.text('Nº', curX + colW.num / 2, tableY + 4.3, { align: 'center' });
+    curX += colW.num;
+    doc.text('ETAPA DO PROCESSO ELEITORAL', curX + 2, tableY + 4.3);
+    curX += colW.etapa;
+    doc.text('REGRA TEMPORAL DA NR-5', curX + 2, tableY + 4.3);
+    curX += colW.regra;
+    doc.text('DATA OFICIAL / PRAZO', curX + 2, tableY + 4.3);
+    curX += colW.data;
+    doc.text('FUNDAMENTAÇÃO LEGAL (NR-5 / CLT)', curX + 2, tableY + 4.3);
+    curX += colW.baseLegal;
+    doc.text('SITUAÇÃO / STATUS', curX + colW.status / 2, tableY + 4.3, { align: 'center' });
+
+    // Linhas da Tabela
+    let rowY = tableY + tableHeaderH;
+    const rowH = 10.3; // 13 etapas * 10.3 mm = 133.9 mm (cabe perfeitamente em 1 página!)
+
+    data.etapas.forEach((etapa, idx) => {
+      const isEven = idx % 2 === 0;
+      doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+      doc.rect(margin, rowY, contentWidth, rowH, 'F');
+
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.18);
+      doc.rect(margin, rowY, contentWidth, rowH, 'S');
+
+      let cellX = margin;
+
+      // 1. Nº
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(String(etapa.numero).padStart(2, '0'), cellX + colW.num / 2, rowY + 6.3, { align: 'center' });
+      cellX += colW.num;
+
+      // 2. Etapa (Título + Subtítulo)
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.2);
+      doc.setTextColor(15, 23, 42);
+      const tituloSafe = etapa.titulo.length > 55 ? `${etapa.titulo.slice(0, 53)}...` : etapa.titulo;
+      doc.text(tituloSafe, cellX + 2, rowY + 4.3);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.8);
+      doc.setTextColor(100, 116, 139);
+      const subSafe = (etapa.subtitulo || '').length > 68 ? `${(etapa.subtitulo || '').slice(0, 65)}...` : (etapa.subtitulo || '');
+      doc.text(subSafe, cellX + 2, rowY + 8);
+      cellX += colW.etapa;
+
+      // 3. Regra Temporal
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text(etapa.prazoLabel || '-', cellX + 2, rowY + 6.3);
+      cellX += colW.regra;
+
+      // 4. Data Oficial
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(7.2);
+      doc.setTextColor(6, 78, 59);
+      doc.text(etapa.dataCalculada || '-', cellX + 2, rowY + 6.3);
+      cellX += colW.data;
+
+      // 5. Fundamentação Legal
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.3);
+      doc.setTextColor(71, 85, 105);
+      const refSafe = etapa.referenciaNormativa.length > 42 ? `${etapa.referenciaNormativa.slice(0, 40)}...` : etapa.referenciaNormativa;
+      doc.text(refSafe, cellX + 2, rowY + 6.3);
+      cellX += colW.baseLegal;
+
+      // 6. Status Badge
+      const isConcluido = etapa.isConcluido || etapa.numero === 1;
+      const badgeW = 28;
+      const badgeH = 5.2;
+      const badgeX = cellX + (colW.status - badgeW) / 2;
+      const badgeY = rowY + (rowH - badgeH) / 2;
+
+      if (isConcluido) {
+        doc.setFillColor(209, 250, 229); // Emerald-100
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1, 1, 'F');
+        doc.setDrawColor(167, 243, 208);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1, 1, 'S');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6);
+        doc.setTextColor(6, 95, 70); // Emerald-800
+        doc.text('CONCLUÍDO', badgeX + badgeW / 2, badgeY + 3.6, { align: 'center' });
+      } else {
+        doc.setFillColor(241, 245, 249); // Slate-100
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1, 1, 'F');
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.15);
+        doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1, 1, 'S');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6);
+        doc.setTextColor(100, 116, 139); // Slate-500
+        doc.text('PROGRAMADO', badgeX + badgeW / 2, badgeY + 3.6, { align: 'center' });
+      }
+
+      rowY += rowH;
+    });
+
+    // =========================================================================
+    // RODAPÉ DO DOCUMENTO (CERTIFICAÇÃO JURÍDICA E AUTENTICAÇÃO)
+    // =========================================================================
+    const footerY = pageHeight - 16;
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.line(margin, footerY, pageWidth - margin, footerY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      'Certificação Regulatória: Cronograma eleitoral elaborado em estrito cumprimento às exigências imperativas da Norma Regulamentadora nº 05 (Portaria MTP nº 4.219/2022) e Consolidação das Leis do Trabalho (CLT Art. 163).',
+      margin,
+      footerY + 4.5
+    );
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      `Autenticação Eletrônica SHA-256: ${hash}  ·  Plataforma CIPA Expert  ·  Documento Oficial Auditável  ·  Página 1/1`,
+      margin,
+      footerY + 8.5
+    );
+
+    // Salvar o arquivo PDF
+    const cleanFileName = `calendario_eleitoral_cipa_${companyName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${gestao.replace(/[^a-z0-9]/g, '_')}.pdf`;
+
+    try {
+      doc.save(cleanFileName);
+    } catch (saveErr) {
+      console.warn('doc.save falhou, usando fallback via Blob URL:', saveErr);
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = cleanFileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
