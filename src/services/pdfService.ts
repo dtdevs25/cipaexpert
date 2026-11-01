@@ -43,15 +43,33 @@ export class PdfService {
     const margin = 12;
     const contentWidth = pageWidth - margin * 2;
 
-    const dataEmissao = data.dataCalculo || new Date().toLocaleString('pt-BR');
-    const protocolo = data.protocolo || `DIM-NR5-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const hash = data.hashSha256 || `SHA256-${Array.from(new Uint8Array(32), () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+    // Normalização segura de todos os dados de entrada para prevenir null/undefined no jsPDF
+    const companyName = String(data.companyName || data.razaoSocial || 'Empresa').trim();
+    const razaoSocial = String(data.razaoSocial || data.companyName || companyName).trim();
+    const cnpj = String(data.cnpj || '00.000.000/0001-00').trim();
+    const unitName = String(data.unitName || 'Unidade Principal').trim();
+    const localidade = data.city ? ` · ${data.city}/${data.state || 'BR'}` : (data.state ? ` · ${data.state}` : '');
+    const cnaeCode = String(data.cnaeCode || '2511-0/00').trim();
+    const cnaeDesc = String(data.cnaeDesc || 'Atividade Industrial / Comercial').trim();
+    const grauDeRisco = Number(data.grauDeRisco || 3);
+    const headcount = Number(data.headcount || 0);
+    const gestao = String(data.gestao || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`).trim();
+    const efetivosEmpregados = Number(data.efetivosEmpregados || 0);
+    const suplentesEmpregados = Number(data.suplentesEmpregados || 0);
+    const efetivosEmpregador = Number(data.efetivosEmpregador || 0);
+    const suplentesEmpregador = Number(data.suplentesEmpregador || 0);
+    const totalMembros = Number(data.totalMembros || 0);
+    const obsText = String(data.observacaoNormativa || 'Estabelecimento enquadrado nas disposições normativas da NR-05 e NR-04 para constituição e gestão da CIPA.').trim();
+    const calculadoPor = String(data.calculadoPor || 'Responsável Técnico / Engenharia de SST').trim();
+    const dataEmissao = String(data.dataCalculo || new Date().toLocaleString('pt-BR')).trim();
+    const protocolo = String(data.protocolo || `DIM-NR5-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`).trim();
+    const hash = String(data.hashSha256 || `SHA256-${Array.from(new Uint8Array(32), () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join('').toUpperCase()}`).trim();
 
     // Carga horária calculada pela NR-5 conforme Grau de Risco
     const cargaTreinamento = data.cargaHorariaTreinamento || (
-      data.grauDeRisco === 1 ? '8 horas' :
-      data.grauDeRisco === 2 ? '12 horas' :
-      data.grauDeRisco === 3 ? '16 horas' : '20 horas'
+      grauDeRisco === 1 ? '8 horas' :
+      grauDeRisco === 2 ? '12 horas' :
+      grauDeRisco === 3 ? '16 horas' : '20 horas'
     );
 
     // =========================================================================
@@ -107,36 +125,35 @@ export class PdfService {
     doc.text('Razão Social:', col1X, boxEmpresaY + 6);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    doc.text(data.razaoSocial || data.companyName, col1X + 22, boxEmpresaY + 6);
+    doc.text(razaoSocial, col1X + 22, boxEmpresaY + 6);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('Nome Fantasia:', col1X, boxEmpresaY + 12);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    doc.text(data.companyName, col1X + 22, boxEmpresaY + 12);
+    doc.text(companyName, col1X + 22, boxEmpresaY + 12);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('CNPJ:', col1X, boxEmpresaY + 18);
     doc.setFont('courier', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(data.cnpj, col1X + 22, boxEmpresaY + 18);
+    doc.text(cnpj, col1X + 22, boxEmpresaY + 18);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('Unidade / Filial:', col1X, boxEmpresaY + 24);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    const localidade = data.city ? ` · ${data.city}/${data.state || 'BR'}` : '';
-    doc.text(`${data.unitName}${localidade}`, col1X + 22, boxEmpresaY + 24);
+    doc.text(`${unitName}${localidade}`, col1X + 22, boxEmpresaY + 24);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('Gestão / Mandato:', col1X, boxEmpresaY + 30);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(5, 150, 105);
-    doc.text(data.gestao || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`, col1X + 25, boxEmpresaY + 30);
+    doc.text(gestao, col1X + 25, boxEmpresaY + 30);
 
     // Coluna 2
     const col2X = margin + 98;
@@ -145,29 +162,29 @@ export class PdfService {
     doc.text('CNAE Principal:', col2X, boxEmpresaY + 6);
     doc.setFont('courier', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(data.cnaeCode, col2X + 25, boxEmpresaY + 6);
+    doc.text(cnaeCode, col2X + 25, boxEmpresaY + 6);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('Atividade:', col2X, boxEmpresaY + 12);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    const descCnaeLines = doc.splitTextToSize(data.cnaeDesc, contentWidth - 98 - 25);
+    const descCnaeLines = doc.splitTextToSize(cnaeDesc, contentWidth - 98 - 25);
     doc.text(descCnaeLines.slice(0, 2), col2X + 25, boxEmpresaY + 12);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('Grau de Risco:', col2X, boxEmpresaY + 24);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(data.grauDeRisco >= 3 ? 180 : 5, data.grauDeRisco >= 3 ? 30 : 150, data.grauDeRisco >= 3 ? 30 : 105);
-    doc.text(`Grau ${data.grauDeRisco} (Quadro I - NR-4)`, col2X + 25, boxEmpresaY + 24);
+    doc.setTextColor(grauDeRisco >= 3 ? 180 : 5, grauDeRisco >= 3 ? 30 : 150, grauDeRisco >= 3 ? 30 : 105);
+    doc.text(`Grau ${grauDeRisco} (Quadro I - NR-4)`, col2X + 25, boxEmpresaY + 24);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
     doc.text('Efetivo Ativo:', col2X, boxEmpresaY + 30);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(`${data.headcount} colaboradores registrados`, col2X + 25, boxEmpresaY + 30);
+    doc.text(`${headcount} colaboradores registrados`, col2X + 25, boxEmpresaY + 30);
 
     // =========================================================================
     // SEÇÃO 2: QUADRO PARITÁRIO DE DIMENSIONAMENTO HOMOLOGADO (NR-5 QUADRO I)
@@ -311,7 +328,6 @@ export class PdfService {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    const obsText = data.observacaoNormativa || 'Estabelecimento enquadrado nas disposições normativas da NR-05 e NR-04 para constituição e gestão da CIPA.';
     const splitObs = doc.splitTextToSize(obsText, contentWidth - 10);
     doc.text(splitObs.slice(0, 2), margin + 6, boxParecerY + 10.5);
 
@@ -406,7 +422,7 @@ export class PdfService {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(15, 23, 42);
-    doc.text(data.companyName, sig2X + sig2W / 2, boxSigY + 19, { align: 'center' });
+    doc.text(companyName, sig2X + sig2W / 2, boxSigY + 19, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
@@ -446,18 +462,33 @@ export class PdfService {
     doc.text('Válido como prova documental perante a Auditoria Fiscal do Trabalho (MTE), Sindicatos e Certificações ISO 45001.', margin + 3.5, boxAuthY + 24.5);
 
     // Download do arquivo PDF com nome amigável e padronizado
-    const cleanCompanyName = data.companyName
+    const cleanCompanyName = companyName
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '_');
-    const cleanUnitName = data.unitName
+    const cleanUnitName = unitName
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]/g, '_');
 
-    doc.save(`laudo_dimensionamento_cipa_${cleanCompanyName}_${cleanUnitName}.pdf`);
+    const fileName = `laudo_dimensionamento_cipa_${cleanCompanyName || 'empresa'}_${cleanUnitName || 'unidade'}.pdf`;
+
+    try {
+      doc.save(fileName);
+    } catch (saveErr) {
+      console.warn('doc.save falhou, usando fallback via Blob URL:', saveErr);
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
   }
 
   /**

@@ -587,15 +587,38 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   // Emitir e baixar laudo oficial em PDF do dimensionamento NR-5
   const handleDownloadPdfDimensionamento = async (targetDim?: any) => {
     try {
-      const dim = targetDim || dimensionamento;
-      const cnaeCode = targetDim?.cnaeCode || cnaeEntry.code;
-      const cnaeDesc = targetDim?.cnaeDesc || cnaeEntry.description;
-      const grauDeRisco = targetDim?.grauDeRisco ?? cnaeEntry.grauDeRisco;
-      const count = targetDim?.headcount ?? headcount;
-      const gestao = targetDim?.gestao || gestaoAno;
-      const obs = targetDim?.observacaoNormativa || dim.observacaoNormativa;
-      const calcPor = targetDim?.calculadoPor || targetDim?.createdBy || currentUser?.name || 'Administrador SST';
-      const dataCalc = targetDim?.dataCalculo || targetDim?.createdAt
+      const dim = targetDim || dimensionamento || {};
+      const comp = currentCompany || (availableCompanies && availableCompanies[0]) || (companies && companies[0]) || {
+        id: 'comp-1',
+        nomeFantasia: companyName || 'Empresa',
+        razaoSocial: companyName || 'Empresa',
+        cnpj: cnpj || '00.000.000/0001-00'
+      };
+      const filial = currentFilial || (comp.units && comp.units[0]) || {
+        id: 'unit-1',
+        name: 'Matriz',
+        city: 'São Paulo',
+        state: 'SP',
+        cnaeCode: '2511-0/00',
+        cnaeDesc: 'Atividade Principal',
+        grauDeRisco: 3
+      };
+
+      const finalCompanyName = comp.nomeFantasia || comp.razaoSocial || companyName || 'Empresa';
+      const finalRazaoSocial = comp.razaoSocial || comp.nomeFantasia || companyName || 'Empresa';
+      const finalCnpj = comp.cnpj || cnpj || (filial as any).cnpj || '00.000.000/0001-00';
+      const finalUnitName = filial.name || 'Unidade Principal';
+      const finalCity = filial.city || 'São Paulo';
+      const finalState = filial.state || 'SP';
+
+      const finalCnaeCode = targetDim?.cnaeCode || filial.cnaeCode || cnaeEntry?.code || '2511-0/00';
+      const finalCnaeDesc = targetDim?.cnaeDesc || filial.cnaeDesc || cnaeEntry?.description || 'Atividade Principal';
+      const finalGrauDeRisco = Number(targetDim?.grauDeRisco ?? filial.grauDeRisco ?? cnaeEntry?.grauDeRisco ?? 3);
+      const finalHeadcount = Number(targetDim?.headcount ?? headcount ?? 0);
+      const finalGestao = String(targetDim?.gestao || gestaoAno || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`);
+      const finalObs = String(targetDim?.observacaoNormativa || dim.observacaoNormativa || 'Enquadramento oficial NR-5.');
+      const finalCalcPor = String(targetDim?.calculadoPor || targetDim?.createdBy || currentUser?.name || 'Administrador SST');
+      const finalDataCalc = targetDim?.dataCalculo || targetDim?.createdAt
         ? new Date(targetDim.dataCalculo || targetDim.createdAt).toLocaleString('pt-BR')
         : new Date().toLocaleString('pt-BR');
 
@@ -603,41 +626,44 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       if (!hashSha256) {
         try {
           hashSha256 = await computeSha256(
-            `DIM:${currentCompany.cnpj}:${currentFilial.id}:${count}:${dim.totalMembros}:${dataCalc}`
+            `DIM:${finalCnpj}:${filial.id || 'UNIT'}:${finalHeadcount}:${dim.totalMembros || 0}:${finalDataCalc}`
           );
         } catch {
           hashSha256 = `SHA256-${Date.now().toString(16).toUpperCase()}`;
         }
       }
 
+      const unitIdPart = String(filial.id || 'UNIT').slice(0, 4).toUpperCase();
+      const protocolo = `DIM-NR5-${new Date().getFullYear()}-${unitIdPart}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
       PdfService.generateDimensionamentoPdf({
-        companyName: currentCompany.nomeFantasia || currentCompany.razaoSocial,
-        razaoSocial: currentCompany.razaoSocial,
-        cnpj: currentCompany.cnpj,
-        unitName: currentFilial.name,
-        city: currentFilial.city,
-        state: currentFilial.state,
-        cnaeCode,
-        cnaeDesc,
-        grauDeRisco,
-        headcount: count,
-        gestao,
-        efetivosEmpregados: dim.efetivosEmpregados,
-        suplentesEmpregados: dim.suplentesEmpregados,
-        efetivosEmpregador: dim.efetivosEmpregador,
-        suplentesEmpregador: dim.suplentesEmpregador,
-        totalMembros: dim.totalMembros,
-        observacaoNormativa: obs,
-        calculadoPor: calcPor,
-        dataCalculo: dataCalc,
+        companyName: finalCompanyName,
+        razaoSocial: finalRazaoSocial,
+        cnpj: finalCnpj,
+        unitName: finalUnitName,
+        city: finalCity,
+        state: finalState,
+        cnaeCode: finalCnaeCode,
+        cnaeDesc: finalCnaeDesc,
+        grauDeRisco: finalGrauDeRisco,
+        headcount: finalHeadcount,
+        gestao: finalGestao,
+        efetivosEmpregados: Number(dim.efetivosEmpregados || 0),
+        suplentesEmpregados: Number(dim.suplentesEmpregados || 0),
+        efetivosEmpregador: Number(dim.efetivosEmpregador || 0),
+        suplentesEmpregador: Number(dim.suplentesEmpregador || 0),
+        totalMembros: Number(dim.totalMembros || 0),
+        observacaoNormativa: finalObs,
+        calculadoPor: finalCalcPor,
+        dataCalculo: finalDataCalc,
         hashSha256,
-        protocolo: `DIM-NR5-${new Date().getFullYear()}-${currentFilial.id.slice(0, 4).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+        protocolo
       });
 
       showToast('Laudo do dimensionamento em PDF gerado e baixado com sucesso!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao gerar PDF do dimensionamento:', err);
-      showToast('Ocorreu um erro ao gerar o PDF. Tente novamente.');
+      showToast('Ocorreu um erro ao gerar o PDF. Detalhe: ' + (err?.message || 'Tente novamente.'));
     }
   };
 
@@ -1462,36 +1488,6 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <strong className="text-slate-900 font-bold block">Parecer Conclusivo NR-5:</strong>
                     <span>{dimensionamento.observacaoNormativa}</span>
                   </div>
-                </div>
-
-                {/* Comprovante Oficial e Prova Documental (Laudo em PDF) */}
-                <div className="p-4 rounded-xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs border border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
-                      <FileText className="w-4.5 h-4.5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-white leading-tight flex items-center gap-2">
-                        <span>Comprovante Oficial de Dimensionamento (NR-5 / NR-4)</span>
-                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30">
-                          PDF A4
-                        </span>
-                      </h4>
-                      <p className="text-[11px] text-slate-300 mt-0.5">
-                        Laudo técnico probatório com integridade SHA-256 e campos de assinatura para auditorias e fiscalização do trabalho.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadPdfDimensionamento()}
-                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-2 shrink-0"
-                    title="Baixar laudo técnico em PDF do dimensionamento"
-                  >
-                    <Printer className="w-4 h-4 text-white" />
-                    <span>Baixar Laudo Técnico em PDF</span>
-                  </button>
                 </div>
               </div>
             </div>
