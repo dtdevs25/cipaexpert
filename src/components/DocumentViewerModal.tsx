@@ -90,36 +90,11 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-200 shadow-xs cursor-pointer"
-              title="Imprimir documento"
-            >
-              <Printer className="w-3.5 h-3.5 text-slate-700" />
-              <span>Imprimir</span>
-            </button>
-            <button
-              onClick={handleDownloadTxt}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white rounded-lg hover:bg-slate-100 transition-colors border border-slate-200 shadow-xs cursor-pointer"
-              title="Baixar arquivo de texto"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-700" />
-              <span>Baixar</span>
-            </button>
-            {onSignRequested && !isSigned && (
-              <button
-                onClick={onSignRequested}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors shadow-xs cursor-pointer"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Assinar Digitalmente</span>
-              </button>
-            )}
+          <div className="flex items-center">
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-white/60 transition-colors ml-2 cursor-pointer"
-              title="Fechar"
+              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+              title="Fechar (X)"
             >
               <X className="w-5 h-5" />
             </button>
@@ -178,44 +153,67 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
               Termos de Ciência e Validação das Partes Interessadas
             </h4>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-6">
               {signersList && signersList.length > 0 ? (
                 signersList.map((sig, idx) => (
-                  <div key={idx} className="text-left space-y-1 select-none">
+                  <div key={idx} className="flex flex-col items-center text-center space-y-1 select-none">
                     {/* Imagem do desenho da assinatura OU fonte cursiva */}
-                    <div className="pb-0.5 min-h-[40px] flex items-center">
+                    <div className="pb-1 min-h-[36px] flex items-end justify-center">
                       {sig.signatureDataUrl ? (
                         <img 
                           src={sig.signatureDataUrl} 
                           alt={`Assinatura de ${sig.name}`} 
-                          className="h-10 max-w-[210px] object-contain select-none pointer-events-none" 
+                          className="h-9 max-w-[200px] object-contain select-none pointer-events-none" 
                         />
-                      ) : (
-                        <span className="font-serif italic text-lg text-blue-900 font-bold block leading-tight">
+                      ) : sig.status === 'assinado' ? (
+                        <span className="font-serif italic text-base text-blue-900 font-bold block leading-tight">
                           {sig.name}
                         </span>
-                      )}
+                      ) : null}
                     </div>
 
-                    {/* Dados abaixo: apenas email, data hora e hash, sem linhas */}
-                    <div className="text-[9px] font-mono text-slate-700 leading-tight space-y-0.5">
-                      <p className="truncate font-semibold text-slate-800">{sig.email}</p>
-                      <p className="text-slate-600">
-                        {sig.signedAt ? new Date(sig.signedAt).toLocaleString('pt-BR') : '25/10/2026 14:35'}
+                    {/* Linha de Assinatura */}
+                    <div className="w-full max-w-[260px] border-b-2 border-slate-900 mb-1"></div>
+
+                    {/* Nome do Colaborador abaixo da linha */}
+                    <p className="font-bold text-slate-900 text-sm leading-tight">
+                      {sig.name}
+                    </p>
+
+                    {/* Função abaixo do nome */}
+                    <p className="text-xs text-slate-600 font-medium">
+                      {sig.role || 'Membro da Comissão Eleitoral'}
+                    </p>
+
+                    {/* Registro criptográfico se assinado */}
+                    {sig.status === 'assinado' && (
+                      <p className="text-[9px] font-mono text-slate-400 mt-0.5">
+                        Assinado em {sig.signedAt ? new Date(sig.signedAt).toLocaleString('pt-BR') : '25/10/2026'}
                       </p>
-                      <p className="text-slate-400 text-[8px] truncate">
-                        Hash: {sig.hash ? `${sig.hash.slice(0, 16)}...` : 'a8f93e2b...4c1d'}
-                      </p>
-                    </div>
+                    )}
                   </div>
                 ))
               ) : (
-                docData.signatories.map((sig, idx) => (
-                  <div key={idx} className="text-left space-y-1">
-                    <p className="font-serif italic text-base text-blue-900 font-bold">{sig}</p>
-                    <p className="text-[9px] font-mono text-slate-500">CIPA Expert · Registro Digital</p>
-                  </div>
-                ))
+                docData.signatories.map((sig, idx) => {
+                  const parts = typeof sig === 'string' ? sig.split(' - ') : [sig];
+                  const name = parts[0]?.trim() || sig;
+                  const role = parts[1]?.trim() || (idx === 0 ? 'Presidente da Comissão Eleitoral' : 'Representante Legal da Empresa');
+                  return (
+                    <div key={idx} className="flex flex-col items-center text-center space-y-1 select-none">
+                      <div className="pb-1 min-h-[36px]"></div>
+                      {/* Linha de Assinatura */}
+                      <div className="w-full max-w-[260px] border-b-2 border-slate-900 mb-1"></div>
+                      {/* Nome do Colaborador abaixo da linha */}
+                      <p className="font-bold text-slate-900 text-sm leading-tight">
+                        {name}
+                      </p>
+                      {/* Função abaixo do nome */}
+                      <p className="text-xs text-slate-600 font-medium">
+                        {role}
+                      </p>
+                    </div>
+                  );
+                })
               )}
             </div>
 
@@ -255,12 +253,6 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
         {/* Modal Bottom Bar */}
         <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500 no-print">
           <span>CIPA Expert · Gerenciador Normativo NR-5</span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            Fechar Visualização
-          </button>
         </div>
 
       </div>

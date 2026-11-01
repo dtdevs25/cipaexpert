@@ -486,6 +486,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     title?: string;
     date?: string;
     obs?: string;
+    customText?: string;
     dispatchedAt?: string;
     dispatchCount?: number;
   }>>(() => {
@@ -502,6 +503,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const [editStepTitle, setEditStepTitle] = useState('');
   const [editStepDate, setEditStepDate] = useState('');
   const [editStepObs, setEditStepObs] = useState('');
+  const [editStepCustomText, setEditStepCustomText] = useState('');
 
   // Modal de Configuração de Assinatura Digital do Documento (Signatários e Posições)
   const [isSignatureConfigModalOpen, setIsSignatureConfigModalOpen] = useState(false);
@@ -1283,6 +1285,28 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     setEditStepTitle(custom?.title || etapa.titulo);
     setEditStepDate(custom?.date || etapa.dataCalculada);
     setEditStepObs(custom?.obs || '');
+
+    if (custom?.customText) {
+      setEditStepCustomText(custom.customText);
+    } else {
+      const docTipo = etapa.docTipo || (etapa.id === 'etapa-3' ? 'comunicado_sindicato' : 'edital_convocacao');
+      const doc = generateCipaDocument(
+        docTipo,
+        currentCompany?.razaoSocial || propCompanyName || 'Empresa',
+        currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00',
+        mandateEndDate,
+        dimensionamento?.totalMembros || 0,
+        {
+          sindicatoNome,
+          sindicatoEmail,
+          cronogramaDatas: datasPrincipais,
+          unitName: currentFilial?.name,
+          unitState: currentFilial?.state,
+          unitCity: currentFilial?.city
+        }
+      );
+      setEditStepCustomText(doc.content.join('\n\n'));
+    }
   };
 
   const handleSaveStepEdit = () => {
@@ -1290,9 +1314,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     const updated = {
       ...stepCustomizations,
       [editingStep.id]: {
+        ...stepCustomizations[editingStep.id],
         title: editStepTitle.trim() || editingStep.titulo,
         date: editStepDate.trim() || editingStep.dataCalculada,
-        obs: editStepObs.trim()
+        obs: editStepObs.trim(),
+        customText: editStepCustomText.trim()
       }
     };
     setStepCustomizations(updated);
@@ -1305,30 +1331,33 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
   // AÇÃO 2: VISUALIZAR
   const handleViewStep = (etapa: any) => {
+    const finalCompName = currentCompany?.razaoSocial || propCompanyName || 'Empresa';
+    const finalCnpj = currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00';
+
     if (etapa.id === 'etapa-1') {
       const dimDoc: GeneratedDocument = {
         title: 'LAUDO TÉCNICO DE DIMENSIONAMENTO DA CIPA (NR-5 / NR-4)',
         category: 'Dimensionamento e Enquadramento',
         normativeCode: 'NR-5 (Item 5.4.1 / Quadro I) e NR-4',
-        companyName: currentCompany.razaoSocial,
-        cnpj: currentFilial.cnpj || currentCompany.cnpj,
+        companyName: finalCompName,
+        cnpj: finalCnpj,
         dateGenerated: new Date().toLocaleDateString('pt-BR'),
         content: [
-          `ESTABELECIMENTO: ${currentFilial.name} · CNPJ: ${currentFilial.cnpj || currentCompany.cnpj}`,
-          `LOCALIDADE: ${currentFilial.city || 'São Paulo'} - ${currentFilial.state || 'SP'}`,
-          `ATIVIDADE ECONÔMICA (CNAE): ${cnaeEntry.code} - ${cnaeEntry.description}`,
-          `GRAU DE RISCO NORMATIVO: Grau ${cnaeEntry.grauDeRisco} (Portaria MTP nº 4.218/2022 - NR-04)`,
+          `ESTABELECIMENTO: ${currentFilial?.name || 'Unidade Principal'} · CNPJ: ${finalCnpj}`,
+          `LOCALIDADE: ${currentFilial?.city || 'São Paulo'} - ${currentFilial?.state || 'SP'}`,
+          `ATIVIDADE ECONÔMICA (CNAE): ${cnaeEntry?.code || '2511-0/00'} - ${cnaeEntry?.description || 'Atividade'}`,
+          `GRAU DE RISCO NORMATIVO: Grau ${cnaeEntry?.grauDeRisco || 3} (Portaria MTP nº 4.218/2022 - NR-04)`,
           `EFETIVO CONSIDERADO: ${headcount} colaboradores ativos na unidade`,
           `COMPOSIÇÃO PARITÁRIA OFICIAL:`,
-          `• Representantes do Empregador (Designados): ${dimensionamento.efetivosEmpregador ?? 0} Titular(es) e ${dimensionamento.suplentesEmpregador ?? 0} Suplente(s)`,
-          `• Representantes dos Empregados (Eleitos): ${dimensionamento.efetivosEmpregados ?? 0} Titular(es) e ${dimensionamento.suplentesEmpregados ?? 0} Suplente(s)`,
-          `• Total de Cipeiros Efetivos na Gestão: ${dimensionamento.totalMembros ?? 0} membros`,
+          `• Representantes do Empregador (Designados): ${dimensionamento?.efetivosEmpregador ?? 0} Titular(es) e ${dimensionamento?.suplentesEmpregador ?? 0} Suplente(s)`,
+          `• Representantes dos Empregados (Eleitos): ${dimensionamento?.efetivosEmpregados ?? 0} Titular(es) e ${dimensionamento?.suplentesEmpregados ?? 0} Suplente(s)`,
+          `• Total de Cipeiros Efetivos na Gestão: ${dimensionamento?.totalMembros ?? 0} membros`,
           `PARECER LEGAL NORMATIVO:`,
-          dimensionamento.observacaoNormativa || 'Enquadramento oficial realizado conforme parâmetros da NR-5.'
+          dimensionamento?.observacaoNormativa || 'Enquadramento oficial realizado conforme parâmetros da NR-5.'
         ],
         signatories: [
-          'Responsável Técnico pelo Dimensionamento / SESMT',
-          'Diretoria Executiva / Representante Legal da Empresa'
+          'Responsável Técnico pelo Dimensionamento / SESMT - Avaliação e Laudo Técnico',
+          'Diretoria Executiva / Representante Legal da Empresa - Homologação Corporativa'
         ]
       };
       if (onOpenDocument) {
@@ -1342,18 +1371,24 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     const docTipo = etapa.docTipo || (etapa.id === 'etapa-3' ? 'comunicado_sindicato' : 'edital_convocacao');
     const doc = generateCipaDocument(
       docTipo,
-      currentCompany.razaoSocial,
-      currentFilial.cnpj || currentCompany.cnpj,
+      finalCompName,
+      finalCnpj,
       mandateEndDate,
-      dimensionamento.totalMembros,
+      dimensionamento?.totalMembros || 0,
       {
         sindicatoNome,
         sindicatoEmail,
-        cronogramaDatas: datasPrincipais
+        cronogramaDatas: datasPrincipais,
+        unitName: currentFilial?.name,
+        unitState: currentFilial?.state,
+        unitCity: currentFilial?.city
       }
     );
 
     const custom = stepCustomizations[etapa.id];
+    if (custom?.customText) {
+      doc.content = custom.customText.split('\n\n').map((p: string) => p.trim()).filter(Boolean);
+    }
     if (custom?.obs) {
       doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
     }
@@ -1375,21 +1410,29 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       return;
     }
 
+    const finalCompName = currentCompany?.razaoSocial || propCompanyName || 'Empresa';
+    const finalCnpj = currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00';
     const docTipo = etapa.docTipo || 'comunicado_sindicato';
     const doc = generateCipaDocument(
       docTipo,
-      currentCompany.razaoSocial,
-      currentFilial.cnpj || currentCompany.cnpj,
+      finalCompName,
+      finalCnpj,
       mandateEndDate,
-      dimensionamento.totalMembros,
+      dimensionamento?.totalMembros || 0,
       {
         sindicatoNome,
         sindicatoEmail,
-        cronogramaDatas: datasPrincipais
+        cronogramaDatas: datasPrincipais,
+        unitName: currentFilial?.name,
+        unitState: currentFilial?.state,
+        unitCity: currentFilial?.city
       }
     );
 
     const custom = stepCustomizations[etapa.id];
+    if (custom?.customText) {
+      doc.content = custom.customText.split('\n\n').map((p: string) => p.trim()).filter(Boolean);
+    }
     if (custom?.obs) {
       doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
     }
@@ -1405,17 +1448,17 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       normativeCode: doc.normativeCode,
       sourceType: 'sistema',
       docType: docTipo,
-      companyName: currentCompany.razaoSocial,
-      cnpj: currentFilial.cnpj || currentCompany.cnpj,
-      unitId: currentFilial.id,
-      unitName: currentFilial.name,
+      companyName: finalCompName,
+      cnpj: finalCnpj,
+      unitId: currentFilial?.id,
+      unitName: currentFilial?.name,
       createdAt: new Date().toLocaleString('pt-BR'),
       updatedAt: new Date().toLocaleString('pt-BR'),
       content: doc.content,
       signers: doc.signatories.map((sig, idx) => ({
         id: `sig-${etapa.id}-${idx}`,
-        name: sig,
-        email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.')}@${currentCompany.razaoSocial.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
+        name: sig.includes('-') ? sig.split('-')[0].trim() : (sig.includes('(') ? sig.split('(')[0].trim() : sig),
+        email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.').slice(0, 18)}@${finalCompName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
         role: sig,
         order: idx + 1,
         status: 'pendente'
@@ -1433,28 +1476,39 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   // AÇÃO 4: ASSINAR / CONFIGURAR NA PLATAFORMA DE ASSINATURAS (SIGNATÁRIOS + POSICIONAMENTO)
   const handleSendToSignaturePlatform = async (etapa: any) => {
     try {
+      const finalCompName = currentCompany?.razaoSocial || propCompanyName || 'Empresa';
+      const finalCnpj = currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00';
       const docTipo = etapa.docTipo || 'comunicado_sindicato';
       const doc = generateCipaDocument(
         docTipo,
-        currentCompany.razaoSocial,
-        currentFilial.cnpj || currentCompany.cnpj,
+        finalCompName,
+        finalCnpj,
         mandateEndDate,
-        dimensionamento.totalMembros,
+        dimensionamento?.totalMembros || 0,
         {
           sindicatoNome,
           sindicatoEmail,
-          cronogramaDatas: datasPrincipais
+          cronogramaDatas: datasPrincipais,
+          unitName: currentFilial?.name,
+          unitState: currentFilial?.state,
+          unitCity: currentFilial?.city
         }
       );
 
       const custom = stepCustomizations[etapa.id];
+      if (custom?.customText) {
+        doc.content = custom.customText.split('\n\n').map((p: string) => p.trim()).filter(Boolean);
+      }
       if (custom?.obs) {
         doc.content = [...doc.content, `OBSERVAÇÕES ADICIONAIS: ${custom.obs}`];
       }
+      if (custom?.title) {
+        doc.title = custom.title;
+      }
 
       const signersList = doc.signatories.map((sig, idx) => ({
-        name: sig.includes('(') ? sig.split('(')[0].trim() : sig,
-        email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.').slice(0, 20)}@${currentCompany.razaoSocial.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
+        name: sig.includes('-') ? sig.split('-')[0].trim() : (sig.includes('(') ? sig.split('(')[0].trim() : sig),
+        email: `${sig.toLowerCase().replace(/[^a-z0-9]/g, '.').slice(0, 20)}@${finalCompName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10)}.com.br`,
         role: sig
       }));
 
@@ -2656,12 +2710,33 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                   <div>
                     <label className="font-bold text-slate-800 block mb-1">Observações Internas / Diretrizes da Empresa</label>
                     <textarea
-                      rows={3}
+                      rows={2}
                       value={editStepObs}
                       onChange={(e) => setEditStepObs(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
                       placeholder="Instruções específicas para esta etapa (serão incluídas no documento oficial)..."
                     />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-800">
+                        Texto / Conteúdo Oficial do Documento
+                      </label>
+                      <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-semibold">
+                        Personalizável
+                      </span>
+                    </div>
+                    <textarea
+                      rows={7}
+                      value={editStepCustomText}
+                      onChange={(e) => setEditStepCustomText(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                      placeholder="Texto oficial do edital (padrão NR-5 já preenchido, edite livremente se desejar)..."
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Você pode alterar o texto livremente. A visualização, download em PDF e assinaturas refletirão esse conteúdo.
+                    </p>
                   </div>
                 </div>
 
@@ -2692,11 +2767,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               setIsSignatureConfigModalOpen(false);
               setSignatureConfigInitialData(null);
             }}
-            companyId={currentCompany.id}
-            companyName={currentCompany.razaoSocial}
-            unitId={currentFilial.id}
-            unitName={currentFilial.name}
-            cnpj={currentFilial.cnpj || currentCompany.cnpj}
+            companyId={currentCompany?.id || 'comp-1'}
+            companyName={currentCompany?.razaoSocial || propCompanyName || 'Empresa'}
+            unitId={currentFilial?.id || 'unit-1'}
+            unitName={currentFilial?.name || 'Unidade'}
+            cnpj={currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00'}
             creatorName={currentUser?.name || 'Administrador CIPA'}
             creatorEmail={currentUser?.email || 'admin@empresa.com.br'}
             initialData={signatureConfigInitialData}
@@ -2997,10 +3072,10 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 onClick={() => {
                   const doc = generateCipaDocument(
                     'comunicado_sindicato',
-                    currentCompany.razaoSocial,
-                    currentCompany.cnpj,
+                    currentCompany?.razaoSocial || propCompanyName || 'Empresa',
+                    currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00',
                     mandateEndDate,
-                    dimensionamento.totalMembros,
+                    dimensionamento?.totalMembros || 0,
                     { sindicatoNome, sindicatoEmail, cronogramaDatas: datasPrincipais }
                   );
                   onOpenDocument(doc);
@@ -3088,37 +3163,26 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               </div>
 
               {/* Signatários */}
-              <div className="pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-center text-[11px] text-slate-500">
-                {activeEditalDoc.doc.signatories.map((sig, i) => (
-                  <div key={i} className="pt-4 border-t border-slate-300">
-                    <span className="font-semibold text-slate-800 block">{sig}</span>
-                  </div>
-                ))}
+              <div className="pt-8 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-8 text-center text-xs">
+                {activeEditalDoc.doc.signatories.map((sig, i) => {
+                  const parts = typeof sig === 'string' ? sig.split(' - ') : [sig];
+                  const name = parts[0]?.trim() || sig;
+                  const role = parts[1]?.trim() || (i === 0 ? 'Presidente da Comissão Eleitoral' : 'Representante Legal da Empresa');
+                  return (
+                    <div key={i} className="flex flex-col items-center justify-center space-y-1">
+                      <div className="min-h-[28px]"></div>
+                      <div className="w-full max-w-[240px] border-b-2 border-slate-900 mb-1"></div>
+                      <strong className="font-bold text-slate-900 text-xs block leading-tight">{name}</strong>
+                      <span className="text-[11px] text-slate-600 font-medium block">{role}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Rodapé com Assinatura Embutida */}
-            <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenDocument(activeEditalDoc.doc);
-                  setActiveEditalDoc(null);
-                }}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-600" />
-                <span>Imprimir / Baixar</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSignOpenedEdital}
-                className="w-full sm:w-auto px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
-              >
-                <FileSignature className="w-4 h-4" />
-                <span>Assinar Digitalmente</span>
-              </button>
+            {/* Rodapé Minimalista sem botões adicionais */}
+            <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500 shrink-0">
+              <span>CIPA Expert · Registro Digital de Edital</span>
             </div>
 
           </div>

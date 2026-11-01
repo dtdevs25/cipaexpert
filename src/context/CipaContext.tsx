@@ -7,7 +7,7 @@ import {
   RiskMapPoint, 
   SavedVote 
 } from '../services/mockStorage';
-import { DEMO_USERS } from '../data/multiCompanyData';
+import { DEMO_USERS, INITIAL_COMPANIES } from '../data/multiCompanyData';
 
 interface CipaContextType {
   // Empresas e Unidades
@@ -63,17 +63,25 @@ export const CipaProvider: React.FC<{ children: React.ReactNode }> = ({ children
     MockStorageService.init();
   }, []);
 
-  const [companies, setCompanies] = useState<Company[]>(() => MockStorageService.getCompanies());
+  const [companies, setCompanies] = useState<Company[]>(() => {
+    try {
+      const c = MockStorageService.getCompanies();
+      return Array.isArray(c) && c.length > 0 ? c : INITIAL_COMPANIES;
+    } catch {
+      return INITIAL_COMPANIES;
+    }
+  });
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(DEMO_USERS.master);
   
-  const initialCompany = companies.find(c => c.id === currentUser?.companyId) || companies[0];
+  const initialCompany = companies.find(c => c.id === currentUser?.companyId) || companies[0] || INITIAL_COMPANIES[0];
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(initialCompany?.id || 'emp-1');
-  const activeCompany = companies.find(c => c.id === selectedCompanyId) || companies[0];
+  const activeCompany = companies.find(c => c.id === selectedCompanyId) || companies[0] || INITIAL_COMPANIES[0];
 
+  const activeUnits = Array.isArray(activeCompany?.units) ? activeCompany.units : [];
   const [selectedUnitId, setSelectedUnitId] = useState<string>(
-    currentUser?.unitId || activeCompany?.units[0]?.id || ''
+    currentUser?.unitId || activeUnits[0]?.id || ''
   );
-  const activeUnit = activeCompany?.units.find(u => u.id === selectedUnitId) || activeCompany?.units[0];
+  const activeUnit = activeUnits.find(u => u.id === selectedUnitId) || activeUnits[0];
 
   const [users, setUsers] = useState<AuthUser[]>(() => MockStorageService.getUsers());
   const [dimensionamentos, setDimensionamentos] = useState<SavedDimensionamento[]>(() => MockStorageService.getDimensionamentos());
@@ -86,8 +94,8 @@ export const CipaProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Atualizar unidade ao mudar empresa selecionada
   useEffect(() => {
-    if (activeCompany && (!activeUnit || !activeCompany.units.some(u => u.id === selectedUnitId))) {
-      setSelectedUnitId(activeCompany.units[0]?.id || '');
+    if (activeCompany && activeUnits.length > 0 && (!activeUnit || !activeUnits.some(u => u.id === selectedUnitId))) {
+      setSelectedUnitId(activeUnits[0]?.id || '');
     }
   }, [selectedCompanyId, activeCompany]);
 

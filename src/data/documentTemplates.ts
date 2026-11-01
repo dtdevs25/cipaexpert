@@ -18,13 +18,31 @@ export function generateCipaDocument(
   extraData?: { 
     sindicatoNome?: string; 
     sindicatoEmail?: string;
+    unitName?: string;
+    unitState?: string;
+    unitCity?: string;
+    unitAddress?: string;
+    unitCep?: string;
+    unitCnpj?: string;
+    gestaoAno?: string;
+    emailContato?: string;
+    telefoneContato?: string;
     cronogramaDatas?: {
+      convocacao?: string;
+      comunicadoSindicato?: string;
+      comissaoEleitoral?: string;
+      editalInscricao?: string;
+      periodoInscricoes?: string;
       inscricaoInicio?: string;
       inscricaoFim?: string;
+      listaCandidatos?: string;
       eleicao?: string;
+      eleicaoProrrogada?: string;
       apuracao?: string;
       treinamento?: string;
+      treinamentoPresencial?: string;
       posse?: string;
+      envioSindicato?: string;
     };
   }
 ): GeneratedDocument {
@@ -53,30 +71,73 @@ export function generateCipaDocument(
           `A votação será realizada via sistema eletrônico seguro CIPA Expert com sigilo absoluto do voto.`
         ],
         signatories: [
-          'Representante Legal da Empresa',
-          `Protocolo de Recebimento do ${nomeSindicato}`
+          'Representante Legal da Empresa - Diretoria / Empregador',
+          `Protocolo de Recebimento do ${nomeSindicato} - Entidade Sindical`
         ]
       };
 
-    case 'edital_convocacao':
+    case 'edital_convocacao': {
+      const unitName = extraData?.unitName || 'Unidade Piracicaba';
+      const unitState = extraData?.unitState || 'São Paulo';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const unitAddress = extraData?.unitAddress || 'Rua São João, nº 1913, Piracicaba – SP';
+      const unitCep = extraData?.unitCep || '13432-009';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0593-02';
+      const emailContato = extraData?.emailContato || 'cipa.br@telefonica.com ou pedro.lobeiro.ext@telefonica.com';
+      const telefoneContato = extraData?.telefoneContato || '19 99784-1065';
+      const periodoInscricoes = c?.periodoInscricoes || (c?.inscricaoInicio && c?.inscricaoFim ? `${c.inscricaoInicio} a ${c.inscricaoFim}` : '26/10/2026 a 09/11/2026');
+      const dataConvocacao = c?.convocacao || formattedDate || '19/10/2026';
+      const dataComissao = c?.comissaoEleitoral || '19/10/2026';
+      const dataEditalInscricao = c?.editalInscricao || '20/10/2026';
+      const dataListaInscritos = c?.listaCandidatos || '10/11/2026';
+      const dataEleicao = c?.eleicao || '16/11/2026';
+      const dataEleicaoProrrogada = c?.eleicaoProrrogada || '19/11/2026';
+      const dataApuracao = c?.apuracao || '19/11/2026';
+      const dataTreinamento = c?.treinamento || '30/11/2026 a 04/12/2026';
+      const dataTreinamentoPresencial = c?.treinamentoPresencial || '15/12/2026';
+      const dataPosse = c?.posse || '22/12/2026';
+
       return {
-        title: 'EDITAL DE CONVOCAÇÃO PARA ELEIÇÃO DA CIPA',
+        title: `Edital de Convocação da CIPA - ${unitName}`,
         category: 'Processo Eleitoral',
-        normativeCode: 'NR-5 - Item 5.5.1',
+        normativeCode: 'NR-05 · Portaria MTP nº 4.219/2022 · Lei 14.457/2022',
         companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        cnpj: unitCnpj,
+        dateGenerated: dataConvocacao,
         content: [
-          `Ficam convocados todos os empregados da empresa ${companyName}, inscrita no CNPJ sob o nº ${cnpj}, para a eleição dos representantes dos empregados na Comissão Interna de Prevenção de Acidentes e Assédio (CIPA), para a gestão 2026/2027.`,
-          `A presente convocação é realizada em estrita observância à Norma Regulamentadora nº 05 (NR-5) do Ministério do Trabalho e Emprego e à Lei Federal nº 14.457/2022.`,
-          `O processo eleitoral será conduzido pela Comissão Eleitoral constituída, e a votação será realizada através do sistema de votação eletrônica segura CIPA Expert, garantindo escrutínio secreto, unicidade de voto e inviolabilidade da urna digital.`,
-          `Prazos regimentais: Inscrições abertas a partir do 15º dia após a publicação deste edital, com duração mínima de 15 (quinze) dias corridos. Todos os colaboradores em regime CLT têm o direito de se candidatar, independentemente de filiação sindical.`
+          `CIPA · Comissão Interna de Prevenção de Acidentes e Assédio`,
+          `${unitName} - Gestão ${gestaoAno}`,
+          `Edital de Convocação da CIPA - ${unitName} - ${unitState}`,
+          `Começou a renovação da CIPA da ${unitName} e os colaboradores interessados poderão se candidatar ao processo eleitoral, formalizando seu interesse conforme as seguintes orientações:`,
+          `• A renovação da CIPA segue as determinações da Norma NR-05 e Lei 14.457/2022;`,
+          `• A eleição ocorrerá de forma virtual;`,
+          `• Os colaboradores inscritos terão estabilidade empregatícia a partir da data de inscrição até o dia da eleição;`,
+          `• Os colaboradores eleitos terão estabilidade empregatícia de 02 (dois) anos a partir da posse da referida CIPA;`,
+          `• Os colaboradores devem estar com a lotação correta junto ao sistema SAP / RH;`,
+          `• Colaboradores que não estiverem lotados na ${unitName} – Endereço: ${unitAddress}, CNPJ: ${unitCnpj}, de acordo com o PO atual, não poderão participar do processo;`,
+          `• O treinamento para novos membros acontecerá conforme cronograma.`,
+          `Confira o cronograma a seguir:`,
+          `EDITAL DE CONVOCAÇÃO: ${dataConvocacao}`,
+          `Formação comissão eleitoral: ${dataComissao}`,
+          `Divulgação do edital de inscrição: ${dataEditalInscricao}`,
+          `Período de inscrições: ${periodoInscricoes}`,
+          `Publicação inscritos: ${dataListaInscritos}`,
+          `Eleição: ${dataEleicao} *`,
+          `Apuração dos votos: ${dataApuracao}`,
+          `Treinamento membros 20h: ${dataTreinamento}`,
+          `Treinamento presencial 4h: ${dataTreinamentoPresencial}`,
+          `Posse: ${dataPosse}`,
+          `* A data da eleição poderá ser prorrogada até o dia ${dataEleicaoProrrogada} caso não seja atingido o número de votantes válidos necessários, conforme o disposto no item 5.5 da NR 5: 1º dia: 50% dos empregados; 2º dia: 1/3 dos empregados; 3º dia: Qualquer valor da população do prédio.`,
+          `Obs.: Processo não elegível para colaboradores em regime 100% Remoto.`,
+          `Em caso de dúvidas, entre em contato com ${emailContato} | Telefone: ${telefoneContato}`,
+          `${unitName} · Endereço: ${unitAddress} · CEP: ${unitCep} · CNPJ: ${unitCnpj}`
         ],
         signatories: [
-          'Diretoria Executiva / Empregador',
-          'Coordenador do SESMT / Segurança do Trabalho'
+          'Presidente da Comissão Eleitoral - Condução do Processo Eleitoral',
+          'Representante Legal da Empresa - Diretoria Executiva / Empregador'
         ]
       };
+    }
 
     case 'comissao_eleitoral':
       return {
