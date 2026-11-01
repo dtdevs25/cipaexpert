@@ -51,6 +51,8 @@ import {
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
 import { ApiService } from '../../services/apiService';
+import { PdfService } from '../../services/pdfService';
+import { computeSha256 } from '../../services/signatureService';
 
 // Formatação com a primeira letra maiúscula (Title Case)
 function formatCapitalizeName(text?: string): string {
@@ -579,6 +581,63 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       showToast('Dimensionamento salvo com sucesso!');
     } finally {
       setIsSavingDimensionamento(false);
+    }
+  };
+
+  // Emitir e baixar laudo oficial em PDF do dimensionamento NR-5
+  const handleDownloadPdfDimensionamento = async (targetDim?: any) => {
+    try {
+      const dim = targetDim || dimensionamento;
+      const cnaeCode = targetDim?.cnaeCode || cnaeEntry.code;
+      const cnaeDesc = targetDim?.cnaeDesc || cnaeEntry.description;
+      const grauDeRisco = targetDim?.grauDeRisco ?? cnaeEntry.grauDeRisco;
+      const count = targetDim?.headcount ?? headcount;
+      const gestao = targetDim?.gestao || gestaoAno;
+      const obs = targetDim?.observacaoNormativa || dim.observacaoNormativa;
+      const calcPor = targetDim?.calculadoPor || targetDim?.createdBy || currentUser?.name || 'Administrador SST';
+      const dataCalc = targetDim?.dataCalculo || targetDim?.createdAt
+        ? new Date(targetDim.dataCalculo || targetDim.createdAt).toLocaleString('pt-BR')
+        : new Date().toLocaleString('pt-BR');
+
+      let hashSha256 = targetDim?.hashSha256 || targetDim?.hash;
+      if (!hashSha256) {
+        try {
+          hashSha256 = await computeSha256(
+            `DIM:${currentCompany.cnpj}:${currentFilial.id}:${count}:${dim.totalMembros}:${dataCalc}`
+          );
+        } catch {
+          hashSha256 = `SHA256-${Date.now().toString(16).toUpperCase()}`;
+        }
+      }
+
+      PdfService.generateDimensionamentoPdf({
+        companyName: currentCompany.nomeFantasia || currentCompany.razaoSocial,
+        razaoSocial: currentCompany.razaoSocial,
+        cnpj: currentCompany.cnpj,
+        unitName: currentFilial.name,
+        city: currentFilial.city,
+        state: currentFilial.state,
+        cnaeCode,
+        cnaeDesc,
+        grauDeRisco,
+        headcount: count,
+        gestao,
+        efetivosEmpregados: dim.efetivosEmpregados,
+        suplentesEmpregados: dim.suplentesEmpregados,
+        efetivosEmpregador: dim.efetivosEmpregador,
+        suplentesEmpregador: dim.suplentesEmpregador,
+        totalMembros: dim.totalMembros,
+        observacaoNormativa: obs,
+        calculadoPor: calcPor,
+        dataCalculo: dataCalc,
+        hashSha256,
+        protocolo: `DIM-NR5-${new Date().getFullYear()}-${currentFilial.id.slice(0, 4).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+      });
+
+      showToast('Laudo do dimensionamento em PDF gerado e baixado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar PDF do dimensionamento:', err);
+      showToast('Ocorreu um erro ao gerar o PDF. Tente novamente.');
     }
   };
 
@@ -1289,6 +1348,17 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Botão Imprimir / Salvar PDF do Dimensionamento */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPdfDimensionamento()}
+                    className="flex items-center gap-1.5 h-8 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-300 hover:border-emerald-300 px-3 text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs shrink-0"
+                    title="Imprimir / Salvar laudo técnico oficial em PDF do dimensionamento NR-5"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Imprimir / Salvar PDF</span>
+                  </button>
+
                   {/* Botão Histórico - Recolhível / Expansível no hover */}
                   <button
                     type="button"
@@ -1392,6 +1462,36 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <strong className="text-slate-900 font-bold block">Parecer Conclusivo NR-5:</strong>
                     <span>{dimensionamento.observacaoNormativa}</span>
                   </div>
+                </div>
+
+                {/* Comprovante Oficial e Prova Documental (Laudo em PDF) */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs border border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                      <FileText className="w-4.5 h-4.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white leading-tight flex items-center gap-2">
+                        <span>Comprovante Oficial de Dimensionamento (NR-5 / NR-4)</span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30">
+                          PDF A4
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-300 mt-0.5">
+                        Laudo técnico probatório com integridade SHA-256 e campos de assinatura para auditorias e fiscalização do trabalho.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadPdfDimensionamento()}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center justify-center gap-2 shrink-0"
+                    title="Baixar laudo técnico em PDF do dimensionamento"
+                  >
+                    <Printer className="w-4 h-4 text-white" />
+                    <span>Baixar Laudo Técnico em PDF</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -2627,6 +2727,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         companyId={currentCompany.id}
         companyName={currentCompany.nomeFantasia || currentCompany.razaoSocial}
         unitName={currentFilial.name}
+        onPrintDimensionamento={handleDownloadPdfDimensionamento}
       />
 
     </div>

@@ -16,11 +16,13 @@ import {
 import { useCipa } from '../../../context/CipaContext';
 import { SavedDimensionamento } from '../../../services/mockStorage';
 import { ApiService } from '../../../services/apiService';
+import { PdfService } from '../../../services/pdfService';
 
 interface DimensionamentoHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectDimensionamento?: (dim: any) => void;
+  onPrintDimensionamento?: (dim: any) => void;
   unitId?: string;
   companyId?: string;
   companyName?: string;
@@ -31,6 +33,7 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
   isOpen,
   onClose,
   onSelectDimensionamento,
+  onPrintDimensionamento,
   unitId,
   companyId,
   companyName,
@@ -206,18 +209,56 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
                     <span>Calculado e homologado por: <strong>{dim.createdBy || dim.calculadoPor || 'Administrador SST'}</strong></span>
                   </div>
 
-                  {onSelectDimensionamento && (
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        onSelectDimensionamento(dim);
-                        onClose();
+                        if (onPrintDimensionamento) {
+                          onPrintDimensionamento(dim);
+                        } else {
+                          PdfService.generateDimensionamentoPdf({
+                            companyName: displayCompanyName,
+                            cnpj: activeCompany.cnpj || '00.000.000/0001-00',
+                            unitName: unitName || activeUnit?.name || 'Unidade Principal',
+                            city: activeUnit?.city,
+                            state: activeUnit?.state,
+                            cnaeCode: dim.cnaeCode || activeUnit?.cnaeCode || '2511-0/00',
+                            cnaeDesc: dim.cnaeDesc || activeUnit?.cnaeDesc || 'Atividade Principal',
+                            grauDeRisco: dim.grauDeRisco || activeUnit?.grauDeRisco || 3,
+                            headcount: dim.headcount || 0,
+                            gestao: dim.gestao || '2026/2027',
+                            efetivosEmpregados: dim.efetivosEmpregados || 0,
+                            suplentesEmpregados: dim.suplentesEmpregados || 0,
+                            efetivosEmpregador: dim.efetivosEmpregador || 0,
+                            suplentesEmpregador: dim.suplentesEmpregador || 0,
+                            totalMembros: dim.totalMembros || 0,
+                            observacaoNormativa: dim.observacaoNormativa || 'Enquadramento oficial NR-5.',
+                            calculadoPor: dim.calculadoPor || dim.createdBy || 'Administrador SST',
+                            dataCalculo: dim.createdAt ? new Date(dim.createdAt).toLocaleString('pt-BR') : undefined,
+                            hashSha256: dim.hashSha256 || dim.hash
+                          });
+                        }
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 font-bold text-xs transition-all cursor-pointer shadow-2xs"
+                      title="Baixar laudo em PDF deste dimensionamento histórico"
                     >
-                      Carregar Dados
+                      <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Imprimir PDF</span>
                     </button>
-                  )}
+
+                    {onSelectDimensionamento && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectDimensionamento(dim);
+                          onClose();
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                      >
+                        Carregar Dados
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
