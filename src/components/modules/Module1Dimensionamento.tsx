@@ -637,7 +637,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       const unitIdPart = String(filial.id || 'UNIT').slice(0, 4).toUpperCase();
       const protocolo = `DIM-NR5-${new Date().getFullYear()}-${unitIdPart}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-      PdfService.generateDimensionamentoPdf({
+      await PdfService.generateDimensionamentoPdf({
         companyName: finalCompanyName,
         razaoSocial: finalRazaoSocial,
         cnpj: finalCnpj,
@@ -658,7 +658,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         calculadoPor: finalCalcPor,
         dataCalculo: finalDataCalc,
         hashSha256,
-        protocolo
+        protocolo,
+        logoUrl: (comp as any)?.logoUrl || currentCompany?.logoUrl
       });
 
       showToast('Laudo do dimensionamento em PDF gerado e baixado com sucesso!');

@@ -24,15 +24,36 @@ export interface DimensionamentoPdfData {
   dataCalculo?: string;
   hashSha256?: string;
   protocolo?: string;
+  logoUrl?: string;
+}
+
+// Helper seguro para carregar imagens no navegador sem quebrar o fluxo caso falhe
+async function loadImgData(url?: string): Promise<{ img: HTMLImageElement; format: 'PNG' | 'JPEG' } | null> {
+  if (typeof window === 'undefined' || !url) return null;
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const isJpg = url.startsWith('data:image/jpeg') || url.startsWith('data:image/jpg') || url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg');
+        resolve({ img, format: isJpg ? 'JPEG' : 'PNG' });
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+      setTimeout(() => resolve(null), 2500);
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
 export class PdfService {
   /**
    * Gera e faz o download de um laudo/comprovante oficial de Dimensionamento da CIPA (NR-5 / NR-4)
    * em página única A4, de alto padrão executivo, com dados paritários, parecer legal,
-   * regras de capacitação, campos de assinatura e chancela criptográfica SHA-256 com fé pública.
+   * logo institucional da empresa e chancela criptográfica de controle.
    */
-  static generateDimensionamentoPdf(data: DimensionamentoPdfData): void {
+  static async generateDimensionamentoPdf(data: DimensionamentoPdfData): Promise<void> {
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -73,37 +94,77 @@ export class PdfService {
     );
 
     // =========================================================================
-    // TOPO: BARRA DECORATIVA E CABEÇALHO INSTITUCIONAL
+    // TOPO: BARRA DECORATIVA E CABEÇALHO COM LOGO E IDENTIFICAÇÃO DO LAUDO
     // =========================================================================
     // Barra superior esmeralda
     doc.setFillColor(5, 150, 105); // Emerald-600
-    doc.rect(margin, 9, contentWidth, 2, 'F');
+    doc.rect(margin, 8, contentWidth, 2, 'F');
 
-    // Cabeçalho institucional
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('REPÚBLICA FEDERATIVA DO BRASIL · MINISTÉRIO DO TRABALHO E EMPREGO', pageWidth / 2, 15.5, { align: 'center' });
+    // Carregamento do Logo (Empresa ou fallback Institucional)
+    let loadedLogo = await loadImgData(data.logoUrl);
+    if (!loadedLogo && typeof window !== 'undefined') {
+      loadedLogo = await loadImgData('/logocompleto.png');
+    }
 
+    let logoRenderedWidth = 0;
+    if (loadedLogo) {
+      try {
+        let imgW = 32;
+        let imgH = 14;
+        if (loadedLogo.img.naturalWidth && loadedLogo.img.naturalHeight) {
+          const ratio = loadedLogo.img.naturalWidth / loadedLogo.img.naturalHeight;
+          if (ratio > (imgW / imgH)) {
+            imgH = imgW / ratio;
+          } else {
+            imgW = imgH * ratio;
+          }
+        }
+        const logoY = 12 + (15 - imgH) / 2;
+        doc.addImage(loadedLogo.img, loadedLogo.format, margin, logoY, imgW, imgH);
+        logoRenderedWidth = imgW;
+      } catch (e) {
+        console.warn('Erro ao renderizar logo no PDF:', e);
+      }
+    }
+
+    // Se não carregou imagem, exibe badge elegante com o nome da empresa ou sistema
+    if (!logoRenderedWidth) {
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(margin, 12, 30, 14, 1.5, 1.5, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(5, 122, 85);
+      doc.text('CIPA EXPERT', margin + 15, 20.5, { align: 'center' });
+      logoRenderedWidth = 30;
+    }
+
+    // Ao lado fica escrito laudo...
+    const textStartX = margin + logoRenderedWidth + 6;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setTextColor(15, 23, 42); // Slate-900
-    doc.text('LAUDO TÉCNICO DE ENQUADRAMENTO E DIMENSIONAMENTO DA CIPA', pageWidth / 2, 21.5, { align: 'center' });
+    doc.text('LAUDO TÉCNICO DE ENQUADRAMENTO E DIMENSIONAMENTO', textStartX, 17.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(5, 122, 85); // Emerald-700
+    doc.text(`COMISSÃO INTERNA DE PREVENÇÃO DE ACIDENTES E ASSÉDIO · GESTÃO ${gestao}`, textStartX, 22.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Instrumento Comprobatório de Conformidade com a NR-05 (Portaria MTP 4.219/2022), NR-04 e Lei 14.457/2022', pageWidth / 2, 26, { align: 'center' });
+    doc.setFontSize(6.8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Instrumento Comprobatório de Conformidade com a NR-05 e NR-04', textStartX, 26.5);
 
     // Linha divisória sutil
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.3);
-    doc.line(margin, 28.5, pageWidth - margin, 28.5);
+    doc.line(margin, 29.5, pageWidth - margin, 29.5);
 
     // =========================================================================
     // SEÇÃO 1: DADOS DO EMPREGADOR E DO ESTABELECIMENTO
     // =========================================================================
-    let currentY = 32.5;
+    let currentY = 33.5;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(5, 122, 85);
@@ -304,14 +365,14 @@ export class PdfService {
     // =========================================================================
     // SEÇÃO 3: PARECER CONCLUSIVO E FUNDAMENTAÇÃO LEGAL
     // =========================================================================
-    currentY = cardsY + cardH + 5;
+    currentY = cardsY + cardH + 6;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(5, 122, 85);
     doc.text('3. PARECER CONCLUSIVO E FUNDAMENTAÇÃO LEGAL', margin, currentY);
 
     const boxParecerY = currentY + 2;
-    const boxParecerH = 25;
+    const boxParecerH = 36;
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(margin, boxParecerY, contentWidth, boxParecerH, 1.5, 1.5, 'FD');
@@ -323,115 +384,26 @@ export class PdfService {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('Parecer Técnico de Enquadramento:', margin + 6, boxParecerY + 5.5);
+    doc.text('Parecer Técnico de Enquadramento:', margin + 6, boxParecerY + 6);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    const splitObs = doc.splitTextToSize(obsText, contentWidth - 10);
-    doc.text(splitObs.slice(0, 2), margin + 6, boxParecerY + 10.5);
+    const splitObs = doc.splitTextToSize(obsText, contentWidth - 12);
+    doc.text(splitObs.slice(0, 3), margin + 6, boxParecerY + 11.5);
 
     // Texto normativo complementar
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(6.5);
-    doc.setTextColor(100, 116, 139);
-    const notaLegal = `Conforme o item 5.4 da NR-05, a empresa deve manter a CIPA em efetivo funcionamento durante a gestão. Para estabelecimentos dispensados de constituição com base no Quadro I ou regras de ME/EPP, a empresa deverá indicar e capacitar um Designado da CIPA para o cumprimento dos objetivos da norma.`;
-    const splitNota = doc.splitTextToSize(notaLegal, contentWidth - 10);
-    doc.text(splitNota.slice(0, 2), margin + 6, boxParecerY + 19);
-
-    // =========================================================================
-    // SEÇÃO 4: OBRIGAÇÕES DO MANDATO, TREINAMENTO E LEI 14.457/2022
-    // =========================================================================
-    currentY = boxParecerY + boxParecerH + 5;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(5, 122, 85);
-    doc.text('4. REQUISITOS OBRIGATÓRIOS DO MANDATO E CAPACITAÇÃO', margin, currentY);
-
-    const boxReqY = currentY + 2;
-    const boxReqH = 28;
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, boxReqY, contentWidth, boxReqH, 1.5, 1.5, 'FD');
-
-    // Coluna 1: Capacitação Obrigatória
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text('Capacitação Obrigatória dos Membros (Item 5.7 NR-5):', margin + 4, boxReqY + 5.5);
-
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
-    doc.setTextColor(51, 65, 85);
-    doc.text(`• Carga Horária Mínima: ${cargaTreinamento} para estabelecimentos de Grau de Risco ${data.grauDeRisco}.`, margin + 4, boxReqY + 10.5);
-    doc.text('• Prazo Normativo: Realização antes da posse para 1ª CIPA ou até 30 dias após posse nas demais.', margin + 4, boxReqY + 15);
-    doc.text('• Conteúdo Obrigatório: Condições de trabalho, riscos ocupacionais, primeiros socorros e inspeções.', margin + 4, boxReqY + 19.5);
-    doc.text('• Modalidade: Presencial ou Semipresencial em conformidade com as diretrizes da NR-01.', margin + 4, boxReqY + 24);
-
-    // Coluna 2: Lei 14.457/2022 e Estabilidade
-    const col2ReqX = margin + 98;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text('Lei nº 14.457/2022 e Estabilidade do Mandato:', col2ReqX, boxReqY + 5.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.8);
-    doc.setTextColor(51, 65, 85);
-    doc.text('• Prevenção ao Assédio: Inclusão obrigatória de regras contra assédio sexual e violência laboral.', col2ReqX, boxReqY + 10.5);
-    doc.text('• Canal de Denúncias: Manutenção de canal seguro para acolhimento e apuração com sigilo.', col2ReqX, boxReqY + 15);
-    doc.text('• Duração do Mandato: 1 (um) ano de efetiva gestão paritária com reuniões mensais ordinárias.', col2ReqX, boxReqY + 19.5);
-    doc.text('• Estabilidade: Vedada a dispensa arbitrária dos eleitos desde o registro até 1 ano após mandato.', col2ReqX, boxReqY + 24);
-
-    // =========================================================================
-    // SEÇÃO 5: VALIDAÇÃO TÉCNICA E CAMPOS DE ASSINATURA
-    // =========================================================================
-    currentY = boxReqY + boxReqH + 5;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(5, 122, 85);
-    doc.text('5. VALIDAÇÃO TÉCNICA E PROTOCOLO DE CONFORMIDADE', margin, currentY);
-
-    const boxSigY = currentY + 2;
-    const boxSigH = 26;
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, boxSigY, contentWidth, boxSigH, 1.5, 1.5, 'FD');
-
-    // Linha de assinatura 1 - Técnico/Engenheiro SST
-    const sig1X = margin + 12;
-    const sig1W = 70;
-    doc.setDrawColor(148, 163, 184);
-    doc.setLineWidth(0.3);
-    doc.line(sig1X, boxSigY + 15, sig1X + sig1W, boxSigY + 15);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(15, 23, 42);
-    doc.text(data.calculadoPor || 'Responsável Técnico / Engenharia de SST', sig1X + sig1W / 2, boxSigY + 19, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text('Elaborador Técnico do Dimensionamento', sig1X + sig1W / 2, boxSigY + 22.5, { align: 'center' });
-
-    // Linha de assinatura 2 - Representante Legal do Empregador
-    const sig2X = margin + 104;
-    const sig2W = 70;
-    doc.line(sig2X, boxSigY + 15, sig2X + sig2W, boxSigY + 15);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(15, 23, 42);
-    doc.text(companyName, sig2X + sig2W / 2, boxSigY + 19, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Representante Legal da Empresa / Diretoria', sig2X + sig2W / 2, boxSigY + 22.5, { align: 'center' });
+    const notaLegal = `Conforme o item 5.4 da Norma Regulamentadora nº 05 (NR-05) e NR-04, este dimensionamento define a composição paritária oficial da comissão para o mandato indicado. O treinamento obrigatório para os membros possui carga horária de ${cargaTreinamento} (Grau de Risco ${grauDeRisco}), a ser cumprido nos termos regulamentares.`;
+    const splitNota = doc.splitTextToSize(notaLegal, contentWidth - 12);
+    doc.text(splitNota.slice(0, 3), margin + 6, boxParecerY + 23);
 
     // =========================================================================
-    // SEÇÃO 6: CHANCELA DE AUTENTICIDADE CRIPTOGRÁFICA E AUDITORIA (RODAPÉ)
+    // REGISTRO DE AUTENTICIDADE E CONTROLE DOCUMENTAL (RODAPÉ)
     // =========================================================================
-    currentY = boxSigY + boxSigH + 4;
+    currentY = boxParecerY + boxParecerH + 8;
     const boxAuthY = currentY;
     const boxAuthH = 26;
     doc.setFillColor(241, 245, 249); // Slate-100
@@ -453,13 +425,13 @@ export class PdfService {
     doc.setTextColor(51, 65, 85);
     doc.text(`Identificador do Laudo: ${protocolo}`, margin + 3.5, boxAuthY + 9.5);
     doc.text(`Hash de Integridade SHA-256: ${hash}`, margin + 3.5, boxAuthY + 13.5);
-    doc.text(`Data/Hora de Emissão e Registro: ${dataEmissao} BRT`, margin + 3.5, boxAuthY + 17.5);
+    doc.text(`Data/Hora de Emissão e Registro: ${dataEmissao} BRT   ·   Responsável: ${calculadoPor}`, margin + 3.5, boxAuthY + 17.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text('Documento eletrônico auditável emitido em conformidade com a MP nº 2.200-2/2001 e Lei Federal nº 14.063/2020.', margin + 3.5, boxAuthY + 21.5);
-    doc.text('Válido como prova documental perante a Auditoria Fiscal do Trabalho (MTE), Sindicatos e Certificações ISO 45001.', margin + 3.5, boxAuthY + 24.5);
+    doc.text('Documento eletrônico comprobatório emitido pelo Sistema CIPA Expert Enterprise em estrita consonância com a NR-05 e NR-04.', margin + 3.5, boxAuthY + 21.5);
+    doc.text('Válido como comprovação perante a Inspeção do Trabalho (MTE), auditorias de SST e certificações de conformidade.', margin + 3.5, boxAuthY + 24.5);
 
     // Download do arquivo PDF com nome amigável e padronizado
     const cleanCompanyName = companyName

@@ -212,11 +212,11 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (onPrintDimensionamento) {
                           onPrintDimensionamento(dim);
                         } else {
-                          PdfService.generateDimensionamentoPdf({
+                          await PdfService.generateDimensionamentoPdf({
                             companyName: displayCompanyName,
                             cnpj: activeCompany.cnpj || '00.000.000/0001-00',
                             unitName: unitName || activeUnit?.name || 'Unidade Principal',
@@ -235,7 +235,8 @@ export const DimensionamentoHistoryModal: React.FC<DimensionamentoHistoryModalPr
                             observacaoNormativa: dim.observacaoNormativa || 'Enquadramento oficial NR-5.',
                             calculadoPor: dim.calculadoPor || dim.createdBy || 'Administrador SST',
                             dataCalculo: dim.createdAt ? new Date(dim.createdAt).toLocaleString('pt-BR') : undefined,
-                            hashSha256: dim.hashSha256 || dim.hash
+                            hashSha256: dim.hashSha256 || dim.hash,
+                            logoUrl: activeCompany.logoUrl
                           });
                         }
                       }}
