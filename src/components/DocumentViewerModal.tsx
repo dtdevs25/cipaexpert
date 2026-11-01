@@ -9,6 +9,7 @@ interface DocumentViewerModalProps {
   onSignRequested?: () => void;
   isSigned?: boolean;
   signatureHash?: string;
+  signatureDate?: string;
   signersList?: Array<{ 
     name: string; 
     email: string; 

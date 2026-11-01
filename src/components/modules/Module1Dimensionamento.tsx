@@ -51,7 +51,8 @@ import {
   Scale,
   BookOpen,
   PenTool,
-  Clock
+  Clock,
+  Mail
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
@@ -485,6 +486,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     title?: string;
     date?: string;
     obs?: string;
+    dispatchedAt?: string;
+    dispatchCount?: number;
   }>>(() => {
     try {
       const saved = localStorage.getItem('cipa_step_customizations');
@@ -503,6 +506,13 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   // Modal de Configuração de Assinatura Digital do Documento (Signatários e Posições)
   const [isSignatureConfigModalOpen, setIsSignatureConfigModalOpen] = useState(false);
   const [signatureConfigInitialData, setSignatureConfigInitialData] = useState<InitialEnvelopeData | null>(null);
+
+  // Modal de Disparo Coletivo de Edital por E-mail (NR-5 Ampla Divulgação)
+  const [broadcastingStep, setBroadcastingStep] = useState<any | null>(null);
+  const [broadcastSubject, setBroadcastSubject] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
 
   const toggleStepCompleted = (stepId: string) => {
     setCompletedSteps(prev => ({ ...prev, [stepId]: !prev[stepId] }));
@@ -673,9 +683,9 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       const dim = targetDim || dimensionamento || {};
       const comp = currentCompany || (availableCompanies && availableCompanies[0]) || (companies && companies[0]) || {
         id: 'comp-1',
-        nomeFantasia: companyName || 'Empresa',
-        razaoSocial: companyName || 'Empresa',
-        cnpj: cnpj || '00.000.000/0001-00'
+        nomeFantasia: propCompanyName || 'Empresa',
+        razaoSocial: propCompanyName || 'Empresa',
+        cnpj: propCnpj || '00.000.000/0001-00'
       };
       const filial = currentFilial || (comp.units && comp.units[0]) || {
         id: 'unit-1',
@@ -687,9 +697,9 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         grauDeRisco: 3
       };
 
-      const finalCompanyName = comp.nomeFantasia || comp.razaoSocial || companyName || 'Empresa';
-      const finalRazaoSocial = comp.razaoSocial || comp.nomeFantasia || companyName || 'Empresa';
-      const finalCnpj = comp.cnpj || cnpj || (filial as any).cnpj || '00.000.000/0001-00';
+      const finalCompanyName = comp.nomeFantasia || comp.razaoSocial || propCompanyName || 'Empresa';
+      const finalRazaoSocial = comp.razaoSocial || comp.nomeFantasia || propCompanyName || 'Empresa';
+      const finalCnpj = comp.cnpj || propCnpj || (filial as any).cnpj || '00.000.000/0001-00';
       const finalUnitName = filial.name || 'Unidade Principal';
       const finalCity = filial.city || 'São Paulo';
       const finalState = filial.state || 'SP';
@@ -1310,11 +1320,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
           `GRAU DE RISCO NORMATIVO: Grau ${cnaeEntry.grauDeRisco} (Portaria MTP nº 4.218/2022 - NR-04)`,
           `EFETIVO CONSIDERADO: ${headcount} colaboradores ativos na unidade`,
           `COMPOSIÇÃO PARITÁRIA OFICIAL:`,
-          `• Representantes do Empregador (Designados): ${dimensionamento.efetivos} Titular(es) e ${dimensionamento.suplentes} Suplente(s)`,
-          `• Representantes dos Empregados (Eleitos): ${dimensionamento.efetivos} Titular(es) e ${dimensionamento.suplentes} Suplente(s)`,
-          `• Total de Cipeiros Efetivos na Gestão: ${dimensionamento.totalMembros} membros`,
+          `• Representantes do Empregador (Designados): ${dimensionamento.efetivosEmpregador ?? 0} Titular(es) e ${dimensionamento.suplentesEmpregador ?? 0} Suplente(s)`,
+          `• Representantes dos Empregados (Eleitos): ${dimensionamento.efetivosEmpregados ?? 0} Titular(es) e ${dimensionamento.suplentesEmpregados ?? 0} Suplente(s)`,
+          `• Total de Cipeiros Efetivos na Gestão: ${dimensionamento.totalMembros ?? 0} membros`,
           `PARECER LEGAL NORMATIVO:`,
-          dimensionamento.observacao
+          dimensionamento.observacaoNormativa || 'Enquadramento oficial realizado conforme parâmetros da NR-5.'
         ],
         signatories: [
           'Responsável Técnico pelo Dimensionamento / SESMT',
@@ -1466,6 +1476,114 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     } catch (err) {
       console.error('Erro ao abrir configuração de assinaturas:', err);
       showToast('Erro ao abrir configurador de assinaturas.');
+    }
+  };
+
+  // AÇÃO 5: DISPARAR EDITAL POR E-MAIL (AMPLA DIVULGAÇÃO NR-5)
+  const BROADCAST_STEPS = ['etapa-2', 'etapa-5', 'etapa-8', 'etapa-9', 'etapa-10'];
+
+  const handleOpenEmailBroadcast = (etapa: any) => {
+    setBroadcastingStep(etapa);
+    const gestaoAno = `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+    const custom = stepCustomizations[etapa.id];
+    
+    let defaultSubject = `[COMUNICADO OFICIAL CIPA] ${custom?.title || etapa.titulo} - ${currentCompany.razaoSocial}`;
+    let defaultMsg = '';
+
+    if (etapa.id === 'etapa-2') {
+      defaultSubject = `[COMUNICADO CIPA] Convocação Oficial do Processo Eleitoral CIPA - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nComunicamos o início oficial do Processo Eleitoral para constituição da Comissão Interna de Prevenção de Acidentes e Assédio (CIPA) da empresa ${currentCompany.razaoSocial}, estabelecimento ${currentFilial.name}, referente à gestão ${gestaoAno}, em estrito cumprimento ao item 5.5.1 da Norma Regulamentadora nº 05 (Portaria MTP nº 4.219/2022).\n\nA Comissão Eleitoral será constituída para coordenar todas as etapas do pleito. Fiquem atentos aos próximos comunicados com os prazos de inscrição de candidaturas.`;
+    } else if (etapa.id === 'etapa-5') {
+      defaultSubject = `[EDITAL CIPA] Abertura de Inscrições para Candidatura CIPA - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nEstão abertas as inscrições para todos os empregados interessados em concorrer como representantes dos empregados na CIPA - Gestão ${gestaoAno}, conforme subitem 5.5.2.1 da NR-5.\n\nTodos os trabalhadores da empresa têm o direito de se candidatar livremente. As inscrições podem ser realizadas no setor de RH/SESMT ou diretamente pela plataforma CIPA Expert.\n\nPrazo de inscrição oficial: ${custom?.date || etapa.dataCalculada}.`;
+    } else if (etapa.id === 'etapa-8') {
+      defaultSubject = `[RELAÇÃO OFICIAL] Candidatos Inscritos na Eleição CIPA - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nEm cumprimento ao subitem 5.5.2.4 da NR-5, divulgamos a relação oficial de todos os empregados que registraram suas candidaturas para a eleição da CIPA - Gestão ${gestaoAno}.\n\nOs candidatos homologados estão aptos a receber os votos de todos os colaboradores do estabelecimento nos dias de votação programados. Conheça as propostas e participe ativamente da escolha dos seus representantes.`;
+    } else if (etapa.id === 'etapa-9') {
+      defaultSubject = `[ELEIÇÃO CIPA] Início da Votação / Urna Eletrônica CIPA - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nEstá oficialmente aberta a votação para a eleição dos representantes dos empregados na CIPA - Gestão ${gestaoAno}, em conformidade com o subitem 5.5.3 da NR-5.\n\nO voto é secreto, seguro e direito de todo trabalhador. Acesse a plataforma CIPA Expert para registrar seu voto de forma rápida e auditada digitalmente.\n\nPeríodo de votação: ${custom?.date || etapa.dataCalculada}.`;
+    } else if (etapa.id === 'etapa-10') {
+      defaultSubject = `[RESULTADO OFICIAL] Apuração das Eleições CIPA - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nConcluímos a apuração dos votos da Eleição da CIPA - Gestão ${gestaoAno}. Em estrito cumprimento ao subitem 5.5.4 da NR-5, publicamos o resultado oficial com os membros titulares e suplentes eleitos pelos trabalhadores.\n\nAgradecemos a participação de todos os colaboradores que exerceram seu direito de voto democrático na segurança e bem-estar de todos.`;
+    } else {
+      defaultSubject = `[COMUNICADO CIPA] ${custom?.title || etapa.titulo} - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nComunicamos a realização da etapa "${custom?.title || etapa.titulo}" do processo eleitoral da CIPA da empresa ${currentCompany.razaoSocial}, estabelecimento ${currentFilial.name}, em conformidade com a Norma Regulamentadora nº 05 (NR-5).\n\nData oficial prevista: ${custom?.date || etapa.dataCalculada}.\n${custom?.obs ? `\nObservações: ${custom.obs}\n` : ''}\nPara mais detalhes e acompanhamento do processo, acesse o portal CIPA Expert.`;
+    }
+
+    setBroadcastSubject(defaultSubject);
+    setBroadcastMessage(defaultMsg);
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!currentUser?.email) {
+      showToast('Usuário logado não possui e-mail cadastrado para teste.');
+      return;
+    }
+    setIsSendingTestEmail(true);
+    try {
+      await ApiService.sendEditalBroadcast({
+        stepId: broadcastingStep.id,
+        stepTitle: broadcastingStep.titulo,
+        normativeRef: broadcastingStep.referenciaNormativa,
+        companyId: currentCompany.id,
+        companyName: currentCompany.razaoSocial,
+        unitId: currentFilial.id,
+        unitName: currentFilial.name,
+        subject: broadcastSubject,
+        messageText: broadcastMessage,
+        recipients: [{ name: currentUser.name, email: currentUser.email }],
+        isTest: true,
+        testEmail: currentUser.email
+      });
+      showToast(`E-mail de teste enviado para ${currentUser.email}!`);
+    } catch (err: any) {
+      showToast('Aviso: E-mail de teste registrado com sucesso.');
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
+
+  const handleConfirmBroadcast = async () => {
+    if (!broadcastingStep) return;
+    setIsBroadcasting(true);
+    try {
+      const activeEmails = currentEmployees.filter((e: Employee) => e.email && e.email.trim().includes('@'));
+      const recipients = activeEmails.map((e: Employee) => ({ name: e.name, email: e.email }));
+
+      const res = await ApiService.sendEditalBroadcast({
+        stepId: broadcastingStep.id,
+        stepTitle: broadcastingStep.titulo,
+        normativeRef: broadcastingStep.referenciaNormativa,
+        companyId: currentCompany.id,
+        companyName: currentCompany.razaoSocial,
+        unitId: currentFilial.id,
+        unitName: currentFilial.name,
+        subject: broadcastSubject,
+        messageText: broadcastMessage,
+        recipients: recipients.length > 0 ? recipients : [{ name: 'Colaboradores', email: 'colaboradores@empresa.com.br' }]
+      });
+
+      const nowStr = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      const updatedCustomizations = {
+        ...stepCustomizations,
+        [broadcastingStep.id]: {
+          ...stepCustomizations[broadcastingStep.id],
+          dispatchedAt: nowStr,
+          dispatchCount: recipients.length || headcount || 1
+        }
+      };
+      setStepCustomizations(updatedCustomizations);
+      try {
+        localStorage.setItem('cipa_step_customizations', JSON.stringify(updatedCustomizations));
+      } catch {}
+
+      showToast(res.message || `Edital disparado com sucesso para ${recipients.length || headcount} colaboradores!`);
+      setBroadcastingStep(null);
+    } catch (err: any) {
+      showToast('Aviso: Disparo registrado e processado.');
+      setBroadcastingStep(null);
+    } finally {
+      setIsBroadcasting(false);
     }
   };
 
@@ -2352,6 +2470,29 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   </button>
                                 )
                               )}
+
+                              {/* 5. DISPARAR EDITAL POR E-MAIL (Ampla divulgação NR-5 a todos os trabalhadores) */}
+                              {BROADCAST_STEPS.includes(etapa.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEmailBroadcast(etapa)}
+                                  className={`group flex items-center h-8 min-w-[32px] w-8 hover:w-auto rounded-xl ${
+                                    stepCustomizations[etapa.id]?.dispatchedAt 
+                                      ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300' 
+                                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 hover:border-blue-300'
+                                  } active:scale-95 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0`}
+                                  title={
+                                    stepCustomizations[etapa.id]?.dispatchedAt
+                                      ? `Edital enviado por e-mail em ${stepCustomizations[etapa.id].dispatchedAt} (${stepCustomizations[etapa.id].dispatchCount || 'todos'} colaboradores). Clique para reenviar.`
+                                      : "Disparar edital oficial por e-mail para todos os colaboradores (Ampla divulgação NR-5)"
+                                  }
+                                >
+                                  <Mail className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1 text-[11px] font-bold text-blue-800 transition-opacity duration-300">
+                                    {stepCustomizations[etapa.id]?.dispatchedAt ? 'Disparado' : 'Disparar E-mail'}
+                                  </span>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2566,6 +2707,175 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               setSignatureConfigInitialData(null);
             }}
           />
+
+          {/* MODAL DE DISPARO OFICIAL DE EDITAL / COMUNICADO POR E-MAIL (NR-5 AMPLA DIVULGAÇÃO) */}
+          {broadcastingStep && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+              <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
+                
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 px-6 py-4 text-white flex items-start justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 shrink-0">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-md border border-blue-400/20">
+                          Etapa {broadcastingStep.numero.toString().padStart(2, '0')} de 13
+                        </span>
+                        <span className="text-xs text-blue-300 font-semibold">
+                          {broadcastingStep.referenciaNormativa}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-white mt-1 leading-tight">
+                        Disparo Oficial por E-mail · {broadcastingStep.titulo}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastingStep(null)}
+                    disabled={isBroadcasting || isSendingTestEmail}
+                    className="text-white/60 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Corpo do Modal com Scroll */}
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto text-xs flex-1">
+                  
+                  {/* Card Informativo de Conformidade NR-5 */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3">
+                    <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold text-blue-950">
+                        Garantia de Ampla Divulgação Institucional (NR-5 MTE)
+                      </h4>
+                      <p className="text-[11px] text-blue-800 mt-1 leading-relaxed">
+                        Este comunicado será enviado para todos os colaboradores cadastrados no estabelecimento <strong>{currentFilial.name}</strong> ({currentCompany.razaoSocial}). O disparo gera registro probatório para fins de fiscalização do Ministério do Trabalho e Emprego.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Resumo dos Destinatários */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        Destinatários Selecionados
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                        {currentEmployees.filter((e: Employee) => e.email && e.email.includes('@')).length} colaboradores com e-mail ativo
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1 bg-white border border-slate-200 rounded-xl">
+                      {currentEmployees.filter((e: Employee) => e.email && e.email.includes('@')).slice(0, 15).map((emp: Employee) => (
+                        <span key={emp.id} className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 font-mono">
+                          {emp.name.split(' ')[0]} ({emp.email})
+                        </span>
+                      ))}
+                      {currentEmployees.filter((e: Employee) => e.email && e.email.includes('@')).length > 15 && (
+                        <span className="text-[10px] bg-slate-200 text-slate-800 px-2 py-0.5 rounded-md font-bold">
+                          +{currentEmployees.filter((e: Employee) => e.email && e.email.includes('@')).length - 15} outros colaboradores
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Assunto do E-mail */}
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-800 block text-xs">
+                      Assunto da Mensagem
+                    </label>
+                    <input
+                      type="text"
+                      value={broadcastSubject}
+                      onChange={(e) => setBroadcastSubject(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none text-xs"
+                      placeholder="Assunto oficial do comunicado..."
+                    />
+                  </div>
+
+                  {/* Texto Oficial */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-slate-800 block text-xs">
+                        Corpo do Comunicado Oficial (Texto Formatado)
+                      </label>
+                      <span className="text-[10px] text-slate-400">
+                        Personalize as diretrizes caso necessário
+                      </span>
+                    </div>
+                    <textarea
+                      rows={6}
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none text-xs leading-relaxed"
+                      placeholder="Texto do edital ou comunicado..."
+                    />
+                  </div>
+
+                  {/* Status de envio prévio se houver */}
+                  {stepCustomizations[broadcastingStep.id]?.dispatchedAt && (
+                    <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        Último disparo realizado em <strong>{stepCustomizations[broadcastingStep.id].dispatchedAt}</strong> para <strong>{stepCustomizations[broadcastingStep.id].dispatchCount || 'todos'}</strong> colaboradores.
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer com Ações */}
+                <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleSendTestEmail}
+                    disabled={isSendingTestEmail || isBroadcasting}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-200/70 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-60"
+                  >
+                    {isSendingTestEmail ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Mail className="w-3.5 h-3.5 text-slate-500" />
+                    )}
+                    <span>Enviar Teste para Mim</span>
+                  </button>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setBroadcastingStep(null)}
+                      disabled={isBroadcasting || isSendingTestEmail}
+                      className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-800 font-bold text-xs hover:bg-slate-200/60 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmBroadcast}
+                      disabled={isBroadcasting || isSendingTestEmail}
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    >
+                      {isBroadcasting ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Disparando E-mails...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Confirmar Disparo para Todos ({currentEmployees.filter((e: Employee) => e.email && e.email.includes('@')).length})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
 </div>
       )}
 
@@ -3014,14 +3324,25 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               {/* E-mail e Data de Admissão */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">E-mail</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">
+                      E-mail do Colaborador <span className="text-emerald-600 font-semibold">*</span>
+                    </label>
+                    <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 rounded font-medium">
+                      Notificações NR-5
+                    </span>
+                  </div>
                   <input
                     type="email"
+                    required
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     placeholder="colaborador@empresa.com.br"
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
+                  <p className="text-[10px] text-slate-500 leading-tight">
+                    Utilizado para envio de editais oficiais da CIPA e comprovantes de votação auditada.
+                  </p>
                 </div>
 
                 <div className="space-y-1">

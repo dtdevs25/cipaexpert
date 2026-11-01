@@ -219,7 +219,7 @@ export default function App() {
           : !!staticSign;
 
         const docHash = envelope 
-          ? (envelope.finalSignatureHash || envelope.rootHash)
+          ? (envelope.finalHash || envelope.documentHash)
           : staticSign?.hash;
 
         const docDate = envelope 

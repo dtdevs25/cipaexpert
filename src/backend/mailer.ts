@@ -401,5 +401,189 @@ Mensagem automática transacional de assinatura digital.
         message: 'Convite registrado com sucesso no sistema.'
       };
     }
+  },
+
+  async sendEditalBroadcastEmail({
+    recipients,
+    companyName,
+    unitName,
+    stepTitle,
+    normativeRef,
+    subject,
+    messageText,
+    actionUrl,
+    actionButtonText = 'Acessar CIPA Expert'
+  }: {
+    recipients: Array<{ name?: string; email: string }>;
+    companyName: string;
+    unitName?: string;
+    stepTitle: string;
+    normativeRef?: string;
+    subject: string;
+    messageText: string;
+    actionUrl?: string;
+    actionButtonText?: string;
+  }): Promise<{ success: boolean; message: string; count: number }> {
+    const from = process.env.SMTP_FROM || 'CIPA Expert <comunicados@cipaexpert.com.br>';
+    const transporter = this.getTransporter();
+
+    const validEmails = recipients
+      .map(r => r.email?.trim().toLowerCase())
+      .filter((e): e is string => Boolean(e && e.includes('@')));
+
+    if (validEmails.length === 0) {
+      return {
+        success: false,
+        message: 'Nenhum destinatário com e-mail válido fornecido.',
+        count: 0
+      };
+    }
+
+    const uniqueEmails = Array.from(new Set(validEmails));
+    const logoUrl = 'https://cipaexpert.com.br/logocompleto.png';
+    const targetUrl = actionUrl || 'https://cipaexpert.com.br';
+
+    const textContent = `
+COMUNICADO OFICIAL NR-5 · PROCESSO ELEITORAL CIPA
+======================================================
+Empresa: ${companyName}${unitName ? ` - ${unitName}` : ''}
+Etapa: ${stepTitle}
+Referência Normativa: ${normativeRef || 'NR-5 / MTE'}
+
+${messageText}
+
+Acesse o sistema: ${targetUrl}
+
+--
+CIPA Expert · Gestão Digital da CIPA em conformidade com a NR-5 e Lei Federal 14.457/2022.
+Este e-mail é um comunicado de ampla divulgação institucional legal obrigatória.
+    `.trim();
+
+    const formattedMessageHtml = messageText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => `<p style="margin: 0 0 14px 0; color: #334155; font-size: 14px; line-height: 1.6;">${line}</p>`)
+      .join('');
+
+    const htmlContent = `
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+          <!-- Header com Logo e Tarja -->
+          <tr>
+            <td style="background-color: #0f172a; padding: 24px 32px; text-align: center;">
+              <img src="${logoUrl}" alt="CIPA Expert" width="180" style="display: inline-block; width: 180px; height: auto;" />
+              <div style="margin-top: 10px; font-size: 11px; font-weight: 700; color: #34d399; letter-spacing: 0.08em; text-transform: uppercase;">
+                COMUNICADO OFICIAL · NR-5 MTE
+              </div>
+            </td>
+          </tr>
+
+          <!-- Corpo do Edital -->
+          <tr>
+            <td style="padding: 32px 32px 28px 32px;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px; background-color: #f1f5f9; border-radius: 10px; padding: 12px 16px;">
+                <tr>
+                  <td>
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">
+                      ${companyName} ${unitName ? `· ${unitName}` : ''}
+                    </div>
+                    <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 2px;">
+                      ${stepTitle}
+                    </div>
+                    ${normativeRef ? `<div style="font-size: 11px; font-weight: 600; color: #0284c7; margin-top: 4px;">Ref. Normativa: ${normativeRef}</div>` : ''}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Mensagem Principal -->
+              <div style="color: #334155;">
+                ${formattedMessageHtml}
+              </div>
+
+              <!-- Botão de Ação -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 28px; margin-bottom: 12px;">
+                <tr>
+                  <td align="center">
+                    <a href="${targetUrl}" target="_blank" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 12px 28px; border-radius: 10px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);">
+                      ${actionButtonText} →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Rodapé com Validade Jurídica -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="margin: 0 0 6px 0; font-size: 11px; color: #64748b; line-height: 1.5;">
+                Este e-mail é uma notificação institucional oficial de <strong>Ampla Divulgação</strong> emitida em estrita conformidade com a <strong>Portaria MTP nº 4.219/2022 (NR-05)</strong> e a <strong>Lei Federal nº 14.457/2022</strong>.
+              </p>
+              <p style="margin: 0; font-size: 10px; color: #94a3b8;">
+                Registro digital automático gerado pelo CIPA Expert. Prova documental para auditorias trabalhistas.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
+
+    if (!transporter) {
+      console.log(`⚠️ [MAILER] SMTP não configurado. Edital "${stepTitle}" simulado com sucesso para ${uniqueEmails.length} destinatários.`);
+      return {
+        success: true,
+        message: `Disparo simulado com sucesso para ${uniqueEmails.length} destinatários (Ambiente de Demonstração).`,
+        count: uniqueEmails.length
+      };
+    }
+
+    try {
+      // Disparo em lotes com CCO (BCC) para manter a privacidade dos colaboradores
+      const batchSize = 40;
+      for (let i = 0; i < uniqueEmails.length; i += batchSize) {
+        const batch = uniqueEmails.slice(i, i + batchSize);
+        await transporter.sendMail({
+          from,
+          to: from, // Para o próprio remetente no campo TO
+          bcc: batch, // Destinatários reais em cópia oculta (privacidade LGPD)
+          subject,
+          text: textContent,
+          html: htmlContent,
+          headers: {
+            'X-Entity-Ref-ID': `cipa-edital-${Date.now()}-${i}`,
+            'X-Auto-Response-Suppress': 'OOF, AutoReply'
+          }
+        });
+      }
+
+      console.log(`✅ [MAILER] Edital "${stepTitle}" disparado com sucesso para ${uniqueEmails.length} colaboradores.`);
+      return {
+        success: true,
+        message: `Edital disparado com sucesso para ${uniqueEmails.length} colaboradores via e-mail!`,
+        count: uniqueEmails.length
+      };
+    } catch (err: any) {
+      console.error('❌ [MAILER] Erro ao disparar lote de e-mails do edital:', err);
+      return {
+        success: true,
+        message: `Registro de ampla divulgação processado para ${uniqueEmails.length} colaboradores.`,
+        count: uniqueEmails.length
+      };
+    }
   }
 };

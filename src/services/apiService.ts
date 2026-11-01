@@ -102,7 +102,9 @@ export const ApiService = {
       role: data.user.role,
       companyId: data.user.companyId,
       unitId: data.user.unitId,
-      roleLabel: data.user.role,
+      roleLabel: data.user.roleLabel || data.user.role,
+      roleDescription: data.user.roleDescription || 'Usuário do Sistema',
+      avatarInitials: data.user.name ? data.user.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : 'US',
       avatarUrl: data.user.avatarUrl
     };
 
@@ -353,6 +355,27 @@ export const ApiService = {
     return this.request('/api/dimensionamentos', {
       method: 'POST',
       body: JSON.stringify(data)
+    });
+  },
+
+  // 12. Disparo de Editais Coletivos por E-mail (NR-5 Ampla Divulgação)
+  async sendEditalBroadcast(payload: {
+    stepId: string;
+    stepTitle: string;
+    normativeRef?: string;
+    companyId?: string;
+    companyName: string;
+    unitId?: string;
+    unitName?: string;
+    subject: string;
+    messageText: string;
+    recipients: Array<{ name: string; email: string }>;
+    isTest?: boolean;
+    testEmail?: string;
+  }): Promise<{ success: boolean; message: string; count?: number }> {
+    return this.request('/api/cipa/send-edital-broadcast', {
+      method: 'POST',
+      body: JSON.stringify(payload)
     });
   }
 };

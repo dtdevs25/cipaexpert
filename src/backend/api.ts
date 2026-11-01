@@ -1493,6 +1493,80 @@ apiRouter.post('/signatures/send-invitation', async (req: Request, res: Response
   }
 });
 
+// 7.6. DISPARO EM MASSA DE EDITAIS E COMUNICADOS POR E-MAIL (NR-5 AMPLA DIVULGAÇÃO)
+apiRouter.post('/cipa/send-edital-broadcast', async (req: Request, res: Response) => {
+  try {
+    const {
+      stepId,
+      stepTitle,
+      normativeRef,
+      companyId,
+      companyName,
+      unitId,
+      unitName,
+      subject,
+      messageText,
+      recipients,
+      isTest,
+      testEmail
+    } = req.body;
+
+    if (!stepTitle || !messageText) {
+      res.status(400).json({ success: false, error: 'Título da etapa e texto do comunicado são obrigatórios.' });
+      return;
+    }
+
+    let targetRecipients: Array<{ name?: string; email: string }> = [];
+
+    if (isTest && testEmail) {
+      targetRecipients = [{ name: 'Teste Administrativo', email: testEmail }];
+    } else if (Array.isArray(recipients) && recipients.length > 0) {
+      targetRecipients = recipients;
+    } else {
+      // Se não vier lista explícita, busca colaboradores cadastrados no banco para esta filial/empresa
+      if (unitId) {
+        try {
+          const dbEmployees = await prisma.employee.findMany({
+            where: { unitId },
+            select: { name: true, email: true }
+          });
+          targetRecipients = dbEmployees.filter(e => e.email && e.email.includes('@'));
+        } catch {
+          // fallback
+        }
+      }
+    }
+
+    if (targetRecipients.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: 'Nenhum destinatário com e-mail encontrado para envio.'
+      });
+      return;
+    }
+
+    const result = await MailerService.sendEditalBroadcastEmail({
+      recipients: targetRecipients,
+      companyName: companyName || 'CIPA Expert Enterprise',
+      unitName,
+      stepTitle,
+      normativeRef,
+      subject: subject || `[COMUNICADO CIPA] ${stepTitle} - ${companyName}`,
+      messageText,
+      actionUrl: `${req.headers.origin || 'https://cipaexpert.com.br'}`
+    });
+
+    res.json({
+      success: true,
+      message: result.message,
+      count: result.count
+    });
+  } catch (error: any) {
+    console.error('Erro ao disparar edital por e-mail:', error);
+    res.status(500).json({ success: false, error: 'Falha ao processar disparo de e-mails.' });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────
 // 8. SEED E DIAGNÓSTICO DO SISTEMA
 // ─────────────────────────────────────────────────────────────

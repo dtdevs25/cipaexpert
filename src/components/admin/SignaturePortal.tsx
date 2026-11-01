@@ -94,7 +94,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
   // Métricas Globais
   const totalEnvelopes = envelopes.length;
   const concluidosCount = envelopes.filter(e => e.status === 'concluido').length;
-  const pendentesCount = envelopes.filter(e => e.status === 'pendente').length;
+  const pendentesCount = envelopes.filter(e => e.status === 'em_andamento' || (e.status as any) === 'pendente').length;
   
   const totalSignaturesNecessarias = envelopes.reduce((acc, curr) => acc + curr.signers.length, 0);
   const totalSignaturesColetadas = envelopes.reduce(
@@ -107,7 +107,7 @@ export const SignaturePortal: React.FC<SignaturePortalProps> = ({
 
   // Filtragem e Busca
   const filteredEnvelopes = envelopes.filter((env) => {
-    if (filter === 'pendentes' && env.status !== 'pendente') return false;
+    if (filter === 'pendentes' && env.status !== 'em_andamento' && (env.status as any) !== 'pendente') return false;
     if (filter === 'concluidos' && env.status !== 'concluido') return false;
     
     if (searchQuery.trim()) {

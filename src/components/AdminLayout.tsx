@@ -60,9 +60,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             cnaeCode: c.cnaeCode || (c as any).cnaePrincipalCode || '2511-0/00',
             cnaeDesc: c.cnaeDesc || (c as any).cnaePrincipalDesc || 'Atividade Principal',
             modulosContratados: {
-              dimensionamento: c.moduloDimensionamento ?? true,
-              eleicao: c.moduloEleicao ?? true,
-              gestao: c.moduloGestao ?? true
+              dimensionamento: (c as any).moduloDimensionamento ?? true,
+              eleicao: (c as any).moduloEleicao ?? true,
+              gestao: (c as any).moduloGestao ?? true
             },
             units: Array.isArray(c.units) ? c.units.map(u => ({
               id: u.id,

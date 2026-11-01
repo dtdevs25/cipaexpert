@@ -50,7 +50,7 @@ export interface Candidato {
   cargo: string;
   setor: string;
   tempoEmpresa: string;
-  fotoUrl: string;
+  fotoUrl?: string;
   numero: string;
   propostas: string;
   votos: number;

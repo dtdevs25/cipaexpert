@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Building2, 
   Users, 
@@ -230,9 +230,17 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [extraCnaes, setExtraCnaes] = useState<any[]>([]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
-  const selectedCnae = cnaesList.find(c => c.code === value);
+  const combinedList = useMemo(() => {
+    if (extraCnaes.length === 0) return cnaesList;
+    const existingCodes = new Set(cnaesList.map((c: any) => c.code));
+    const uniqueExtras = extraCnaes.filter((d: any) => !existingCodes.has(d.code));
+    return [...cnaesList, ...uniqueExtras];
+  }, [cnaesList, extraCnaes]);
+
+  const selectedCnae = combinedList.find((c: any) => c.code === value);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -253,10 +261,9 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
       ApiService.getCnaes(term)
         .then((data) => {
           if (data && data.length > 0) {
-            // Mescla resultados novos na lista sem duplicar
-            setCnaesList(prev => {
-              const existingCodes = new Set(prev.map(p => p.code));
-              const newItems = data.filter(d => !existingCodes.has(d.code));
+            setExtraCnaes(prev => {
+              const existingCodes = new Set(prev.map((p: any) => p.code));
+              const newItems = data.filter((d: any) => !existingCodes.has(d.code));
               return newItems.length > 0 ? [...prev, ...newItems] : prev;
             });
           }
@@ -267,7 +274,7 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
     return () => clearTimeout(timeout);
   }, [searchTerm]);
 
-  const filteredCnaes = cnaesList.filter(c => {
+  const filteredCnaes = combinedList.filter((c: any) => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true;
     const cleanCode = (c.code || '').replace(/\D/g, '');
@@ -331,7 +338,7 @@ const CnaeSearchSelect: React.FC<CnaeSearchSelectProps> = ({
               Nenhum CNAE encontrado para "{searchTerm}"
             </div>
           ) : (
-            filteredCnaes.map(c => {
+            filteredCnaes.map((c: any) => {
               const isSelected = c.code === value;
               return (
                 <div
@@ -577,11 +584,13 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         razaoSocial: newCompany.razaoSocial,
         nomeFantasia: newCompany.nomeFantasia,
         cnpj: newCompany.cnpj,
+        cnaeCode: newCompany.cnaeCode,
+        cnaeDesc: newCompany.cnaeDesc,
         cnaePrincipalCode: newCompany.cnaeCode,
         cnaePrincipalDesc: newCompany.cnaeDesc,
         enderecoCompleto: newCompany.enderecoCompleto,
         responsavelAdmin: newCompany.responsavelAdmin
-      }).catch(err => console.log('Aviso ao persistir empresa no backend:', err));
+      } as any).catch(err => console.log('Aviso ao persistir empresa no backend:', err));
 
       setNewCnpj('');
       setNewFantasia('');
@@ -760,12 +769,14 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
         razaoSocial: editingCompany.razaoSocial,
         nomeFantasia: editingCompany.nomeFantasia,
         cnpj: editingCompany.cnpj,
+        cnaeCode: editingCompany.cnaeCode,
+        cnaeDesc: editingCompany.cnaeDesc,
         cnaePrincipalCode: editingCompany.cnaeCode,
         cnaePrincipalDesc: editingCompany.cnaeDesc,
         enderecoCompleto: editingCompany.enderecoCompleto,
         responsavelAdmin: editingCompany.responsavelAdmin,
         logoUrl: editingCompany.logoUrl
-      }).catch(err => console.log('Aviso ao atualizar empresa no backend:', err));
+      } as any).catch(err => console.log('Aviso ao atualizar empresa no backend:', err));
 
       const name = editingCompany.nomeFantasia;
       setEditingCompany(null);
@@ -3554,15 +3565,25 @@ export const CompanyUserManager: React.FC<CompanyUserManagerProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">E-mail Corporativo</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">
+                      E-mail Institucional <span className="text-emerald-600 font-semibold">*</span>
+                    </label>
+                    <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 rounded font-medium">
+                      Notificações NR-5
+                    </span>
+                  </div>
                   <input
                     type="email"
                     required
                     placeholder="carlos.silva@empresa.com.br"
                     value={newUserEmail}
                     onChange={e => setNewUserEmail(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
+                  <p className="text-[10px] text-slate-400 leading-tight">
+                    Utilizado para envio de editais, convites de assinatura digital e login.
+                  </p>
                 </div>
 
                 <div className="space-y-1">
