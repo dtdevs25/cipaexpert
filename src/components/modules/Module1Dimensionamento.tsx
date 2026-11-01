@@ -567,8 +567,9 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
   // Modal da Carta ao Sindicato
   const [isSindicatoModalOpen, setIsSindicatoModalOpen] = useState(false);
-  const [sindicatoNome, setSindicatoNome] = useState('Sindicato dos Trabalhadores nas Indústrias Metalúrgicas, Mecânicas e de Material Elétrico de São Paulo e Região');
-  const [sindicatoEmail, setSindicatoEmail] = useState('contato@metalurgicos.org.br');
+  const [sindicatoSigla, setSindicatoSigla] = useState('SINTTEL');
+  const [sindicatoNome, setSindicatoNome] = useState('Sindicato dos Trabalhadores em Empresas de Telecomunicações do Estado de São Paulo');
+  const [sindicatoEmail, setSindicatoEmail] = useState('contato@sinttel.org.br');
 
   // Modal de Edital com Assinatura Embutida
   const [activeEditalDoc, setActiveEditalDoc] = useState<{
@@ -995,13 +996,18 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const handleOpenEdital = (stepId: string, docTipo: string) => {
     const doc = generateCipaDocument(
       docTipo,
-      currentCompany.razaoSocial,
-      currentCompany.cnpj,
+      currentCompany?.razaoSocial || propCompanyName || 'Telefônica Brasil S.A',
+      currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '02.558.157/0773-86',
       mandateEndDate,
-      dimensionamento.totalMembros,
+      dimensionamento?.totalMembros || 0,
       {
+        sindicatoSigla,
         sindicatoNome,
         sindicatoEmail,
+        unitName: currentFilial?.name,
+        unitState: currentFilial?.state,
+        unitCity: currentFilial?.city,
+        unitAddress: (currentFilial as any)?.address,
         cronogramaDatas: datasPrincipais
       }
     );
@@ -1297,12 +1303,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         mandateEndDate,
         dimensionamento?.totalMembros || 0,
         {
+          sindicatoSigla,
           sindicatoNome,
           sindicatoEmail,
           cronogramaDatas: datasPrincipais,
           unitName: currentFilial?.name,
           unitState: currentFilial?.state,
-          unitCity: currentFilial?.city
+          unitCity: currentFilial?.city,
+          unitAddress: (currentFilial as any)?.address
         }
       );
       setEditStepCustomText(doc.content.join('\n\n'));
@@ -1376,12 +1384,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       mandateEndDate,
       dimensionamento?.totalMembros || 0,
       {
+        sindicatoSigla,
         sindicatoNome,
         sindicatoEmail,
         cronogramaDatas: datasPrincipais,
         unitName: currentFilial?.name,
         unitState: currentFilial?.state,
-        unitCity: currentFilial?.city
+        unitCity: currentFilial?.city,
+        unitAddress: (currentFilial as any)?.address
       }
     );
 
@@ -1420,12 +1430,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       mandateEndDate,
       dimensionamento?.totalMembros || 0,
       {
+        sindicatoSigla,
         sindicatoNome,
         sindicatoEmail,
         cronogramaDatas: datasPrincipais,
         unitName: currentFilial?.name,
         unitState: currentFilial?.state,
-        unitCity: currentFilial?.city
+        unitCity: currentFilial?.city,
+        unitAddress: (currentFilial as any)?.address
       }
     );
 
@@ -1486,12 +1498,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         mandateEndDate,
         dimensionamento?.totalMembros || 0,
         {
+          sindicatoSigla,
           sindicatoNome,
           sindicatoEmail,
           cronogramaDatas: datasPrincipais,
           unitName: currentFilial?.name,
           unitState: currentFilial?.state,
-          unitCity: currentFilial?.city
+          unitCity: currentFilial?.city,
+          unitAddress: (currentFilial as any)?.address
         }
       );
 
@@ -2993,9 +3007,19 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 <span className="text-xs font-bold text-slate-800 block">
                   Identificação da Entidade Sindical:
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">Nome do Sindicato</label>
+                    <label className="text-[11px] font-bold text-slate-700">Sigla</label>
+                    <input
+                      type="text"
+                      value={sindicatoSigla}
+                      onChange={(e) => setSindicatoSigla(e.target.value)}
+                      placeholder="SINTTEL"
+                      className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 text-slate-900 font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[11px] font-bold text-slate-700">Nome Completo do Sindicato</label>
                     <input
                       type="text"
                       value={sindicatoNome}
@@ -3003,63 +3027,65 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 text-slate-900 font-medium"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700">E-mail do Sindicato</label>
-                    <input
-                      type="email"
-                      value={sindicatoEmail}
-                      onChange={(e) => setSindicatoEmail(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 font-mono"
-                    />
-                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-700">E-mail Oficial do Sindicato</label>
+                  <input
+                    type="email"
+                    value={sindicatoEmail}
+                    onChange={(e) => setSindicatoEmail(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 font-mono"
+                  />
                 </div>
               </div>
 
-              {/* Carta Direta ao Ponto com as Datas dos Marcos Principais */}
-              <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3.5 shadow-2xs font-sans text-xs text-slate-700 leading-relaxed">
-                <div>
-                  <strong>À Diretoria do {sindicatoNome}</strong>
-                  <p className="mt-1">
-                    Comunicamos o início oficial do Processo Eleitoral para constituição da CIPA da empresa <strong>{currentCompany.razaoSocial}</strong> (CNPJ: <strong>{currentCompany.cnpj}</strong>), estabelecimento <strong>{currentFilial.name}</strong>.
-                  </p>
+              {/* Carta Formatada conforme modelo oficial da NR-5 */}
+              <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-4 shadow-2xs font-sans text-xs text-slate-800 leading-relaxed">
+                <div className="text-right text-slate-600 font-medium">
+                  {currentFilial?.city || 'São Paulo'}, {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}.
                 </div>
 
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <span className="font-bold text-slate-900 block text-xs">
-                    Datas dos Principais Marcos do Processo Eleitoral:
-                  </span>
-                  
-                  <div className="space-y-1.5 text-[11px] divide-y divide-slate-100">
-                    <div className="flex justify-between py-1">
-                      <span className="font-semibold text-slate-700">• Período de Inscrição dos Candidatos:</span>
-                      <strong className="font-mono text-slate-900">{datasPrincipais.inscricaoInicio} a {datasPrincipais.inscricaoFim}</strong>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-semibold text-slate-700">• Dia da Eleição (Votação Secreta):</span>
-                      <strong className="font-mono text-emerald-800">{datasPrincipais.eleicao}</strong>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-semibold text-slate-700">• Dia da Apuração e Divulgação do Resultado:</span>
-                      <strong className="font-mono text-slate-900">{datasPrincipais.apuracao}</strong>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-semibold text-slate-700">• Período do Treinamento Obrigatório:</span>
-                      <strong className="font-mono text-slate-900">{datasPrincipais.treinamento}</strong>
-                    </div>
-                    <div className="flex justify-between py-1">
-                      <span className="font-semibold text-slate-700">• Dia da Instalação e Posse da CIPA:</span>
-                      <strong className="font-mono text-slate-900">{datasPrincipais.posse}</strong>
-                    </div>
+                <div className="space-y-0.5">
+                  <p className="font-bold text-slate-900 text-sm">Ao {sindicatoSigla || 'SINTTEL'}</p>
+                  <p className="font-semibold text-slate-700">{sindicatoNome || 'Sindicato dos Trabalhadores em Empresas de Telecomunicações do Estado de São Paulo.'}</p>
+                </div>
+
+                <div className="font-bold text-slate-900 pt-1">
+                  Assunto: Comunicação de Renovação de CIPA
+                </div>
+
+                <p className="text-justify leading-relaxed indent-4">
+                  Em conformidade com a NR-5, subitem 5.5.1.1, comunicamos o início do Processo Eleitoral para membros da CIPA (Gestão 2026/2027) da {currentFilial?.name || 'Unidade Marquês'} inscrita no CNPJ {currentFilial?.cnpj || currentCompany?.cnpj || '02.558.157/0773-86'} localizada na {(currentFilial as any)?.address || 'Avenida Marquês de São Vicente, 288, São Paulo - SP'}.
+                </p>
+
+                <p className="text-justify leading-relaxed indent-4">
+                  A eleição será realizada no dia <strong>{datasPrincipais.eleicao}</strong>, de forma eletrônica.
+                </p>
+
+                <p className="text-justify leading-relaxed indent-4">
+                  Este processo será acompanhado pelo signatário e quaisquer dúvidas poderão ser esclarecidas através dos contatos cesar.bueno@telefonica.com Telefone: (11) 91763-9084.
+                </p>
+
+                <div className="pt-2 space-y-2">
+                  <strong className="block text-slate-900">Abaixo cronograma:</strong>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5 font-mono text-[11px]">
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>EDITAL DE CONVOCAÇÃO</span><strong>{datasPrincipais.convocacao || '20/10/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Formação comissão eleitoral</span><strong>{datasPrincipais.comissaoEleitoral || '20/10/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Divulgação do edital de inscrição</span><strong>{datasPrincipais.editalInscricao || '19/10/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Período de inscrições</span><strong>{datasPrincipais.inscricaoInicio} a {datasPrincipais.inscricaoFim}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Publicação inscritos</span><strong>{datasPrincipais.listaCandidatos || '09/11/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Eleição</span><strong className="text-emerald-800">{datasPrincipais.eleicao || '16/11/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Apuração dos votos</span><strong>{datasPrincipais.apuracao || '23/11/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Treinamento membros 20h</span><strong>{datasPrincipais.treinamento || '26/11/2026 a 30/11/2026'}</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Treinamento presencial</span><strong>08/12/2026</strong></div>
+                    <div className="flex justify-between py-0.5"><span>Posse</span><strong>{datasPrincipais.posse || '21/12/2026'}</strong></div>
                   </div>
                 </div>
 
-                <p className="text-[11px] text-slate-500">
-                  A votação será realizada via sistema eletrônico seguro CIPA Expert, assegurando o sigilo absoluto do voto e transparência do pleito.
-                </p>
-
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                  <span>Emissor: {currentCompany.razaoSocial}</span>
-                  <span>Data: {new Date().toLocaleDateString('pt-BR')}</span>
+                <div className="pt-6 text-center space-y-1">
+                  <div className="w-full max-w-[260px] border-b-2 border-slate-900 mx-auto mb-1"></div>
+                  <strong className="font-bold text-slate-900 text-xs block">{currentCompany?.razaoSocial || 'Telefônica Brasil S.A'}</strong>
+                  <span className="text-[10px] text-slate-500 block">Representante Legal do Empregador</span>
                 </div>
               </div>
 
@@ -3072,11 +3098,20 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 onClick={() => {
                   const doc = generateCipaDocument(
                     'comunicado_sindicato',
-                    currentCompany?.razaoSocial || propCompanyName || 'Empresa',
-                    currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00',
+                    currentCompany?.razaoSocial || propCompanyName || 'Telefônica Brasil S.A',
+                    currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '02.558.157/0773-86',
                     mandateEndDate,
                     dimensionamento?.totalMembros || 0,
-                    { sindicatoNome, sindicatoEmail, cronogramaDatas: datasPrincipais }
+                    {
+                      sindicatoSigla,
+                      sindicatoNome,
+                      sindicatoEmail,
+                      unitName: currentFilial?.name,
+                      unitState: currentFilial?.state,
+                      unitCity: currentFilial?.city,
+                      unitAddress: (currentFilial as any)?.address,
+                      cronogramaDatas: datasPrincipais
+                    }
                   );
                   onOpenDocument(doc);
                 }}

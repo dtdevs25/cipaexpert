@@ -16,6 +16,7 @@ export function generateCipaDocument(
   dataBase: string = '2026-10-15',
   membrosCount: number = 8,
   extraData?: { 
+    sindicatoSigla?: string;
     sindicatoNome?: string; 
     sindicatoEmail?: string;
     unitName?: string;
@@ -47,34 +48,70 @@ export function generateCipaDocument(
   }
 ): GeneratedDocument {
   const formattedDate = new Date(dataBase).toLocaleDateString('pt-BR');
-  const nomeSindicato = extraData?.sindicatoNome || 'Sindicato Profissional da Categoria dos Trabalhadores';
   const c = extraData?.cronogramaDatas;
 
   switch (tipo) {
-    case 'comunicado_sindicato':
+    case 'comunicado_sindicato': {
+      const unitName = extraData?.unitName || 'Unidade Marquês';
+      const unitCity = extraData?.unitCity || 'São Paulo';
+      const unitState = extraData?.unitState || 'SP';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const unitAddress = extraData?.unitAddress || 'Avenida Marquês de São Vicente, 288, São Paulo - SP';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0773-86';
+      const emailContato = extraData?.emailContato || 'cesar.bueno@telefonica.com';
+      const telefoneContato = extraData?.telefoneContato || '(11) 91763-9084';
+      const sindicatoSigla = extraData?.sindicatoSigla || 'SINTTEL';
+      const sindicatoNome = extraData?.sindicatoNome || 'Sindicato dos Trabalhadores em Empresas de Telecomunicações do Estado de São Paulo';
+      
+      const periodoInscricoes = c?.periodoInscricoes || (c?.inscricaoInicio && c?.inscricaoFim ? `${c.inscricaoInicio} a ${c.inscricaoFim}` : '22/10/2026 a 05/11/2026');
+      const dataConvocacao = c?.convocacao || formattedDate || '20/10/2026';
+      const dataComissao = c?.comissaoEleitoral || '20/10/2026';
+      const dataEditalInscricao = c?.editalInscricao || '19/10/2026';
+      const dataListaInscritos = c?.listaCandidatos || '09/11/2026';
+      const dataEleicao = c?.eleicao || '16/11/2026';
+      const dataApuracao = c?.apuracao || '23/11/2026';
+      const dataTreinamento = c?.treinamento || '26/11/2026 a 30/11/2026';
+      const dataTreinamentoPresencial = c?.treinamentoPresencial || '08/12/2026';
+      const dataPosse = c?.posse || '21/12/2026';
+
+      const dateObj = new Date(dataBase);
+      const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      const mesExtenso = isNaN(dateObj.getTime()) ? 'Outubro' : months[dateObj.getMonth()];
+      const anoNum = isNaN(dateObj.getTime()) ? '2026' : dateObj.getFullYear();
+      const localEData = `${unitCity}, ${mesExtenso}/${anoNum}.`;
+
       return {
-        title: 'COMUNICAÇÃO DE INÍCIO DO PROCESSO ELEITORAL AO SINDICATO',
+        title: 'Comunicação de Renovação de CIPA ao Sindicato',
         category: 'Comunicação Sindical',
-        normativeCode: 'NR-5 · Prazos & Calendário Oficial',
-        companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        normativeCode: 'NR-5 · Subitem 5.5.1.1',
+        companyName: companyName || 'Telefônica Brasil S.A',
+        cnpj: unitCnpj,
+        dateGenerated: dataConvocacao,
         content: [
-          `À Diretoria do ${nomeSindicato}:`,
-          `Comunicamos o início oficial do Processo Eleitoral para constituição da CIPA da empresa ${companyName}, inscrita no CNPJ sob o nº ${cnpj}.`,
-          `Seguem as datas dos principais marcos do processo eleitoral para conhecimento e acompanhamento dessa entidade sindical:`,
-          `• PERÍODO DE INSCRIÇÃO DE CANDIDATOS: de ${c?.inscricaoInicio || 'Início das Inscrições'} até ${c?.inscricaoFim || 'Término das Inscrições'}`,
-          `• DIA DA ELEIÇÃO (VOTAÇÃO): ${c?.eleicao || formattedDate}`,
-          `• DIA DA APURAÇÃO E DIVULGAÇÃO DO RESULTADO: ${c?.apuracao || formattedDate}`,
-          `• PERÍODO DE TREINAMENTO OBRIGATÓRIO: ${c?.treinamento || 'Anterior à Posse'}`,
-          `• DIA DA INSTALAÇÃO E POSSE SOLENE: ${c?.posse || formattedDate}`,
-          `A votação será realizada via sistema eletrônico seguro CIPA Expert com sigilo absoluto do voto.`
+          localEData,
+          `Ao ${sindicatoSigla}`,
+          `${sindicatoNome}.`,
+          `Assunto: Comunicação de Renovação de CIPA`,
+          `Em conformidade com a NR-5, subitem 5.5.1.1, comunicamos o início do Processo Eleitoral para membros da CIPA (Gestão ${gestaoAno}) da ${unitName} inscrita no CNPJ ${unitCnpj} localizada na ${unitAddress}.`,
+          `A eleição será realizada no dia ${dataEleicao}, de forma eletrônica.`,
+          `Este processo será acompanhado pelo signatário e quaisquer dúvidas poderão ser esclarecidas através dos contatos ${emailContato} Telefone: ${telefoneContato}.`,
+          `Abaixo cronograma:`,
+          `EDITAL DE CONVOCAÇÃO: ${dataConvocacao}`,
+          `Formação comissão eleitoral: ${dataComissao}`,
+          `Divulgação do edital de inscrição: ${dataEditalInscricao}`,
+          `Período de inscrições: ${periodoInscricoes}`,
+          `Publicação inscritos: ${dataListaInscritos}`,
+          `Eleição: ${dataEleicao}`,
+          `Apuração dos votos: ${dataApuracao}`,
+          `Treinamento membros 20h: ${dataTreinamento}`,
+          `Treinamento presencial: ${dataTreinamentoPresencial}`,
+          `Posse: ${dataPosse}`
         ],
         signatories: [
-          'Representante Legal da Empresa - Diretoria / Empregador',
-          `Protocolo de Recebimento do ${nomeSindicato} - Entidade Sindical`
+          `${companyName || 'Telefônica Brasil S.A'} - Representante Legal da Empresa`
         ]
       };
+    }
 
     case 'edital_convocacao': {
       const unitName = extraData?.unitName || 'Unidade Piracicaba';
