@@ -46,7 +46,10 @@ import {
   AlertTriangle,
   Lock,
   AlertCircle,
-  Loader2
+  Loader2,
+  HelpCircle,
+  Scale,
+  BookOpen
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
@@ -393,18 +396,29 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     };
     return {
       convocacao: formatDate(-60),
+      comunicadoSindicato: formatDate(-55),
+      comissaoEleitoral: formatDate(-55),
+      editalInscricao: formatDate(-45),
       inscricaoInicio: formatDate(-45),
       inscricaoFim: formatDate(-30),
+      comprovanteInscricao: 'No ato da inscrição',
+      listaCandidatos: formatDate(-30),
       eleicao: formatDate(-30),
       apuracao: formatDate(-30),
       treinamento: `${formatDate(-15)} a ${formatDate(-5)}`,
-      posse: dFim.toLocaleDateString('pt-BR')
+      posse: dFim.toLocaleDateString('pt-BR'),
+      envioSindicato: formatDate(10)
     };
   }, [mandateEndDate]);
 
-  // Etapas concluídas
+  // Validação de conclusão do dimensionamento para liberação do calendário
+  const isDimensionamentoCompleted = useMemo(() => {
+    return dbDimensionamentosCount > 0 || (effectiveHeadcount > 0 && !!dimensionamento);
+  }, [dbDimensionamentosCount, effectiveHeadcount, dimensionamento]);
+
+  // Etapas concluídas (Etapa 1 de dimensionamento já nasce concluída)
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({
-    'etapa-1': false,
+    'etapa-1': true,
     'etapa-2': false,
     'etapa-3': false,
     'etapa-4': false,
@@ -415,7 +429,23 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     'etapa-9': false,
     'etapa-10': false,
     'etapa-11': false,
+    'etapa-12': false,
+    'etapa-13': false,
   });
+
+  // Modal com explicação da fundamentação legal da NR-5 para a etapa selecionada
+  const [selectedNormativeStep, setSelectedNormativeStep] = useState<{
+    id: string;
+    numero: number;
+    titulo: string;
+    subtitulo: string;
+    prazoLabel: string;
+    dataCalculada: string;
+    referenciaNormativa: string;
+    baseLegalDetalhada: string;
+    porQueExiste: string;
+    impactoAuditoria: string;
+  } | null>(null);
 
   const toggleStepCompleted = (stepId: string) => {
     setCompletedSteps(prev => ({ ...prev, [stepId]: !prev[stepId] }));
@@ -932,7 +962,233 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     }
   };
 
-  const completedCount = Object.values(completedSteps).filter(Boolean).length;
+  // Sequência Normativa Legal conforme NR-5 (13 Etapas Rigorosamente Cronológicas)
+  const etapasNormativas = useMemo(() => [
+    {
+      id: 'etapa-1',
+      numero: 1,
+      titulo: 'Dimensionamento e Enquadramento NR-5',
+      subtitulo: 'Cálculo do efetivo, grau de risco e composição paritária oficial',
+      prazoLabel: 'Fase Preliminar Obrigatória',
+      dataCalculada: 'Fase Inicial (Concluída)',
+      referenciaNormativa: 'NR-5 (Item 5.4.1 / Quadro I) e NR-4',
+      baseLegalDetalhada: 'Portaria MTP nº 4.219/2022 (NR-05), Portaria MTP nº 4.218/2022 (NR-04) e Art. 163 da CLT.',
+      porQueExiste: 'O dimensionamento define a obrigatoriedade da CIPA e calcula o número exato de membros titulares e suplentes (empregador e empregados) com base no CNAE principal, Grau de Risco e efetivo da unidade. É pré-requisito indispensável para saber quantas vagas estarão em disputa na eleição.',
+      impactoAuditoria: 'Deflagrar o processo eleitoral sem dimensionamento prévio homologado acarreta nulidade de todo o pleito por vício de origem e autuação fiscal imediata.',
+      acaoTipo: 'laudo_pdf' as const,
+      botaoTexto: 'Laudo em PDF',
+      botaoIcone: 'printer' as const
+    },
+    {
+      id: 'etapa-2',
+      numero: 2,
+      titulo: 'Convocação das Eleições da CIPA',
+      subtitulo: 'Publicação formal do edital de convocação pelo empregador',
+      prazoLabel: 'Pelo menos 60 dias antes da posse',
+      dataCalculada: datasPrincipais.convocacao,
+      referenciaNormativa: 'NR-5, subitem 5.5.1',
+      baseLegalDetalhada: 'Item 5.5.1 da NR-05: "O empregador deve convocar eleições para a escolha dos representantes dos empregados na CIPA, no prazo mínimo de 60 (sessenta) dias antes do término do mandato em curso."',
+      porQueExiste: 'O prazo de 60 dias garante que todo o rito sucessório ocorra antes do mandato anterior expirar, permitindo o cumprimento dos prazos subsequentes (comissão, inscrições de 15 dias, apuração e treinamento) sem sobreposição.',
+      impactoAuditoria: 'A convocação extemporânea (inferior a 60 dias) enseja lavratura de auto de infração e prorrogação coercitiva da gestão atual até a regularização.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'edital_convocacao',
+      botaoTexto: 'Ver Edital',
+      botaoIcone: 'fileText' as const
+    },
+    {
+      id: 'etapa-3',
+      numero: 3,
+      titulo: 'Comunicação ao Sindicato Laboral',
+      subtitulo: 'Envio de ofício com datas e marcos do processo ao sindicato',
+      prazoLabel: 'Até 5 dias após a convocação',
+      dataCalculada: datasPrincipais.comunicadoSindicato,
+      referenciaNormativa: 'NR-5, subitem 5.5.1.1',
+      baseLegalDetalhada: 'Item 5.5.1.1 da NR-05: "A empresa deve comunicar o início do processo eleitoral ao sindicato da categoria profissional mais representativa no prazo de até 5 (cinco) dias após a publicação do edital de convocação."',
+      porQueExiste: 'Assegura a transparência pública do processo democrático e permite à entidade sindical acompanhar a legalidade do pleito, resguardando os direitos coletivos dos trabalhadores.',
+      impactoAuditoria: 'A falta de protocolo ou comprovante de envio ao sindicato faculta à entidade mover ação judicial com pedido de liminar para suspender a eleição.',
+      acaoTipo: 'carta_sindicato' as const,
+      botaoTexto: 'Carta ao Sindicato',
+      botaoIcone: 'send' as const
+    },
+    {
+      id: 'etapa-4',
+      numero: 4,
+      titulo: 'Constituição da Comissão Eleitoral (CE)',
+      subtitulo: 'Portaria paritária responsável por organizar e conduzir o pleito',
+      prazoLabel: 'Pelo menos 55 dias antes da posse',
+      dataCalculada: datasPrincipais.comissaoEleitoral,
+      referenciaNormativa: 'NR-5, subitem 5.5.2',
+      baseLegalDetalhada: 'Item 5.5.2 da NR-05: "A Comissão Eleitoral (CE) deve ser constituída no prazo mínimo de 55 (cinquenta e cinco) dias antes do término do mandato em curso."',
+      porQueExiste: 'A CE é órgão soberano e neutro constituído pelo Presidente e Vice-Presidente da CIPA vigente (ou indicação bilateral na primeira CIPA). Sua função é receber inscrições, emitir comprovantes, fiscalizar votos e apurar o resultado com imparcialidade.',
+      impactoAuditoria: 'A realização de atos eleitorais sem constituição formal da CE configura ingerência indevida do empregador e anulação de votos.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'comissao_eleitoral',
+      botaoTexto: 'Ver Portaria',
+      botaoIcone: 'signature' as const
+    },
+    {
+      id: 'etapa-5',
+      numero: 5,
+      titulo: 'Publicação do Edital de Inscrições',
+      subtitulo: 'Abertura oficial do período para registro de candidaturas',
+      prazoLabel: 'Pelo menos 45 dias antes da posse',
+      dataCalculada: datasPrincipais.editalInscricao,
+      referenciaNormativa: 'NR-5, subitem 5.5.2.1',
+      baseLegalDetalhada: 'Item 5.5.2.1 da NR-05: "A publicação e divulgação do edital de inscrições, em locais de fácil acesso e visualização, no prazo mínimo de 45 (quarenta e cinco) dias antes do término do mandato em curso."',
+      porQueExiste: 'Garante publicidade ampla a todos os trabalhadores do estabelecimento, informando critérios, locais, prazos e direitos para candidatura livre aos cargos da comissão.',
+      impactoAuditoria: 'O desrespeito ao prazo de 45 dias antes da posse cerceia o direito de participação e é causa comum de anulação de eleições.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'edital_inscricao',
+      botaoTexto: 'Ver Edital',
+      botaoIcone: 'fileText' as const
+    },
+    {
+      id: 'etapa-6',
+      numero: 6,
+      titulo: 'Período de Inscrição de Candidatos',
+      subtitulo: 'Período aberto para inscrição livre de todos os empregados',
+      prazoLabel: 'Prazo mínimo de 15 dias corridos',
+      dataCalculada: `${datasPrincipais.inscricaoInicio} a ${datasPrincipais.inscricaoFim}`,
+      referenciaNormativa: 'NR-5, subitem 5.5.2.2',
+      baseLegalDetalhada: 'Item 5.5.2.2 da NR-05: "Inscrição de candidatos no prazo mínimo de 15 (quinze) dias corridos."',
+      porQueExiste: 'Assegura tempo hábil para que empregados em turnos, escalas de revezamento ou afastamentos transitórios possam tomar conhecimento e exercer livremente o direito à candidatura.',
+      impactoAuditoria: 'A fixação de prazo de inscrição inferior a 15 dias corridos invalida irremediavelmente todo o pleito.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'edital_inscricao',
+      botaoTexto: 'Ver Prazos',
+      botaoIcone: 'fileText' as const
+    },
+    {
+      id: 'etapa-7',
+      numero: 7,
+      titulo: 'Comprovante de Inscrição e Estabilidade Provisória',
+      subtitulo: 'Protocolo formal que comprova e ativa a garantia de emprego',
+      prazoLabel: 'Imediato no ato da inscrição',
+      dataCalculada: 'No ato da inscrição',
+      referenciaNormativa: 'NR-5, subitem 5.5.2.3; CLT Art. 165; ADCT Art. 10, II, "a"',
+      baseLegalDetalhada: 'Item 5.5.2.3 da NR-05 e Art. 165 da CLT: "Fornecimento de comprovante de inscrição, indicando dia e hora do recebimento."',
+      porQueExiste: 'O comprovante com dia e hora é a prova material que consolida a garantia de emprego contra demissão arbitrária (desde o registro até 1 ano após mandato para eleitos).',
+      impactoAuditoria: 'A recusa ou omissão na entrega de protocolo aos inscritos gera direito à reintegração judicial do empregado em caso de dispensa e processo no MPT.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'comprovante_inscricao',
+      botaoTexto: 'Ver Protocolo',
+      botaoIcone: 'userCheck' as const
+    },
+    {
+      id: 'etapa-8',
+      numero: 8,
+      titulo: 'Homologação e Divulgação da Lista de Candidatos',
+      subtitulo: 'Publicação oficial dos nomes e cargos dos candidatos deferidos',
+      prazoLabel: 'Logo após o encerramento das inscrições',
+      dataCalculada: datasPrincipais.listaCandidatos,
+      referenciaNormativa: 'NR-5, subitem 5.5.2.4',
+      baseLegalDetalhada: 'Item 5.5.2.4 da NR-05: "Publicação e divulgação da relação dos candidatos inscritos, em locais de fácil acesso e visualização."',
+      porQueExiste: 'Homologa perante o corpo de colaboradores quais registros foram deferidos pela CE, possibilitando o início da campanha e auditoria de eventuais impugnações fundamentadas.',
+      impactoAuditoria: 'Realizar a votação sem a divulgação tempestiva da lista de candidatos fere a isonomia do pleito.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'lista_candidatos',
+      botaoTexto: 'Ver Lista',
+      botaoIcone: 'users' as const
+    },
+    {
+      id: 'etapa-9',
+      numero: 9,
+      titulo: 'Eleição dos Representantes dos Empregados',
+      subtitulo: 'Votação em escrutínio secreto presencial ou em urna digital auditada',
+      prazoLabel: 'Pelo menos 30 dias antes da posse',
+      dataCalculada: datasPrincipais.eleicao,
+      referenciaNormativa: 'NR-5, subitem 5.5.3 e 5.5.3.1',
+      baseLegalDetalhada: 'Item 5.5.3 da NR-05: "A eleição deve ser realizada no prazo mínimo de 30 (trinta) dias antes do término do mandato em curso."',
+      porQueExiste: 'Garante que os colaboradores elejam seus pares sob sigilo absoluto em dia normal de trabalho. O prazo mínimo de 30 dias antes da posse é vital para realização do treinamento de até 20h dos eleitos.',
+      impactoAuditoria: 'A violação do sigilo do voto ou realização do pleito fora do expediente enseja anulação e responsabilização civil da empresa.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'cedula_urna',
+      botaoTexto: 'Ver Urna / Cédula',
+      botaoIcone: 'vote' as const
+    },
+    {
+      id: 'etapa-10',
+      numero: 10,
+      titulo: 'Apuração dos Votos e Ata de Eleição',
+      subtitulo: 'Verificação do quórum de 50%+1 e lavratura da ata de apuração',
+      prazoLabel: 'Imediatamente após o encerramento do pleito',
+      dataCalculada: datasPrincipais.apuracao,
+      referenciaNormativa: 'NR-5, subitem 5.5.3.3 e 5.5.3.4',
+      baseLegalDetalhada: 'Itens 5.5.3.3 e 5.5.3.4 da NR-05: quórum superior a 50% dos colaboradores e apuração dos votos em dia normal de trabalho com lavratura da ata.',
+      porQueExiste: 'Formaliza a vontade dos eleitores, discriminando votos válidos, brancos e nulos, e listando titulares e suplentes por ordem decrescente de votos. Se o quórum for inferior a 50%, obriga segundo dia com quórum de 1/3.',
+      impactoAuditoria: 'A proclamação de resultado sem o atingimento do quórum legal mínimo gera nulidade sumária perante o Ministério do Trabalho.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'ata_eleicao',
+      botaoTexto: 'Ver Ata de Eleição',
+      botaoIcone: 'checkCircle' as const
+    },
+    {
+      id: 'etapa-11',
+      numero: 11,
+      titulo: 'Treinamento Obrigatório dos Membros da CIPA',
+      subtitulo: 'Capacitação conforme Grau de Risco e Lei nº 14.457/2022',
+      prazoLabel: 'Realizado antes da posse dos membros',
+      dataCalculada: datasPrincipais.treinamento,
+      referenciaNormativa: 'NR-5, item 5.7 e Lei Federal nº 14.457/2022',
+      baseLegalDetalhada: 'Item 5.7 da NR-05: Carga horária obrigatória de 8h a 20h. Obrigatoriedade de inclusão de temas sobre prevenção e combate ao assédio sexual e violência laboral.',
+      porQueExiste: 'Capacita os eleitos e indicados antes de iniciarem suas atividades práticas de inspeção de risco, investigação de acidentes, mapa de risco e proteção à integridade física e psicológica no trabalho.',
+      impactoAuditoria: 'Posse de cipeiro sem certificado válido de treinamento constitui infração grave com embargo administrativo de atividades de risco.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'certificado_treinamento',
+      botaoTexto: 'Ver Certificado',
+      botaoIcone: 'award' as const
+    },
+    {
+      id: 'etapa-12',
+      numero: 12,
+      titulo: 'Ata de Instalação e Posse da CIPA',
+      subtitulo: 'Sessão solene de posse da comissão e designação da presidência',
+      prazoLabel: '1º dia útil após término do mandato anterior',
+      dataCalculada: datasPrincipais.posse,
+      referenciaNormativa: 'NR-5, subitem 5.5.5',
+      baseLegalDetalhada: 'Item 5.5.5 da NR-05: "A posse dos membros da CIPA se dará no primeiro dia útil após o término do mandato anterior."',
+      porQueExiste: 'Transmite formalmente as funções sindicais e legais da gestão anterior para a nova comissão, lavrando e registrando a assinatura do Presidente (indicado pelo empregador) e do Vice-Presidente (eleito pelos empregados).',
+      impactoAuditoria: 'A falta da ata de posse assinada deixa a empresa formalmente desprovida de comissão ativa, sujeita a multas cumulativas.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'ata_posse',
+      botaoTexto: 'Ver Ata de Posse',
+      botaoIcone: 'signature' as const
+    },
+    {
+      id: 'etapa-13',
+      numero: 13,
+      titulo: 'Envio ao Sindicato e Calendário Anual de Reuniões',
+      subtitulo: 'Transmissão das atas ao sindicato e homologação de 12 reuniões',
+      prazoLabel: 'Até 10 dias úteis após a posse',
+      dataCalculada: datasPrincipais.envioSindicato,
+      referenciaNormativa: 'NR-5, subitens 5.5.5.1, 5.6.1 e 5.8.1',
+      baseLegalDetalhada: 'Itens 5.5.5.1 e 5.8.1 da NR-05: envio das cópias das atas ao sindicato e guarda documental por 5 anos à disposição da fiscalização.',
+      porQueExiste: 'Comunica o encerramento do processo e protocola o cronograma anual das reuniões ordinárias mensais, consolidando a regularidade jurídica do mandato.',
+      impactoAuditoria: 'A omissão na guarda por 5 anos ou o não agendamento de reuniões mensais ordinárias atrai fiscalização especial do Ministério do Trabalho.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'calendario_reunioes',
+      botaoTexto: 'Calendário de Reuniões',
+      botaoIcone: 'calendar' as const
+    }
+  ], [datasPrincipais]);
+
+  const renderActionIcon = (icone: 'printer' | 'send' | 'fileText' | 'signature' | 'userCheck' | 'users' | 'vote' | 'checkCircle' | 'award' | 'calendar') => {
+    switch (icone) {
+      case 'printer': return <Printer className="w-3.5 h-3.5" />;
+      case 'send': return <Send className="w-3.5 h-3.5" />;
+      case 'fileText': return <FileText className="w-3.5 h-3.5" />;
+      case 'signature': return <FileSignature className="w-3.5 h-3.5" />;
+      case 'userCheck': return <UserCheck className="w-3.5 h-3.5" />;
+      case 'users': return <Users className="w-3.5 h-3.5" />;
+      case 'vote': return <Vote className="w-3.5 h-3.5" />;
+      case 'checkCircle': return <CheckCircle2 className="w-3.5 h-3.5" />;
+      case 'award': return <Award className="w-3.5 h-3.5" />;
+      case 'calendar': return <CalendarDays className="w-3.5 h-3.5" />;
+      default: return <FileText className="w-3.5 h-3.5" />;
+    }
+  };
+
+  const completedCount = etapasNormativas.filter(e => completedSteps[e.id]).length;
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-150">
@@ -976,15 +1232,33 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveTab('calendario')}
+          onClick={() => {
+            if (!isDimensionamentoCompleted) {
+              showToast('Para acessar o Calendário Eleitoral, é necessário primeiro realizar o Dimensionamento no Passo 2.');
+              setActiveTab('dimensionamento');
+              setStepDimensionamento(2);
+            } else {
+              setActiveTab('calendario');
+            }
+          }}
+          title={!isDimensionamentoCompleted ? 'Conclua o dimensionamento no Passo 2 para liberar o calendário' : 'Acessar calendário eleitoral'}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all cursor-pointer ${
             activeTab === 'calendario'
               ? 'bg-white text-slate-900 shadow-xs font-bold'
+              : !isDimensionamentoCompleted
+              ? 'text-slate-400 hover:text-slate-500'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <CalendarDays className="w-4 h-4 text-emerald-700" />
+          {isDimensionamentoCompleted ? (
+            <CalendarDays className="w-4 h-4 text-emerald-700" />
+          ) : (
+            <Lock className="w-3.5 h-3.5 text-slate-400" />
+          )}
           <span>Calendário Eleitoral</span>
+          {!isDimensionamentoCompleted && (
+            <span className="text-[10px] bg-slate-300 text-slate-600 px-1.5 py-0.5 rounded-md font-mono">Bloqueado</span>
+          )}
         </button>
       </div>
 
@@ -1195,140 +1469,95 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {isLoadingEmployees ? (
-                        <tr>
-                          <td colSpan={7} className="py-12 text-center text-slate-500 text-xs">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                              <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
-                              <span>Carregando base de colaboradores do banco de dados...</span>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : filteredEmployees.length > 0 ? (
-                        filteredEmployees.map((emp) => (
-                          <tr 
-                            key={emp.id} 
-                            onClick={() => setViewingEmployee(emp)}
-                            className="hover:bg-slate-50/80 transition-colors cursor-pointer group/row"
-                            title="Clique para visualizar a ficha cadastral do colaborador"
-                          >
-                            {/* Nome + Apelido + Foto */}
-                            <td className="py-2.5 px-3">
-                              <div className="flex items-center gap-2.5">
-                                {emp.fotoUrl ? (
-                                  <img 
-                                    src={emp.fotoUrl} 
-                                    alt={emp.name} 
-                                    className="w-9 h-9 rounded-full object-cover border border-emerald-300 shrink-0 shadow-2xs"
-                                  />
-                                ) : (
-                                  <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center shrink-0 border border-slate-300">
-                                    {emp.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <strong className="text-slate-900 font-bold block truncate group-hover/row:text-emerald-700 transition-colors">
-                                      {formatCapitalizeName(emp.name)}
-                                    </strong>
-                                    {emp.apelido && (
-                                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                        "{emp.apelido}"
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono block truncate">{emp.email}</span>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">{emp.matricula}</td>
-                            <td className="py-2.5 px-3 font-medium text-slate-800">{emp.cargo}</td>
-                            <td className="py-2.5 px-3 text-slate-500">{emp.setor}</td>
-                            
-                            {/* Indicador de Foto */}
-                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                              {emp.fotoUrl ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                  <span>Com Foto</span>
-                                </span>
+                    {etapasNormativas.map((etapa) => {
+                      const isDone = !!completedSteps[etapa.id];
+                      return (
+                        <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => toggleStepCompleted(etapa.id)}
+                              className="cursor-pointer transition-transform active:scale-90"
+                              title={isDone ? 'Marcar como pendente' : 'Marcar como concluída'}
+                            >
+                              {isDone ? (
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 mx-auto" />
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditModal(emp)}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
-                                  title="Clique para adicionar foto"
-                                >
-                                  <Camera className="w-3 h-3 text-slate-400" />
-                                  <span>+ Foto</span>
-                                </button>
+                                <Circle className="w-5 h-5 text-slate-300 hover:text-slate-400 mx-auto" />
                               )}
-                            </td>
+                            </button>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <strong className="text-slate-900 font-bold">
+                                {etapa.numero}. {etapa.titulo}
+                              </strong>
+                              {/* Ícone de Dica Legal / Explicativo */}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedNormativeStep(etapa)}
+                                title="Ver fundamentação legal e regra da NR-5"
+                                className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white transition-all cursor-pointer border border-emerald-200 shadow-2xs"
+                              >
+                                <HelpCircle className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <span className="text-[11px] text-slate-500 block mt-0.5">
+                              {etapa.subtitulo}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-mono text-[11px] font-bold text-slate-800 block">
+                              {etapa.dataCalculada}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {etapa.prazoLabel}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {etapa.acaoTipo === 'laudo_pdf' && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await handleDownloadPdfDimensionamento();
+                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>{etapa.botaoTexto}</span>
+                              </button>
+                            )}
 
-                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
-                              {emp.dataAdmissao ? new Date(emp.dataAdmissao).toLocaleDateString('pt-BR') : '-'}
-                            </td>
-                            
-                            {/* Ações: Visualizar, Editar e Excluir com expansão suave e tooltip */}
-                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                              <div className="inline-flex items-center gap-1.5 justify-center">
-                                <button
-                                  type="button"
-                                  onClick={() => setViewingEmployee(emp)}
-                                  className="group flex items-center h-8 w-8 hover:w-28 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Visualizar Ficha Cadastral"
-                                >
-                                  <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                    Visualizar
-                                  </span>
-                                </button>
+                            {etapa.acaoTipo === 'carta_sindicato' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsSindicatoModalOpen(true);
+                                  setCompletedSteps(prev => ({ ...prev, [etapa.id]: true }));
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>{etapa.botaoTexto}</span>
+                              </button>
+                            )}
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditModal(emp)}
-                                  className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Editar Colaborador"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                    Editar
-                                  </span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setEmployeeToDelete(emp)}
-                                  className="group flex items-center h-8 w-8 hover:w-22 rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 hover:border-rose-300 px-2 transition-all duration-300 ease-in-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Excluir Colaborador"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-rose-600" />
-                                  <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap pl-1.5 text-xs font-bold transition-opacity duration-300">
-                                    Excluir
-                                  </span>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
-                            {currentEmployees.length === 0 ? (
-                              <div className="space-y-1.5 py-2">
-                                <p className="font-bold text-slate-700 text-xs">Nenhum colaborador cadastrado para esta filial.</p>
-                                <p className="text-[11px] text-slate-500 max-w-md mx-auto">
-                                  Cadastre novos colaboradores no botão "+ Cadastrar Colaborador" acima, ou informe o número total de trabalhadores no campo manual para calcular o dimensionamento.
-                                </p>
-                              </div>
-                            ) : (
-                              `Nenhum colaborador encontrado para a busca "${employeeSearch}".`
+                            {etapa.acaoTipo === 'documento_edital' && etapa.docTipo && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdital(etapa.id, etapa.docTipo!)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-all cursor-pointer shadow-2xs active:scale-95"
+                              >
+                                {renderActionIcon(etapa.botaoIcone)}
+                                <span>{etapa.botaoTexto}</span>
+                              </button>
                             )}
                           </td>
                         </tr>
-                      )}
-                    </tbody>
+                      );
+                    })}
+                  </tbody>
                   </table>
                 </div>
 
@@ -1567,11 +1796,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-emerald-700" />
                 <h3 className="text-sm font-extrabold text-slate-900">
-                  Etapas do Calendário Eleitoral
+                  Etapas do Calendário Eleitoral (Processo Legal NR-5)
                 </h3>
               </div>
               <span className="text-xs text-emerald-950 font-bold bg-emerald-100 px-2.5 py-1 rounded-lg">
-                {completedCount} de 11 concluídas
+                {completedCount} de {etapasNormativas.length} concluídas
               </span>
             </div>
 
@@ -1972,7 +2201,103 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
             </div>
           </div>
 
-        </div>
+        
+
+          {/* MODAL DE FUNDAMENTAÇÃO NORMATIVA DA ETAPA SELECIONADA */}
+          {selectedNormativeStep && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+              <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+                {/* Cabeçalho do Modal */}
+                <div className="bg-gradient-to-r from-emerald-800 to-slate-900 px-6 py-4 text-white flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 border border-emerald-400/40 rounded-xl text-emerald-300">
+                      <Scale className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-600/60 text-emerald-100 px-2 py-0.5 rounded-md">
+                          Etapa {selectedNormativeStep.numero.toString().padStart(2, '0')} de 13
+                        </span>
+                        <span className="text-xs text-emerald-300 font-semibold">
+                          {selectedNormativeStep.referenciaNormativa}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-white mt-1">
+                        {selectedNormativeStep.titulo}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNormativeStep(null)}
+                    className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Conteúdo Explicativo */}
+                <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                  {/* Caixa de Prazos e Datas */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block">Regra Temporal da NR-5:</span>
+                      <span className="text-xs font-bold text-slate-800 block mt-0.5">{selectedNormativeStep.prazoLabel}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block">Data Calculada para sua Unidade:</span>
+                      <span className="text-xs font-mono font-bold text-emerald-700 block mt-0.5">{selectedNormativeStep.dataCalculada}</span>
+                    </div>
+                  </div>
+
+                  {/* Artigo e Base Normativa */}
+                  <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-xl">
+                    <span className="text-[10px] font-extrabold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                      <BookOpen className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Fundamentação e Base Legal</span>
+                    </span>
+                    <p className="text-xs text-emerald-950 font-medium leading-relaxed">
+                      {selectedNormativeStep.baseLegalDetalhada}
+                    </p>
+                  </div>
+
+                  {/* Por que esta data existe? */}
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Por que esta data e exigência existem?</span>
+                    </h4>
+                    <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                      {selectedNormativeStep.porQueExiste}
+                    </p>
+                  </div>
+
+                  {/* Impacto perante a Fiscalização */}
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <span>Impacto em Auditoria Fiscal do Trabalho (MTE)</span>
+                    </h4>
+                    <p className="text-xs text-amber-950/80 leading-relaxed bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+                      {selectedNormativeStep.impactoAuditoria}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Rodapé do Modal */}
+                <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNormativeStep(null)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-all cursor-pointer shadow-xs"
+                  >
+                    Entendido / Fechar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+</div>
       )}
 
       {/* ========================================================================= */}
