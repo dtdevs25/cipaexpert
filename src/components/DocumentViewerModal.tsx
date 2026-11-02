@@ -481,16 +481,34 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                 if (
                   paragraph === 'Você sabia o que cabe ao Cipeiro?' ||
                   paragraph === 'COMISSÃO ELEITORAL:' ||
+                  paragraph === 'REPRESENTANTES DOS EMPREGADOS:' ||
+                  paragraph === 'REPRESENTANTES DO EMPREGADOR:' ||
+                  paragraph === 'Titulares:' ||
+                  paragraph === 'Suplentes:' ||
+                  paragraph.startsWith('Fica também definido nesta reunião de posse') ||
+                  paragraph.startsWith('Acordou-se ainda a realização do calendário anual') ||
                   paragraph.startsWith('Edital de Inscrições') ||
                   paragraph.startsWith('Votação da CIPA') ||
                   paragraph.startsWith('Gestão ') ||
                   paragraph.startsWith('Unidade ')
                 ) {
+                  const isMainSection = paragraph === 'REPRESENTANTES DOS EMPREGADOS:' || 
+                    paragraph === 'REPRESENTANTES DO EMPREGADOR:' || 
+                    paragraph === 'COMISSÃO ELEITORAL:' ||
+                    paragraph.startsWith('Fica também definido') ||
+                    paragraph.startsWith('Acordou-se ainda');
+
+                  const isSubSection = paragraph === 'Titulares:' || paragraph === 'Suplentes:';
+
                   blocks.push(
                     <h4
                       key={i}
                       className={`font-bold text-slate-900 ${
-                        paragraph.startsWith('Edital') || paragraph.startsWith('Votação')
+                        isMainSection
+                          ? 'mt-4 mb-2 p-2.5 bg-slate-100/90 border border-slate-200 rounded-xl text-xs uppercase tracking-wider text-slate-900 font-extrabold flex items-center gap-2'
+                          : isSubSection
+                          ? 'mt-2 mb-1 text-xs font-bold uppercase tracking-wide text-emerald-800 border-b border-emerald-100 pb-1'
+                          : paragraph.startsWith('Edital') || paragraph.startsWith('Votação')
                           ? 'text-base text-center uppercase tracking-tight pb-1 text-emerald-950 font-black'
                           : paragraph.startsWith('Unidade') || paragraph.startsWith('Gestão')
                           ? 'text-xs text-center text-slate-600 pb-1 font-medium'

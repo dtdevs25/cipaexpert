@@ -1,32 +1,32 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  ShieldCheck, 
-  ShieldAlert, 
-  UserCheck, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ArrowRight, 
-  ArrowLeft, 
-  Download, 
-  Vote, 
-  FileText, 
-  Mail, 
-  Building2, 
-  Clock, 
-  Lock, 
-  X, 
-  Printer, 
+import {
+  ShieldCheck,
+  ShieldAlert,
+  UserCheck,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Download,
+  Vote,
+  FileText,
+  Mail,
+  Building2,
+  Clock,
+  Lock,
+  X,
+  Printer,
   BadgeAlert,
   Sparkles,
   Info
 } from 'lucide-react';
 import { Company, CompanyUnit } from '../../types/auth';
 import { Candidato } from '../../types/cipa';
-import { 
-  EmployeeRecord, 
-  INITIAL_EMPLOYEES, 
+import {
+  EmployeeRecord,
+  INITIAL_EMPLOYEES,
   validateCandidateEligibility,
-  ValidationResult 
+  ValidationResult
 } from '../../data/employeeData';
 import { INITIAL_COMPANIES } from '../../data/multiCompanyData';
 
@@ -174,7 +174,7 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
   return (
     <div className={`w-full ${isStandalonePage ? 'min-h-screen bg-slate-100 py-8 px-4 flex items-center justify-center' : 'p-1'}`}>
       <div className="bg-white rounded-3xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col text-slate-800">
-        
+
         {/* CABEÇALHO INSTITUCIONAL */}
         <div className="px-6 py-5 bg-gradient-to-r from-emerald-900 via-slate-900 to-emerald-950 text-white shrink-0 relative overflow-hidden">
           <div className="absolute right-0 top-0 bottom-0 opacity-10 flex items-center pointer-events-none pr-8">
@@ -229,12 +229,10 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
               { num: 4, label: 'Comprovante Oficial' }
             ].map(step => (
               <div key={step.num} className="space-y-1">
-                <div className={`h-1.5 rounded-full transition-all ${
-                  currentStep >= step.num ? 'bg-emerald-400' : 'bg-slate-700/60'
-                }`} />
-                <span className={`text-[10px] font-bold block truncate ${
-                  currentStep === step.num ? 'text-emerald-300' : 'text-slate-400'
-                }`}>
+                <div className={`h-1.5 rounded-full transition-all ${currentStep >= step.num ? 'bg-emerald-400' : 'bg-slate-700/60'
+                  }`} />
+                <span className={`text-[10px] font-bold block truncate ${currentStep === step.num ? 'text-emerald-300' : 'text-slate-400'
+                  }`}>
                   {step.num}. {step.label}
                 </span>
               </div>
@@ -302,11 +300,10 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
 
                 {/* ALERTA DE ERRO OU BLOQUEIO DE UNIDADE */}
                 {validationResult && !validationResult.valid && (
-                  <div className={`p-4 rounded-2xl border transition-all animate-in fade-in duration-200 ${
-                    validationResult.status === 'wrong_unit'
+                  <div className={`p-4 rounded-2xl border transition-all animate-in fade-in duration-200 ${validationResult.status === 'wrong_unit'
                       ? 'bg-rose-50 border-rose-300 text-rose-950'
                       : 'bg-amber-50 border-amber-300 text-amber-950'
-                  }`}>
+                    }`}>
                     <div className="flex items-start gap-3">
                       {validationResult.status === 'wrong_unit' ? (
                         <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
@@ -315,8 +312,8 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
                       )}
                       <div className="space-y-2 text-xs">
                         <strong className="font-extrabold text-sm block">
-                          {validationResult.status === 'wrong_unit' 
-                            ? 'Acesso Bloqueado por Incompatibilidade de Lotação (NR-05)' 
+                          {validationResult.status === 'wrong_unit'
+                            ? 'Acesso Bloqueado por Incompatibilidade de Lotação (NR-05)'
                             : 'Validação Não Aprovada'}
                         </strong>
                         <p className="leading-relaxed">
@@ -553,7 +550,7 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
 
               {/* CARDS O QUE PODE / O QUE NÃO PODE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                
+
                 {/* O QUE VOCÊ PODE FAZER */}
                 <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3">
                   <div className="flex items-center gap-2 text-emerald-950 font-extrabold text-sm border-b border-emerald-200 pb-2">
@@ -601,7 +598,7 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
 
               {/* ATRIBUIÇÕES DO CIPEIRO E ESTABILIDADE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                
+
                 {/* VOCÊ SABIA O QUE CABE AO CIPEIRO? */}
                 <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200 space-y-2">
                   <div className="flex items-center gap-2 text-indigo-950 font-extrabold text-xs">

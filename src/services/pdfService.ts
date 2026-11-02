@@ -965,7 +965,14 @@ export class PdfService {
         }
 
         const cells = para.split('|').map(c => c.trim()).filter(Boolean);
-        const isHeader = cells[0]?.toUpperCase() === 'ID';
+        const firstCellUpper = cells[0]?.toUpperCase() || '';
+        const isHeader = firstCellUpper === 'ID' || 
+          firstCellUpper === 'Nº' || 
+          firstCellUpper === 'N°' || 
+          firstCellUpper === 'TITULARES' || 
+          firstCellUpper === 'RE' || 
+          firstCellUpper === 'CLASSIFICAÇÃO' || 
+          firstCellUpper.includes('PRESIDENTE');
 
         if (isHeader) {
           doc.setFillColor(241, 245, 249);
@@ -983,11 +990,13 @@ export class PdfService {
         const numCols = cells.length;
         cells.forEach((cell, cIdx) => {
           let colWidth = contentWidth / numCols;
-          if (numCols === 5) {
+          if (numCols === 2) {
+            colWidth = contentWidth / 2;
+          } else if (numCols === 5) {
             const widths = [15, 45, 52, 40, 22];
             colWidth = widths[cIdx] || colWidth;
           } else if (numCols === 6) {
-            const widths = [12, 35, 40, 30, 18, 39];
+            const widths = [10, 20, 22, 26, 58, 38];
             colWidth = widths[cIdx] || colWidth;
           }
           const cellLines = doc.splitTextToSize(cell, colWidth - 2);

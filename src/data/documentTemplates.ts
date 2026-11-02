@@ -491,27 +491,202 @@ export function generateCipaDocument(
         };
       }
 
-      case 'ata_posse':
+      case 'ata_posse': {
+        const c = extraData?.cronogramaDatas;
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const dataPosseRaw = c?.posse || '17/07/2026';
+
+        // Converte a data da posse para data por extenso
+        const parts = dataPosseRaw.split('/');
+        const diaP = parts[0] ? parseInt(parts[0], 10) : 17;
+        const mesIdx = parts[1] ? parseInt(parts[1], 10) - 1 : 6;
+        const anoP = parts[2] || '2026';
+        const mesesNomes = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+        const mesExtenso = mesesNomes[mesIdx] || 'julho';
+
+        // Lista de presentes na sessão solene de posse
+        const presentesLista = [
+          'Abel Silva Fortes Cardoso',
+          'Adson Filipe Junior',
+          'Andressa Cristine Nunes De Carvalho',
+          'Angela Margarida Ramos Dos Santos',
+          'Ariane Lima De Souza',
+          'Bruna Goncalves De Oliveira',
+          'Carlos Silmar Scapim',
+          'Charles Goncalves Dos Santos',
+          'Cristiane Cruz De Souza',
+          'Douglas De Jesus',
+          'Fabio Lins Estanizio',
+          'Felipe Leandro Ferreira Muniz',
+          'Gilberto Carlos Dos Santos',
+          'Iracema Duarte',
+          'Josias Altimiro De Oliveira',
+          'Josilene Alves Liontas',
+          'Karina Karla De Moura',
+          'Luciana Dos Santos',
+          'Luis Carlos Gomes Da Silva',
+          'Marcia Conessa Alvares',
+          'Marcos Gomes Da Silva',
+          'Mauricio Dos Santos',
+          'Natalino Hofer Junior',
+          'Nubia Cristina Lisboa De Souza',
+          'Paolo Alves Da Hora',
+          'Raimundo Paulo Borges Dos Santos',
+          'Rosangela Aparecida Santos Marcelino',
+          'Sidney Vida Barbalho Felipe De Souza',
+          'Tamires Santos De Souza',
+          'Tiago Antonio De Sousa',
+          'Walmir Manoel Da Cruz'
+        ].join(', ');
+
+        const presidenteSessao = 'Tamires Santos de Souza';
+        const presidenteCipa = 'Marcia Conessa Alvares';
+        const vicePresidenteCipa = 'Luis Carlos Gomes Da Silva';
+        const secretariosCipa = 'Sidney Vida Barbalho Felipe De Souza, Bruna Goncalves De Oliveira e Angela Margarida Ramos Dos Santos';
+
+        // Candidatos Eleitos (Representantes dos Empregados)
+        const empregadosTitulares = [
+          '1 – Luis Carlos Gomes Da Silva – 262 Votos',
+          '2 – Walmir Manoel Da Cruz – 148 Votos',
+          '3 – Charles Goncalves Dos Santos – 113 Votos',
+          '4 – Paolo Alves Da Hora – 99 Votos',
+          '5 – Douglas De Jesus – 97 Votos',
+          '6 – Abel Silva Fortes Cardoso – 93 Votos',
+          '7 – Mauro Faustino – 91 Votos',
+          '8 – Josias Altimiro De Oliveira – 86 Votos',
+          '9 – Iracema Duarte – 81 Votos',
+          '10 – Sidney Vida Barbalho Felipe De Souza – 80 Votos'
+        ];
+
+        const empregadosSuplentes = [
+          '1 – Bruna Goncalves De Oliveira – 80 Votos',
+          '2 – Andressa Cristine Nunes – 77 Votos',
+          '3 – Gilberto Carlos Dos Santos – 71 Votos',
+          '4 – Carlos Silmar Scapim – 69 Votos',
+          '5 – Tiago Antonio De Sousa – 67 Votos',
+          '6 – Andre Luiz Dos Santos – 64 Votos',
+          '7 – Fabio Lins Estanizio – 57 Votos',
+          '8 – Josilene Alves Liontas – 53 Votos'
+        ];
+
+        // Indicados pelo Empregador
+        const empregadorTitulares = [
+          '1 – Rosangela Aparecida Santos Marcelino',
+          '2 – Cristiane Cruz Modesto De Souza',
+          '3 – Angela Margarida Ramos Dos Santos',
+          '4 – Ariane Lima De Souza',
+          '5 – Alessandra Name Cheid Sacco',
+          '6 – Marcia Conessa Alvares',
+          '7 – Raimundo Paulo Borges Dos Santos',
+          '8 – Marcos Gomes Da Silva',
+          '9 – Felipe Leandro Ferreira Muniz',
+          '10 – Maria Ligia Santos Castelhano'
+        ];
+
+        const empregadorSuplentes = [
+          '1 – Karina Karla De Moura',
+          '2 – Jucilene Evangelista Pereira Dos Anjos',
+          '3 – Natalino Hofer Junior',
+          '4 – Mauricio Dos Santos',
+          '5 – Adson Filipe Junior',
+          '6 – Luciana Dos Santos',
+          '7 – Nubia Cristina Lisboa De Souza',
+          '8 – Tamires Santos de Souza'
+        ];
+
         return {
-          title: 'ATA DE INSTALAÇÃO E POSSE DA CIPA',
-          category: 'Posse e Mandato',
-          normativeCode: 'NR-5 - Item 5.5.10 e seguintes',
+          title: 'ATA DE INSTALAÇÃO E POSSE DOS EMPREGADOS',
+          category: 'Ata de Posse e Mandato NR-05',
+          normativeCode: 'NR-5 · Subitem 5.5.5 e Portaria nº 33 de 27/10/1983',
           companyName,
-          cnpj,
-          dateGenerated: formattedDate,
+          cnpj: unitCnpj,
+          dateGenerated: dataPosseRaw,
+          unitName,
+          unitAddress: extraData?.unitAddress,
+          unitCity: extraData?.unitCity,
+          unitState: extraData?.unitState,
+          logoUrl: extraData?.logoUrl,
+          gestaoAno,
           content: [
-            `No primeiro dia útil após o término do mandato anterior, reuniram-se os membros eleitos pelos empregados e os membros designados pelo empregador da empresa ${companyName} para a Sessão Solene de Instalação e Posse da CIPA para o mandato 2026/2027.`,
-            `O Empregador designou para Presidente da CIPA o colaborador indicado nos termos da NR-5. Dentre os membros eleitos pelos trabalhadores, foi aclamado(a) o(a) Vice-Presidente da CIPA. Foram designados de comum acordo o Secretário e seu substituto.`,
-            `Todos os membros concluíram o treinamento obrigatório de formação da CIPA (com carga horária normativa e módulo obrigatório sobre prevenção e combate ao assédio sexual e a outras formas de violência no trabalho, conforme Lei 14.457/2022).`,
-            `Os empossados assumem o compromisso de zelar pela integridade física e psíquica de todos os trabalhadores da empresa.`
+            `ATA DE INSTALAÇÃO E POSSE DOS EMPREGADOS`,
+            `CIPA ${unitName} - GESTÃO ${gestaoAno}`,
+            `Aos ${diaP} dias do mês de ${mesExtenso} de ${anoP}, nas dependências da empresa ${companyName}, Unidade ${unitName}, CNPJ: ${unitCnpj}, com a presença dos(as) Srs(as), ${presentesLista}, deu-se a Instalação e Posse da CIPA desta empresa, conforme o estabelecido pela Portaria nº 33, de 27/10/1983 e Norma Regulamentadora NR-05. A Sra. ${presidenteSessao}, presidente desta sessão, declarou abertos os trabalhos, lembrando a todos os objetivos da reunião, quais sejam: Instalação e Posse dos componentes da CIPA. Continuando, declarou instalada a Comissão e empossados os membros da CIPA da ${unitName} - CNPJ: ${unitCnpj} Gestão ${gestaoAno}.`,
+            `REPRESENTANTES DOS EMPREGADOS:`,
+            `Titulares:`,
+            ...empregadosTitulares,
+            `Suplentes:`,
+            ...empregadosSuplentes,
+            `REPRESENTANTES DO EMPREGADOR:`,
+            `Titulares:`,
+            ...empregadorTitulares,
+            `Suplentes:`,
+            ...empregadorSuplentes,
+            `Fica também definido nesta reunião de posse da CIPA para o direcionamento desta gestão:`,
+            `1. Presidente da CIPA: ${presidenteCipa}`,
+            `2. Vice-Presidente da CIPA escolhido entre os titulares eleitos por parte dos empregados: ${vicePresidenteCipa}`,
+            `3. Secretários(as): ${secretariosCipa}.`,
+            `Acordou-se ainda a realização do calendário anual de reuniões ordinárias, ficando estabelecido as seguintes datas:`,
+            `Os membros da CIPA deverão participar da reunião ordinária mensal, que ocorrerá exclusivamente de forma presencial, conforme calendário de reuniões.`,
+            `| Nº | QUANDO / MÊS | QUANDO / DATA | HORÁRIO | QUEM | ONDE |`,
+            `| :---: | :---: | :---: | :---: | :--- | :--- |`,
+            `| 1 | Julho | 17/07/2026 | 15h00 as 16h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 2 | Agosto | 11/08/2026 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 3 | Setembro | 08/09/2026 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 4 | Outubro | 13/10/2026 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 5 | Novembro | 10/11/2026 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 6 | Dezembro | 08/12/2026 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 7 | Janeiro | 12/01/2027 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 8 | Fevereiro | 16/02/2027 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 9 | Março | 09/03/2027 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 10 | Abril | 13/04/2027 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 11 | Maio | 11/05/2027 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `| 12 | Junho | 15/06/2027 | 10h00 as 11h00 | Titulares, suplentes, Membros designados de empresas e convidados. | ${unitName} |`,
+            `Nada mais havendo para tratar, se dá por encerrada esta reunião de posse, lembrando a todos que o período da gestão da CIPA ora instalada será de 01 (um) ano a contar da presente data.`,
+            `Para constar lavrou-se a presente ata, que lida e aprovada vai assinada por mim, Presidente da Comissão Eleitoral e por todos os representantes dos empregados (ELEITOS) e representantes do empregador (INDICADOS), titulares e suplentes.`,
+            `COMISSÃO ELEITORAL:`,
+            `| Presidente da Comissão Eleitoral | Vice-presidente da Comissão Eleitoral |`,
+            `| :--- | :--- |`,
+            `| ${presidenteCipa} | ${vicePresidenteCipa} |`,
+            `REPRESENTANTES DOS EMPREGADOS:`,
+            `| TITULARES | SUPLENTES |`,
+            `| :--- | :--- |`,
+            `| LUIS CARLOS GOMES DA SILVA | BRUNA GONCALVES DE OLIVEIRA |`,
+            `| WALMIR MANOEL DA CRUZ | ANDRESSA CRISTINE NUNES |`,
+            `| CHARLES GONCALVES DOS SANTOS | GILBERTO CARLOS DOS SANTOS |`,
+            `| PAOLO ALVES DA HORA | CARLOS SILMAR SCAPIM |`,
+            `| DOUGLAS DE JESUS | TIAGO ANTONIO DE SOUSA |`,
+            `| ABEL SILVA FORTES CARDOSO (AUSENTE) | ANDRE LUIZ DOS SANTOS (AUSENTE) |`,
+            `| MAURO FAUSTINO | FABIO LINS ESTANIZIO |`,
+            `| JOSIAS ALTIMIRO DE OLIVEIRA | JOSILENE ALVES LIONTAS |`,
+            `| IRACEMA DUARTE | - |`,
+            `| SIDNEY VIDA BARBALHO FELIPE DE SOUZA | - |`,
+            `REPRESENTANTES DO EMPREGADOR:`,
+            `| TITULARES | SUPLENTES |`,
+            `| :--- | :--- |`,
+            `| ROSANGELA APARECIDA SANTOS MARCELINO | KARINA KARLA DE MOURA |`,
+            `| CRISTIANE CRUZ MODESTO DE SOUZA (AUSENTE) | JUCILENE EVANGELISTA PEREIRA DOS ANJOS |`,
+            `| ANGELA MARGARIDA RAMOS DOS SANTOS | NATALINO HOFER JUNIOR |`,
+            `| ARIANE LIMA DE SOUZA (AUSENTE) | MAURICIO DOS SANTOS |`,
+            `| ALESSANDRA NAME CHEID SACCO | ADSON FILIPE JUNIOR |`,
+            `| MARCIA CONESSA ALVARES | LUCIANA DOS SANTOS |`,
+            `| RAIMUNDO PAULO BORGES DOS SANTOS | NUBIA CRISTINA LISBOA DE SOUZA |`,
+            `| MARCOS GOMES DA SILVA | TAMIRES SANTOS DE SOUZA |`,
+            `| FELIPE LEANDRO FERREIRA MUNIZ (AUSENTE) | - |`,
+            `| MARIA LIGIA SANTOS CASTELHANO | - |`
           ],
           signatories: [
-            'Diretor Geral / Empregador',
-            'Presidente Empossado da CIPA',
-            'Vice-Presidente Empossado da CIPA',
-            'Secretário(a) da CIPA'
+            `${presidenteCipa} - Presidente da CIPA`,
+            `${vicePresidenteCipa} - Vice-Presidente da CIPA`,
+            'Tamires Santos de Souza - Presidente da Sessão de Posse',
+            'Sidney Vida Barbalho Felipe De Souza - Secretário(a)',
+            'Bruna Goncalves De Oliveira - Secretária Substituta',
+            'Rosangela Aparecida Santos Marcelino - Representante Empregador Titular',
+            'Luis Carlos Gomes Da Silva - Representante Empregados Titular'
           ]
         };
+      }
 
       case 'comprovante_inscricao': {
         const candidatoNome = extraData?.candidatoNome || 'Colaborador Candidato';

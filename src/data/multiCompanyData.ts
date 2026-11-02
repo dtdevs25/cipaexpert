@@ -174,6 +174,19 @@ export const INITIAL_COMPANIES: Company[] = [
         cnaeDesc: 'Serviços de telecomunicações',
         cipaAtiva: true,
         gestorName: 'Luiz Alberto De Barros Junior'
+      },
+      {
+        id: 'unit-tel-berrini',
+        name: 'Unidade Eco Berrini',
+        cnpj: '02.558.157/0001-62',
+        city: 'São Paulo',
+        state: 'SP',
+        headcount: 850,
+        grauDeRisco: 2,
+        cnaeCode: '6110-8/01',
+        cnaeDesc: 'Sede Corporativa e Telecomunicações',
+        cipaAtiva: true,
+        gestorName: 'Tamires Santos de Souza'
       }
     ]
   }
