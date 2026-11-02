@@ -9,10 +9,11 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { ResetPasswordModal } from './components/ResetPasswordModal';
 import { GeneratedDocument } from './data/documentTemplates';
 import { AuthUser } from './types/auth';
-import { DEMO_USERS } from './data/multiCompanyData';
+import { DEMO_USERS, INITIAL_COMPANIES } from './data/multiCompanyData';
 import { ApiService } from './services/apiService';
 import { SignatureService } from './services/signatureService';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { CandidateRegistrationPortal } from './components/election/CandidateRegistrationPortal';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'login' | 'admin'>('landing');
@@ -40,6 +41,37 @@ export default function App() {
 
   // Password reset via token link state
   const [resetToken, setResetToken] = useState<string | null>(null);
+
+  // Detecção de acesso público pelo link/QR code de inscrição de candidatos
+  const [publicInscricaoParams, setPublicInscricaoParams] = useState<{
+    companyId: string;
+    unitId: string;
+    token?: string;
+  } | null>(() => {
+    try {
+      const pathname = window.location.pathname;
+      const urlParams = new URLSearchParams(window.location.search);
+      if (pathname.includes('/eleicao/') && pathname.includes('/inscricao')) {
+        const parts = pathname.split('/').filter(Boolean);
+        const eleicaoIdx = parts.indexOf('eleicao');
+        if (eleicaoIdx >= 0 && parts.length > eleicaoIdx + 2) {
+          return {
+            companyId: parts[eleicaoIdx + 1],
+            unitId: parts[eleicaoIdx + 2],
+            token: urlParams.get('token') || undefined
+          };
+        }
+      }
+      if (urlParams.get('inscricao') || urlParams.get('eleicaoInscricao')) {
+        return {
+          companyId: urlParams.get('company') || 'comp-telefonica',
+          unitId: urlParams.get('unit') || 'unit-tel-jundiai',
+          token: urlParams.get('token') || undefined
+        };
+      }
+    } catch {}
+    return null;
+  });
 
   useEffect(() => {
     // Check if user clicked email reset link with ?resetToken=...
@@ -156,7 +188,21 @@ export default function App() {
 
       {/* Main View Area */}
       <main className="flex-1">
-        {currentView === 'landing' ? (
+        {publicInscricaoParams ? (
+          <div className="min-h-screen bg-slate-100 py-6 px-4 flex flex-col items-center justify-center">
+            <CandidateRegistrationPortal
+              company={INITIAL_COMPANIES.find(c => c.id === publicInscricaoParams.companyId) || INITIAL_COMPANIES[0]}
+              unit={INITIAL_COMPANIES.find(c => c.id === publicInscricaoParams.companyId)?.units.find(u => u.id === publicInscricaoParams.unitId)}
+              token={publicInscricaoParams.token}
+              isStandalonePage={true}
+              onClose={() => {
+                setPublicInscricaoParams(null);
+                window.history.replaceState({}, '', '/');
+                handleNavigate('landing');
+              }}
+            />
+          </div>
+        ) : currentView === 'landing' ? (
           <LandingPage
             onOpenLogin={handleOpenLogin}
           />

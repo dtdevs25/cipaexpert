@@ -68,6 +68,7 @@ import { PdfService } from '../../services/pdfService';
 import { QrCodeService } from '../../services/qrCodeService';
 import { SignatureService, SignatureEnvelope, computeSha256 } from '../../services/signatureService';
 import { NewEnvelopeModal, InitialEnvelopeData } from '../admin/NewEnvelopeModal';
+import { CandidateRegistrationPortal } from '../election/CandidateRegistrationPortal';
 
 // Formatação com a primeira letra maiúscula (Title Case)
 function formatCapitalizeName(text?: string): string {
@@ -4553,10 +4554,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                         <button
                           type="button"
                           onClick={() => setIsOnlineQuickModalOpen(true)}
-                          className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                          className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                          title="Abre o Portal Oficial de Inscrição da CIPA com validação de RE e conferência de lotação da NR-05"
                         >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>+ Nova Inscrição Online</span>
+                          <UserCheck className="w-3.5 h-3.5" />
+                          <span>Portal de Inscrição (Validar RE)</span>
                         </button>
 
                         {onNavigateTab && (
@@ -4586,16 +4588,27 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-emerald-100 text-[10px] text-slate-500">
                           <span>Token criptográfico da eleição (CIPA Expert)</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(systemElectionLink);
-                              showToast('Link oficial copiado para a área de transferência!');
-                            }}
-                            className="font-bold text-emerald-700 hover:underline cursor-pointer"
-                          >
-                            Copiar Link Completo
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsOnlineQuickModalOpen(true)}
+                              className="font-bold text-emerald-800 hover:text-emerald-950 hover:underline cursor-pointer flex items-center gap-1"
+                              title="Abre a tela de inscrição com validação de RE e checagem de lotação"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Acessar Portal
+                            </button>
+                            <span>·</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(systemElectionLink);
+                                showToast('Link oficial copiado para a área de transferência!');
+                              }}
+                              className="font-bold text-emerald-700 hover:underline cursor-pointer"
+                            >
+                              Copiar Link
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -4978,127 +4991,22 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 7: INSCRIÇÃO ONLINE RÁPIDA (SIMULAÇÃO VIA LINK)                     */}
+      {/* MODAL 7: PORTAL OFICIAL DE INSCRIÇÃO DA CIPA COM VALIDAÇÃO DE RE E LOTAÇÃO */}
       {/* ========================================================================= */}
       {isOnlineQuickModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            
-            <div className="px-6 py-4 border-b border-emerald-200 bg-emerald-50/70 flex items-center justify-between shrink-0">
-              <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
-                <Vote className="w-5 h-5 text-emerald-600" />
-                Inscrição Online de Candidato (Link da Eleição)
-              </h3>
-              <button 
-                type="button"
-                onClick={() => setIsOnlineQuickModalOpen(false)} 
-                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-emerald-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">
-                  Puxar Colaborador da Unidade:
-                </label>
-                <select
-                  value={candSelectedEmployeeId}
-                  onChange={(e) => handleSelectEmployeeForCandidate(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900"
-                >
-                  <option value="">-- Selecione ou preencha manualmente --</option>
-                  {(employeesByUnit[currentFilial.id] || []).map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} ({emp.cargo} · {emp.matricula})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">Nome Completo: *</label>
-                  <input
-                    type="text"
-                    value={candNome}
-                    onChange={(e) => setCandNome(e.target.value)}
-                    placeholder="Ex: Gabriela Duarte"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Cargo:</label>
-                    <input
-                      type="text"
-                      value={candCargo}
-                      onChange={(e) => setCandCargo(e.target.value)}
-                      placeholder="Ex: Analista de Qualidade"
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">Setor:</label>
-                    <input
-                      type="text"
-                      value={candSetor}
-                      onChange={(e) => setCandSetor(e.target.value)}
-                      placeholder="Ex: Almoxarifado"
-                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">E-mail Corporativo: *</label>
-                  <input
-                    type="email"
-                    value={candEmail}
-                    onChange={(e) => setCandEmail(e.target.value)}
-                    placeholder="gabriela.duarte@telefonica.com"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">Propostas:</label>
-                  <textarea
-                    rows={2}
-                    value={candPropostas}
-                    onChange={(e) => setCandPropostas(e.target.value)}
-                    placeholder="Ex: Ergonomia preventiva e diálogo permanente com os trabalhadores."
-                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 text-[11px]">
-                Ao submeter a inscrição online, o candidato receberá o e-mail institucional com o <strong>Termo de Aceite das Regras da Eleição</strong>.
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsOnlineQuickModalOpen(false)}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateOnlineCandidate}
-                className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-600 rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
-              >
-                <Vote className="w-4 h-4" />
-                <span>Confirmar Inscrição Online</span>
-              </button>
-            </div>
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-4xl max-h-[96vh] overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <CandidateRegistrationPortal
+              company={currentCompany}
+              unit={currentFilial}
+              token={`cipa-${currentCompany?.id || 'emp'}-${currentFilial?.id || 'unit'}-2026`}
+              existingCandidates={candidatos}
+              onClose={() => setIsOnlineQuickModalOpen(false)}
+              onSuccess={(newCand) => {
+                saveCandidato(newCand);
+                showToast(`Inscrição confirmada: ${newCand.nome} (RE ${newCand.matricula}) homologado para a CIPA!`);
+              }}
+            />
           </div>
         </div>
       )}
