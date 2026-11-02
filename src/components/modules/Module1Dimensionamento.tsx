@@ -4,7 +4,7 @@ import {
   calcularDimensionamentoNR5, 
   calcularCronogramaEleitoral 
 } from '../../data/cnaeData';
-import { CnaeEntry, DimensionamentoResult, CronogramaItem } from '../../types/cipa';
+import { CnaeEntry, DimensionamentoResult, CronogramaItem, Candidato } from '../../types/cipa';
 import { generateCipaDocument, GeneratedDocument } from '../../data/documentTemplates';
 import { Company, CompanyUnit, AuthUser } from '../../types/auth';
 import { DEMO_COMPANIES } from '../../data/multiCompanyData';
@@ -54,7 +54,11 @@ import {
   Clock,
   Mail,
   QrCode,
-  ExternalLink
+  ExternalLink,
+  UserPlus,
+  FileCheck,
+  ClipboardCheck,
+  Sparkles
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
@@ -418,7 +422,209 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   }, [mandateEndDate]);
 
   // Integração com Contexto e Histórico de Dimensionamento
-  const { saveDimensionamento, dimensionamentos } = useCipa();
+  const { saveDimensionamento, dimensionamentos, candidatos, saveCandidato } = useCipa();
+
+  // Inscrições de Candidatos (Etapa 6 - NR-5): Módulo de Eleição Contratado vs Ficha Manual
+  const [overrideEleicaoModulo, setOverrideEleicaoModulo] = useState<boolean | null>(null);
+  const hasModuloEleicao = overrideEleicaoModulo !== null 
+    ? overrideEleicaoModulo 
+    : Boolean(currentCompany?.modulosContratados?.eleicao);
+
+  const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
+  const [isManualCandidateModalOpen, setIsManualCandidateModalOpen] = useState(false);
+  const [isOnlineQuickModalOpen, setIsOnlineQuickModalOpen] = useState(false);
+  const [activeEmailCandidate, setActiveEmailCandidate] = useState<Candidato | null>(null);
+
+  // Form State para Inscrição Manual ou Rápida
+  const [candSelectedEmployeeId, setCandSelectedEmployeeId] = useState('');
+  const [candNome, setCandNome] = useState('');
+  const [candMatricula, setCandMatricula] = useState('');
+  const [candCargo, setCandCargo] = useState('');
+  const [candSetor, setCandSetor] = useState('');
+  const [candEmail, setCandEmail] = useState('');
+  const [candPropostas, setCandPropostas] = useState('');
+  const [candTempoEmpresa, setCandTempoEmpresa] = useState('2 anos');
+
+  const handleSelectEmployeeForCandidate = (empId: string) => {
+    setCandSelectedEmployeeId(empId);
+    if (!empId) {
+      setCandNome('');
+      setCandMatricula('');
+      setCandCargo('');
+      setCandSetor('');
+      setCandEmail('');
+      return;
+    }
+    const currentEmployees = employeesByUnit[currentFilial?.id] || [];
+    const emp = currentEmployees.find(e => e.id === empId);
+    if (emp) {
+      setCandNome(emp.name);
+      setCandMatricula(emp.matricula);
+      setCandCargo(emp.cargo);
+      setCandSetor(emp.setor);
+      setCandEmail(emp.email || `${emp.name.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`);
+    }
+  };
+
+  const handleCreateManualCandidate = async () => {
+    if (!candNome.trim()) {
+      showToast('Por favor, informe o nome do candidato.');
+      return;
+    }
+    const emailCandidate = candEmail.trim() || `${candNome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`;
+    const newCandId = `cand-${Date.now()}`;
+    const nextNumber = String(10 + (candidatos.length * 2));
+
+    const finalCompName = currentCompany?.razaoSocial || propCompanyName || 'Telefônica Brasil S.A';
+    const finalCnpj = currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '02.558.157/0577-84';
+
+    const fichaDoc = generateCipaDocument(
+      'ficha_inscricao_manual',
+      finalCompName,
+      finalCnpj,
+      mandateEndDate,
+      dimensionamento?.totalMembros || 0,
+      {
+        candidatoNome: candNome.trim(),
+        candidatoCargo: candCargo.trim() || 'Operador',
+        candidatoMatricula: candMatricula.trim() || `CLT-${Math.floor(1000 + Math.random() * 9000)}`,
+        candidatoSetor: candSetor.trim() || 'Operacional Geral',
+        candidatoEmail: emailCandidate,
+        candidatoPropostas: candPropostas.trim() || 'Compromisso com prevenção de riscos e diálogo transparente com a equipe.',
+        unitName: currentFilial?.name,
+        unitState: currentFilial?.state,
+        unitCity: currentFilial?.city,
+        gestaoAno: '2026/2027',
+        comissaoPresidente: 'Luiz Alberto De Barros Junior'
+      }
+    );
+
+    const envelopeId = `env-ficha-${Date.now()}`;
+    const signersList = [
+      {
+        id: `sig-${newCandId}-1`,
+        name: candNome.trim(),
+        email: emailCandidate,
+        role: 'Candidato(a) Requerente',
+        order: 1,
+        status: 'pendente' as const
+      },
+      {
+        id: `sig-${newCandId}-2`,
+        name: 'Luiz Alberto De Barros Junior',
+        email: 'luiza.junior@telefonica.com',
+        role: 'Presidente da Comissão Eleitoral',
+        order: 2,
+        status: 'pendente' as const
+      }
+    ];
+
+    try {
+      await SignatureService.createEnvelope({
+        title: `Ficha de Inscrição Manual - ${candNome.trim()}`,
+        category: 'Inscrição e Homologação',
+        normativeCode: 'NR-5 · Subitem 5.5.2.2 e 5.5.2.3',
+        sourceType: 'sistema',
+        docType: 'ficha_inscricao_manual',
+        content: fichaDoc.content,
+        companyId: currentCompany?.id,
+        unitId: currentFilial?.id,
+        unitName: currentFilial?.name,
+        companyName: finalCompName,
+        cnpj: finalCnpj,
+        signers: signersList,
+        sendSequence: 'todos_juntos',
+        creatorName: currentUser?.name || 'Administrador',
+        creatorEmail: currentUser?.email || 'admin@empresa.com.br'
+      });
+      refreshEnvelopes();
+    } catch (err) {
+      console.warn('Erro ao criar envelope na plataforma de assinaturas:', err);
+    }
+
+    const newCandidate: Candidato = {
+      id: newCandId,
+      nome: candNome.trim(),
+      cargo: candCargo.trim() || 'Operador',
+      setor: candSetor.trim() || 'Operacional',
+      matricula: candMatricula.trim() || `CLT-${Math.floor(1000 + Math.random() * 9000)}`,
+      email: emailCandidate,
+      tempoEmpresa: candTempoEmpresa || '2 anos',
+      numero: nextNumber,
+      propostas: candPropostas.trim() || 'Atuação preventiva e participação ativa nas reuniões da CIPA.',
+      votos: 0,
+      status: 'pendente_confirmacao',
+      termoAceito: false,
+      metodoInscricao: 'manual',
+      envelopeId
+    };
+
+    saveCandidato(newCandidate);
+    setIsManualCandidateModalOpen(false);
+    setActiveEmailCandidate(newCandidate);
+    showToast(`Ficha manual enviada para aprovação no módulo de assinaturas. E-mail de confirmação enviado para ${emailCandidate}!`);
+
+    setCandSelectedEmployeeId('');
+    setCandNome('');
+    setCandMatricula('');
+    setCandCargo('');
+    setCandSetor('');
+    setCandEmail('');
+    setCandPropostas('');
+  };
+
+  const handleCreateOnlineCandidate = () => {
+    if (!candNome.trim()) {
+      showToast('Por favor, informe o nome do candidato.');
+      return;
+    }
+    const emailCandidate = candEmail.trim() || `${candNome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`;
+    const newCandId = `cand-${Date.now()}`;
+    const nextNumber = String(10 + (candidatos.length * 2));
+
+    const newCandidate: Candidato = {
+      id: newCandId,
+      nome: candNome.trim(),
+      cargo: candCargo.trim() || 'Operador',
+      setor: candSetor.trim() || 'Operacional',
+      matricula: candMatricula.trim() || `CLT-${Math.floor(1000 + Math.random() * 9000)}`,
+      email: emailCandidate,
+      tempoEmpresa: candTempoEmpresa || '2 anos',
+      numero: nextNumber,
+      propostas: candPropostas.trim() || 'Foco em saúde do trabalhador, eliminação de riscos e ergonomia.',
+      votos: 0,
+      status: 'pendente_confirmacao',
+      termoAceito: false,
+      metodoInscricao: 'online'
+    };
+
+    saveCandidato(newCandidate);
+    setIsOnlineQuickModalOpen(false);
+    setActiveEmailCandidate(newCandidate);
+    showToast(`Inscrição online submetida! E-mail com regras e termo de aceite enviado para ${emailCandidate}!`);
+
+    setCandSelectedEmployeeId('');
+    setCandNome('');
+    setCandMatricula('');
+    setCandCargo('');
+    setCandSetor('');
+    setCandEmail('');
+    setCandPropostas('');
+  };
+
+  const handleConfirmCandidateEmail = (cand: Candidato) => {
+    const updated: Candidato = {
+      ...cand,
+      status: 'confirmado',
+      termoAceito: true,
+      confirmadoEm: new Date().toLocaleString('pt-BR')
+    };
+    saveCandidato(updated);
+    if (activeEmailCandidate?.id === cand.id) {
+      setActiveEmailCandidate(updated);
+    }
+    showToast(`Candidatura de "${cand.nome}" confirmada e homologada com sucesso!`);
+  };
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isSavingDimensionamento, setIsSavingDimensionamento] = useState(false);
   const [dbDimensionamentosCount, setDbDimensionamentosCount] = useState<number>(0);
@@ -1120,23 +1326,25 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       id: 'etapa-6',
       numero: 6,
       titulo: 'Período de Inscrição de Candidatos',
-      subtitulo: 'Período aberto para inscrição livre de todos os empregados',
+      subtitulo: hasModuloEleicao
+        ? 'Inscrição online com link/QR Code exclusivo sincronizado à Urna Digital'
+        : 'Inscrição via Ficha Manual com envio para aprovação no Módulo de Assinaturas',
       prazoLabel: 'Prazo mínimo de 15 dias corridos',
       dataCalculada: `${datasPrincipais.inscricaoInicio} a ${datasPrincipais.inscricaoFim}`,
       referenciaNormativa: 'NR-5, subitem 5.5.2.2',
       baseLegalDetalhada: 'Item 5.5.2.2 da NR-05: "Inscrição de candidatos no prazo mínimo de 15 (quinze) dias corridos."',
       porQueExiste: 'Assegura tempo hábil para que empregados em turnos, escalas de revezamento ou afastamentos transitórios possam tomar conhecimento e exercer livremente o direito à candidatura.',
       impactoAuditoria: 'A fixação de prazo de inscrição inferior a 15 dias corridos invalida irremediavelmente todo o pleito.',
-      acaoTipo: 'documento_edital' as const,
-      docTipo: 'edital_inscricao',
-      botaoTexto: 'Ver Prazos',
-      botaoIcone: 'fileText' as const
+      acaoTipo: 'candidatos_inscricao' as const,
+      docTipo: hasModuloEleicao ? 'edital_inscricao' : 'ficha_inscricao_manual',
+      botaoTexto: hasModuloEleicao ? 'Inscrições Online' : 'Ficha Manual de Inscrição',
+      botaoIcone: hasModuloEleicao ? ('vote' as const) : ('fileSignature' as const)
     },
     {
       id: 'etapa-7',
       numero: 7,
       titulo: 'Comprovante de Inscrição e Estabilidade Provisória',
-      subtitulo: 'Protocolo formal que comprova e ativa a garantia de emprego',
+      subtitulo: 'Termo de Aceite das Regras do Candidato e Protocolo Formal',
       prazoLabel: 'Imediato no ato da inscrição',
       dataCalculada: 'No ato da inscrição',
       referenciaNormativa: 'NR-5, subitem 5.5.2.3; CLT Art. 165; ADCT Art. 10, II, "a"',
@@ -1145,8 +1353,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       impactoAuditoria: 'A recusa ou omissão na entrega de protocolo aos inscritos gera direito à reintegração judicial do empregado em caso de dispensa e processo no MPT.',
       acaoTipo: 'documento_edital' as const,
       docTipo: 'comprovante_inscricao',
-      botaoTexto: 'Ver Protocolo',
-      botaoIcone: 'userCheck' as const
+      botaoTexto: 'Ver Comprovante / Regras',
+      botaoIcone: 'award' as const
     },
     {
       id: 'etapa-8',
@@ -1251,7 +1459,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       titulo: custom?.title || e.titulo,
       dataCalculada: custom?.date || e.dataCalculada
     };
-  }), [datasPrincipais, stepCustomizations]);
+  }), [datasPrincipais, stepCustomizations, hasModuloEleicao]);
 
   // Helper para localizar o envelope correspondente à etapa
   const getStepEnvelope = (etapa: any) => {
@@ -1342,6 +1550,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
   // AÇÃO 2: VISUALIZAR
   const handleViewStep = (etapa: any) => {
+    if (etapa.id === 'etapa-6') {
+      setIsCandidateModalOpen(true);
+      return;
+    }
+
     const finalCompName = currentCompany?.razaoSocial || propCompanyName || 'Empresa';
     const finalCnpj = currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00';
 
@@ -1492,6 +1705,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
   // AÇÃO 4: ASSINAR / CONFIGURAR NA PLATAFORMA DE ASSINATURAS (SIGNATÁRIOS + POSICIONAMENTO)
   const handleSendToSignaturePlatform = async (etapa: any) => {
+    if (etapa.id === 'etapa-6' && !hasModuloEleicao) {
+      setIsManualCandidateModalOpen(true);
+      return;
+    }
+
     try {
       const finalCompName = currentCompany?.razaoSocial || propCompanyName || 'Empresa';
       const finalCnpj = currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00';
@@ -2435,9 +2653,20 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <strong className="text-slate-900 font-bold">
-                                {etapa.numero}. {etapa.titulo}
-                              </strong>
+                              {etapa.id === 'etapa-6' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsCandidateModalOpen(true)}
+                                  className="text-left text-slate-900 font-bold hover:text-emerald-700 hover:underline cursor-pointer transition-colors"
+                                  title="Clique para gerenciar candidaturas e fichas de inscrição"
+                                >
+                                  {etapa.numero}. {etapa.titulo}
+                                </button>
+                              ) : (
+                                <strong className="text-slate-900 font-bold">
+                                  {etapa.numero}. {etapa.titulo}
+                                </strong>
+                              )}
                               {/* Ícone de Dica Legal / Explicativo */}
                               <button
                                 type="button"
@@ -2473,6 +2702,29 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   <Pencil className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
                                   <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
                                     Editar
+                                  </span>
+                                </button>
+                              )}
+
+                              {/* BOTÃO ESPECIAL PARA ETAPA 6: INSCRIÇÕES ONLINE OU FICHA MANUAL */}
+                              {etapa.id === 'etapa-6' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsCandidateModalOpen(true)}
+                                  className={`group inline-flex items-center h-8 rounded-xl active:scale-95 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0 ${
+                                    hasModuloEleicao
+                                      ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-300'
+                                  }`}
+                                  title={hasModuloEleicao ? 'Inscrições Online: Link, QR Code e Candidatos' : 'Inscrições: Ficha Manual e Assinaturas'}
+                                >
+                                  {hasModuloEleicao ? (
+                                    <Vote className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                                  ) : (
+                                    <FileSignature className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-indigo-700" />
+                                  )}
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[130px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
+                                    {hasModuloEleicao ? 'Inscrições Online' : 'Fichas Manuais'}
                                   </span>
                                 </button>
                               )}
@@ -3812,6 +4064,794 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: GESTÃO DE INSCRIÇÕES DE CANDIDATOS (ETAPA 6 - NR-5)              */}
+      {/* ========================================================================= */}
+      {isCandidateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-emerald-200/80 bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 text-white rounded-xl shadow-xs ${hasModuloEleicao ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
+                  {hasModuloEleicao ? <Vote className="w-5 h-5" /> : <FileSignature className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
+                    Inscrições de Candidatos à CIPA · Gestão 2026/2027
+                  </h3>
+                  <p className="text-[11px] text-slate-600 font-mono">
+                    NR-5 Subitem 5.5.2.2 · {currentFilial.name} ({currentFilial.city} - {currentFilial.state})
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Switcher para teste / simulação de contratação do módulo */}
+                <button
+                  type="button"
+                  onClick={() => setOverrideEleicaoModulo(prev => (prev === null ? !Boolean(currentCompany?.modulosContratados?.eleicao) : !prev))}
+                  className="px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer bg-white text-slate-700 border-slate-300 hover:bg-slate-50 flex items-center gap-1.5 shadow-2xs"
+                  title="Clique para alternar a simulação entre 'Módulo de Eleição Contratado (Online)' e 'Sem Módulo (Ficha Manual)'"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>Modo: <strong>{hasModuloEleicao ? 'Online (Módulo Ativo)' : 'Ficha Manual (Assinaturas)'}</strong></span>
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={() => setIsCandidateModalOpen(false)} 
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Conteúdo com rolagem */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-xs">
+              
+              {/* CENÁRIO 1: MÓDULO DE ELEIÇÃO CONTRATADO (ONLINE) */}
+              {hasModuloEleicao ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Módulo de Eleição Online Ativo
+                        </span>
+                        <h4 className="text-xs font-bold text-emerald-950 mt-0.5">
+                          Link Oficial & QR Code de Inscrição dos Colaboradores
+                        </h4>
+                        <p className="text-[11px] text-emerald-900/80 mt-0.5">
+                          Os trabalhadores se inscrevem diretamente através do link ou QR Code exclusivo gerado no Edital de Inscrições.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setIsOnlineQuickModalOpen(true)}
+                          className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>+ Nova Inscrição Online</span>
+                        </button>
+
+                        {onNavigateTab && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCandidateModalOpen(false);
+                              onNavigateTab('eleicao');
+                            }}
+                            className="px-3 py-2 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-xl font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                          >
+                            <Vote className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Abrir Módulo de Eleição</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card de Link e QR Code */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                      <div className="md:col-span-2 p-3 bg-white rounded-xl border border-emerald-200 flex flex-col justify-between space-y-2">
+                        <div className="flex items-center gap-2">
+                          <ExternalLink className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="font-mono text-emerald-900 font-bold break-all text-[11px]">
+                            https://assembleia.grtsdigital.com.br/2lsCc1wU4b3qgsXcjGJKVy6dUbqX0l/preInscricao
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-emerald-100 text-[10px] text-slate-500">
+                          <span>Token criptográfico individual da eleição</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText('https://assembleia.grtsdigital.com.br/2lsCc1wU4b3qgsXcjGJKVy6dUbqX0l/preInscricao');
+                              showToast('Link copiado para a área de transferência!');
+                            }}
+                            className="font-bold text-emerald-700 hover:underline cursor-pointer"
+                          >
+                            Copiar Link Completo
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-white rounded-xl border border-emerald-200 flex items-center justify-center gap-3 text-left">
+                        <QrCode className="w-10 h-10 text-slate-900 shrink-0" />
+                        <div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scan me</span>
+                          <strong className="text-slate-900 text-xs block leading-tight">QR Code Eleitoral</strong>
+                          <span className="text-[10px] text-slate-500 block">Celulares da unidade</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Alerta de Validação Temporal */}
+                    <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 flex items-start gap-2 text-[11px]">
+                      <Lock className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>
+                        <strong>Validação Cronológica NR-5:</strong> O link e o QR Code só permitem submissão durante o período oficial de inscrições ({datasPrincipais.inscricaoInicio || '21/09/2026'} a {datasPrincipais.inscricaoFim || '05/10/2026 até às 17:00'}).
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* CENÁRIO 2: MÓDULO DE ELEIÇÃO NÃO CONTRATADO (FICHA MANUAL & ASSINATURAS) */
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-indigo-800 tracking-wider flex items-center gap-1.5">
+                          <FileSignature className="w-3.5 h-3.5 text-indigo-600" /> Processo Manual Tradicional (NR-5)
+                        </span>
+                        <h4 className="text-xs font-bold text-indigo-950 mt-0.5">
+                          Ficha de Inscrição Individual com Envio ao Módulo de Assinaturas
+                        </h4>
+                        <p className="text-[11px] text-indigo-900/80 mt-0.5">
+                          Como a empresa não utiliza o Módulo de Eleição Online, as candidaturas são preenchidas manualmente, gerando documento oficial com coleta de assinaturas e disparo automático do Termo de Aceite das Regras por e-mail.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsManualCandidateModalOpen(true)}
+                        className="px-4 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ Preencher Ficha Manual</span>
+                      </button>
+                    </div>
+
+                    <div className="p-2.5 bg-white/80 rounded-xl border border-indigo-100 flex items-center justify-between text-[11px] text-indigo-900">
+                      <span>✓ Emite Ficha Individual conforme NR-5 Subitem 5.5.2.2 e 5.5.2.3</span>
+                      <span>✓ Coleta assinaturas do Candidato e da Comissão Eleitoral</span>
+                      <span>✓ Notifica colaborador com Regras de Campanha</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* LISTA DE CANDIDATOS INSCRITOS / HOMOLOGADOS (VISÍVEL EM AMBOS OS MODOS!) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <Users className="w-4 h-4 text-emerald-600" />
+                    <span>Candidatos Registrados na Unidade ({candidatos.length})</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-500">
+                    Confirmados: <strong className="text-emerald-700 font-bold">{candidatos.filter(c => c.status === 'confirmado').length}</strong> de {candidatos.length}
+                  </span>
+                </div>
+
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100/80 text-[10.5px] uppercase font-bold text-slate-600 border-b border-slate-200">
+                        <th className="py-2.5 px-3">Nº / Foto</th>
+                        <th className="py-2.5 px-3">Nome / Cargo / Setor</th>
+                        <th className="py-2.5 px-3">E-mail / Matrícula</th>
+                        <th className="py-2.5 px-3">Método</th>
+                        <th className="py-2.5 px-3">Status da Candidatura</th>
+                        <th className="py-2.5 px-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {candidatos.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-400">
+                            Nenhum candidato inscrito nesta unidade até o momento.
+                          </td>
+                        </tr>
+                      ) : (
+                        candidatos.map((cand) => {
+                          const isConfirmed = cand.status === 'confirmado';
+                          return (
+                            <tr key={cand.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-800 font-mono font-bold text-[10px] flex items-center justify-center">
+                                    {cand.numero}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <strong className="text-slate-900 font-bold block">{cand.nome}</strong>
+                                <span className="text-[11px] text-slate-500 block">{cand.cargo} · {cand.setor}</span>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className="text-[11px] text-slate-700 block truncate max-w-[180px]">{cand.email || `${cand.nome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`}</span>
+                                <span className="text-[10px] font-mono text-slate-400 block">{cand.matricula || 'CLT-1029'}</span>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                  cand.metodoInscricao === 'manual'
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                }`}>
+                                  {cand.metodoInscricao === 'manual' ? 'Ficha Manual' : 'Online'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {isConfirmed ? (
+                                  <div>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      <Check className="w-3 h-3 text-emerald-600" /> Candidatura Confirmada
+                                    </span>
+                                    <span className="text-[9.5px] text-slate-400 block mt-0.5 font-mono">
+                                      Regras aceitas {cand.confirmadoEm ? `em ${cand.confirmadoEm}` : ''}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                      <Clock className="w-3 h-3 text-amber-600" /> Aguardando Confirmação
+                                    </span>
+                                    <span className="text-[9.5px] text-amber-800 block mt-0.5">
+                                      Pendente aceite das regras via e-mail
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <div className="inline-flex items-center gap-1 justify-end">
+                                  {/* Botão Ver E-mail com Regras */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveEmailCandidate(cand)}
+                                    className="p-1.5 text-blue-700 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer border border-blue-200"
+                                    title="Ver E-mail institucional com Termo de Aceite das Regras enviado ao colaborador"
+                                  >
+                                    <Mail className="w-3.5 h-3.5 text-blue-600" />
+                                  </button>
+
+                                  {/* Se pendente, botão rápido para validar / confirmar candidatura */}
+                                  {!isConfirmed && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleConfirmCandidateEmail(cand)}
+                                      className="px-2 py-1 text-[10.5px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                                      title="Simular clique do colaborador confirmando o aceite das regras no e-mail"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                      <span>Confirmar</span>
+                                    </button>
+                                  )}
+
+                                  {/* Se manual, botão para ver envelope de assinatura */}
+                                  {cand.metodoInscricao === 'manual' && onNavigateTab && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setIsCandidateModalOpen(false);
+                                        onNavigateTab('assinaturas');
+                                      }}
+                                      className="p-1.5 text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer border border-indigo-200"
+                                      title="Ver no Módulo de Assinaturas"
+                                    >
+                                      <FileSignature className="w-3.5 h-3.5 text-indigo-600" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Rodapé */}
+            <div className="px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500">
+                NR-05: Portaria MTP nº 4.219/2022 · Estabilidade garantida conforme art. 10, II, "a" do ADCT
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsCandidateModalOpen(false)}
+                className="px-5 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition-all cursor-pointer shadow-2xs"
+              >
+                Fechar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 6: PREENCHIMENTO DE FICHA MANUAL DE INSCRIÇÃO                       */}
+      {/* ========================================================================= */}
+      {isManualCandidateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            
+            <div className="px-6 py-4 border-b border-indigo-200 bg-indigo-50/70 flex items-center justify-between shrink-0">
+              <h3 className="text-sm font-extrabold text-indigo-950 flex items-center gap-2">
+                <FileSignature className="w-5 h-5 text-indigo-600" />
+                Nova Ficha de Inscrição Manual (NR-5)
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setIsManualCandidateModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-indigo-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+              {/* Selecionar colaborador cadastrado */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Puxar Colaborador da Unidade (Opcional):
+                </label>
+                <select
+                  value={candSelectedEmployeeId}
+                  onChange={(e) => handleSelectEmployeeForCandidate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900"
+                >
+                  <option value="">-- Selecione ou preencha manualmente abaixo --</option>
+                  {(employeesByUnit[currentFilial.id] || []).map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name} ({emp.cargo} · {emp.matricula})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Nome Completo do Candidato: *
+                  </label>
+                  <input
+                    type="text"
+                    value={candNome}
+                    onChange={(e) => setCandNome(e.target.value)}
+                    placeholder="Ex: Carlos Eduardo dos Santos"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-900"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Matrícula Funcional CLT:
+                  </label>
+                  <input
+                    type="text"
+                    value={candMatricula}
+                    onChange={(e) => setCandMatricula(e.target.value)}
+                    placeholder="Ex: CLT-5892"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Tempo de Empresa:
+                  </label>
+                  <input
+                    type="text"
+                    value={candTempoEmpresa}
+                    onChange={(e) => setCandTempoEmpresa(e.target.value)}
+                    placeholder="Ex: 3 anos"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Cargo / Função:
+                  </label>
+                  <input
+                    type="text"
+                    value={candCargo}
+                    onChange={(e) => setCandCargo(e.target.value)}
+                    placeholder="Ex: Operador Técnico"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Setor de Trabalho:
+                  </label>
+                  <input
+                    type="text"
+                    value={candSetor}
+                    onChange={(e) => setCandSetor(e.target.value)}
+                    placeholder="Ex: Produção e Manutenção"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    E-mail do Colaborador (Para envio do Termo de Aceite das Regras): *
+                  </label>
+                  <input
+                    type="email"
+                    value={candEmail}
+                    onChange={(e) => setCandEmail(e.target.value)}
+                    placeholder="candidato@telefonica.com"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Propostas de Prevenção / Mini-currículo:
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={candPropostas}
+                    onChange={(e) => setCandPropostas(e.target.value)}
+                    placeholder="Ex: Atuação voltada à eliminação de riscos de quedas, melhoria de ventilação e apoio às inspeções de segurança."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Informação sobre o fluxo */}
+              <div className="p-3 bg-indigo-50/80 rounded-xl border border-indigo-200 text-indigo-950 space-y-1 text-[11px]">
+                <strong className="block font-bold">O que acontecerá ao salvar:</strong>
+                <p>1. A Ficha de Inscrição Manual será gerada e enviada para aprovação e coleta de assinaturas digitais no Módulo de Assinaturas (Candidato + Presidente da CE).</p>
+                <p>2. O candidato receberá imediatamente o e-mail oficial com o <strong>Termo de Aceite – Regras do Candidato</strong>. A candidatura só será considerada homologada após a confirmação via e-mail.</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsManualCandidateModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateManualCandidate}
+                className="px-4 py-2 text-xs font-bold text-white bg-indigo-700 hover:bg-indigo-600 rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <FileSignature className="w-4 h-4" />
+                <span>Salvar Ficha & Enviar para Assinatura</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 7: INSCRIÇÃO ONLINE RÁPIDA (SIMULAÇÃO VIA LINK)                     */}
+      {/* ========================================================================= */}
+      {isOnlineQuickModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+            
+            <div className="px-6 py-4 border-b border-emerald-200 bg-emerald-50/70 flex items-center justify-between shrink-0">
+              <h3 className="text-sm font-extrabold text-emerald-950 flex items-center gap-2">
+                <Vote className="w-5 h-5 text-emerald-600" />
+                Inscrição Online de Candidato (Link da Eleição)
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setIsOnlineQuickModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-emerald-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Puxar Colaborador da Unidade:
+                </label>
+                <select
+                  value={candSelectedEmployeeId}
+                  onChange={(e) => handleSelectEmployeeForCandidate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-medium text-slate-900"
+                >
+                  <option value="">-- Selecione ou preencha manualmente --</option>
+                  {(employeesByUnit[currentFilial.id] || []).map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name} ({emp.cargo} · {emp.matricula})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">Nome Completo: *</label>
+                  <input
+                    type="text"
+                    value={candNome}
+                    onChange={(e) => setCandNome(e.target.value)}
+                    placeholder="Ex: Gabriela Duarte"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">Cargo:</label>
+                    <input
+                      type="text"
+                      value={candCargo}
+                      onChange={(e) => setCandCargo(e.target.value)}
+                      placeholder="Ex: Analista de Qualidade"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">Setor:</label>
+                    <input
+                      type="text"
+                      value={candSetor}
+                      onChange={(e) => setCandSetor(e.target.value)}
+                      placeholder="Ex: Almoxarifado"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">E-mail Corporativo: *</label>
+                  <input
+                    type="email"
+                    value={candEmail}
+                    onChange={(e) => setCandEmail(e.target.value)}
+                    placeholder="gabriela.duarte@telefonica.com"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">Propostas:</label>
+                  <textarea
+                    rows={2}
+                    value={candPropostas}
+                    onChange={(e) => setCandPropostas(e.target.value)}
+                    placeholder="Ex: Ergonomia preventiva e diálogo permanente com os trabalhadores."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 text-[11px]">
+                Ao submeter a inscrição online, o candidato receberá o e-mail institucional com o <strong>Termo de Aceite das Regras da Eleição</strong>.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsOnlineQuickModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateOnlineCandidate}
+                className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-600 rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+              >
+                <Vote className="w-4 h-4" />
+                <span>Confirmar Inscrição Online</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 8: PREVIEW DO E-MAIL DE REGRAS E TERMO DE ACEITE DO CANDIDATO       */}
+      {/* ========================================================================= */}
+      {activeEmailCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+            
+            {/* Header de Cliente de E-mail Corporativo */}
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-slate-900 leading-tight">
+                    E-mail de Validação de Candidatura & Regras Eleitorais
+                  </h3>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    Para: {activeEmailCandidate.email || `${activeEmailCandidate.nome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`}
+                  </span>
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                onClick={() => setActiveEmailCandidate(null)} 
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cabeçalho do E-mail */}
+            <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/70 text-[11px] space-y-1">
+              <div><strong className="text-slate-600">De:</strong> <span className="text-slate-800 font-semibold">Comissão Eleitoral CIPA &lt;cipa.br@telefonica.com&gt;</span></div>
+              <div><strong className="text-slate-600">Assunto:</strong> <span className="text-slate-900 font-bold">[CIPA] Parabéns! Sua candidatura para CIPA foi validada com sucesso!</span></div>
+            </div>
+
+            {/* Corpo do E-mail Oficial do Usuário */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs text-slate-800 leading-relaxed font-sans">
+              
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                <p className="font-bold text-emerald-950 text-sm">Prezado Colaborador,</p>
+                <p className="text-emerald-900 font-semibold mt-1">
+                  Parabéns! Sua candidatura para CIPA foi validada com sucesso!
+                </p>
+                <p className="text-[11px] text-emerald-800 font-mono mt-0.5">
+                  Candidato: <strong>{activeEmailCandidate.nome}</strong> (Matrícula: {activeEmailCandidate.matricula || 'CLT-1029'} · Cargo: {activeEmailCandidate.cargo})
+                </p>
+              </div>
+
+              <p className="text-slate-700">
+                Agora que você está oficialmente no processo, é fundamental conhecer e seguir as regras da eleição para que tudo corra de forma justa e tranquila.
+              </p>
+
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-950">
+                <strong>Fique ligado :</strong> Candidatos têm estabilidade no emprego até o dia da eleição — exceto em casos previstos na NR 5 ou em situações de descumprimento das regras, avaliadas pela Comissão Eleitoral .
+              </div>
+
+              <div className="border-t border-b border-slate-200 py-3 my-2 text-center">
+                <strong className="text-xs font-extrabold text-slate-900 uppercase tracking-wider block">
+                  CIPA – Comissão Interna de Prevenção de Acidentes e Assédio
+                </strong>
+                <span className="text-xs font-bold text-slate-700 block mt-0.5">
+                  Termo de aceite – Regras do Candidato
+                </span>
+              </div>
+
+              {/* O que você pode fazer */}
+              <div className="space-y-1.5">
+                <strong className="text-xs font-bold text-emerald-800 block uppercase tracking-wide">
+                  O que você pode fazer:
+                </strong>
+                <ul className="space-y-1 text-slate-700 pl-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">•</span>
+                    <span>Apresentar seu plano de trabalho aos colegas, sempre com foco na prevenção de acidentes e doenças no trabalho.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">•</span>
+                    <span>Circular pelas áreas da empresa para divulgar sua candidatura, com bom senso e respeito ao ambiente de trabalho.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold">•</span>
+                    <span>Usar o WhatsApp para divulgar sua candidatura e propostas, desde que respeite todas as demais regras.</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* O que não pode */}
+              <div className="space-y-1.5 pt-2">
+                <strong className="text-xs font-bold text-rose-800 block uppercase tracking-wide">
+                  O que não pode:
+                </strong>
+                <ul className="space-y-1 text-slate-700 pl-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold">•</span>
+                    <span>Usar canais da empresa (como e-mail corporativo, Teams, WorkVivo ou murais) para pedir votos ou divulgar sua candidatura.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold">•</span>
+                    <span>Oferecer brindes ou favores em troca de votos — nada de canetas, canecas, churrascos, festas, etc.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold">•</span>
+                    <span>Fazer "boca de urna" ou forçar alguém a votar na sua frente.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold">•</span>
+                    <span>Usar sua posição na empresa para pressionar ou ameaçar colegas.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold">•</span>
+                    <span>Pedir prova de voto, como fotos ou prints de tela.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-rose-600 font-bold">•</span>
+                    <span>Interromper o trabalho (seu ou de colegas) para fazer campanha.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <p className="text-[11px] text-slate-500 italic">
+                Obs.: Processo não elegível para colaboradores em regime 100% Remoto.
+              </p>
+
+              {/* Importante */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 space-y-1 text-[11.5px]">
+                <strong className="text-slate-900 block font-bold">Importante:</strong>
+                <p>As denúncias somente serão verificadas se realizadas dentro do período Eleitoral, até a divulgação dos eleitos e acompanhadas de evidências.</p>
+                <p>Descumprir essas regras pode levar a punições e até à exclusão do processo eleitoral. Se tiver dúvidas, é só chamar: <strong>cipa.br@telefonica.com</strong> Boa sorte!</p>
+                <p className="font-semibold text-slate-800 pt-1">O Processo de eleição é submetido à auditoria e conduzido de forma ética com base nos Princípios de Negócios Responsável.</p>
+              </div>
+
+            </div>
+
+            {/* Rodapé do E-mail com Botão de Aceite */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-slate-500">
+                {activeEmailCandidate.status === 'confirmado' ? (
+                  <strong className="text-emerald-700">✓ Regras confirmadas em {activeEmailCandidate.confirmadoEm || '22/09/2026'}</strong>
+                ) : (
+                  <span className="text-amber-700 font-bold">Aguardando confirmação do colaborador</span>
+                )}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveEmailCandidate(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  Fechar
+                </button>
+
+                {activeEmailCandidate.status !== 'confirmado' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmCandidateEmail(activeEmailCandidate)}
+                    className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Li e Aceito as Regras do Candidato (Confirmar Candidatura)</span>
+                  </button>
+                ) : (
+                  <div className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 rounded-xl border border-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                    <span>Candidatura Homologada e Validada</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}

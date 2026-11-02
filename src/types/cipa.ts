@@ -54,6 +54,13 @@ export interface Candidato {
   numero: string;
   propostas: string;
   votos: number;
+  email?: string;
+  matricula?: string;
+  status?: 'pendente_confirmacao' | 'confirmado' | 'rejeitado';
+  confirmadoEm?: string;
+  termoAceito?: boolean;
+  metodoInscricao?: 'online' | 'manual';
+  envelopeId?: string;
 }
 
 export interface VotoAuditoria {

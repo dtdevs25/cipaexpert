@@ -75,7 +75,13 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     fotoUrl: undefined,
     numero: '10',
     propostas: 'Foco na renovação de EPIs acústicos, melhoria de ventilação no galpão 02 e canal confidencial de denúncias para mulheres.',
-    votos: 48
+    votos: 48,
+    email: 'mariana.silveira@telefonica.com',
+    matricula: 'CLT-1029',
+    status: 'confirmado',
+    termoAceito: true,
+    metodoInscricao: 'online',
+    confirmadoEm: '22/09/2026 10:15'
   },
   {
     id: 'cand-2',
@@ -86,7 +92,13 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     fotoUrl: undefined,
     numero: '22',
     propostas: 'Revisão periódica de bloqueios de energia LOTO, treinamentos práticos de primeiros socorros e inspeção quinzenal de escadas.',
-    votos: 39
+    votos: 39,
+    email: 'rodrigo.albuquerque@telefonica.com',
+    matricula: 'CLT-2041',
+    status: 'confirmado',
+    termoAceito: true,
+    metodoInscricao: 'online',
+    confirmadoEm: '23/09/2026 14:30'
   },
   {
     id: 'cand-3',
@@ -97,7 +109,13 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     fotoUrl: undefined,
     numero: '15',
     propostas: 'Adequação ergonômica nos postos de etiquetagem, pausas ativas na expedição e combate rigoroso ao assédio moral.',
-    votos: 31
+    votos: 31,
+    email: 'beatriz.fagundes@telefonica.com',
+    matricula: 'CLT-3188',
+    status: 'confirmado',
+    termoAceito: true,
+    metodoInscricao: 'manual',
+    confirmadoEm: '25/09/2026 09:45'
   },
   {
     id: 'cand-4',
@@ -108,7 +126,12 @@ export const INITIAL_CANDIDATOS: Candidato[] = [
     fotoUrl: undefined,
     numero: '44',
     propostas: 'Substituição imediata de cortinas inactínicas danificadas, máscaras de solda com escurecimento automático e água fresca próxima à solda.',
-    votos: 28
+    votos: 28,
+    email: 'thiago.valente@telefonica.com',
+    matricula: 'CLT-4402',
+    status: 'pendente_confirmacao',
+    termoAceito: false,
+    metodoInscricao: 'manual'
   }
 ];
 

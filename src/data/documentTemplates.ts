@@ -36,6 +36,12 @@ export function generateCipaDocument(
     comissaoViceEmail?: string;
     electionToken?: string;
     eleicaoLink?: string;
+    candidatoNome?: string;
+    candidatoCargo?: string;
+    candidatoMatricula?: string;
+    candidatoSetor?: string;
+    candidatoEmail?: string;
+    candidatoPropostas?: string;
     cronogramaDatas?: {
       convocacao?: string;
       comunicadoSindicato?: string;
@@ -374,26 +380,97 @@ export function generateCipaDocument(
         ]
       };
 
-    case 'comprovante_inscricao':
+    case 'comprovante_inscricao': {
+      const candidatoNome = extraData?.candidatoNome || 'Colaborador Candidato';
+      const candidatoCargo = extraData?.candidatoCargo || 'Operador';
+      const candidatoMatricula = extraData?.candidatoMatricula || 'CLT-1042';
+      const candidatoSetor = extraData?.candidatoSetor || 'Operacional';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const compNome = companyName || 'Telefônica Brasil S/A';
+      const presidenteNome = extraData?.comissaoPresidente || 'Luiz Alberto De Barros Junior';
+
       return {
-        title: 'COMPROVANTE DE INSCRIÇÃO DE CANDIDATO À CIPA',
-        category: 'Inscrição Individual',
-        normativeCode: 'NR-5 - Item 5.5.3.1',
-        companyName,
+        title: 'Confirmação de Inscrição & Termo de Aceite – Regras do Candidato',
+        category: 'Confirmação e Termo de Aceite',
+        normativeCode: 'NR-5 · Subitem 5.5.2.3',
+        companyName: compNome,
         cnpj,
         dateGenerated: formattedDate,
         content: [
-          `A Comissão Eleitoral da empresa ${companyName} certifica e protocola que o(a) colaborador(a) formalizou sua candidatura ao processo eleitoral da CIPA - Mandato 2026/2027.`,
-          `PROTOCOLOS REGISTRADOS:`,
-          `1. Identificação: Candidatura individual espontânea com envio tempestivo de dados cadastrais.`,
-          `2. Garantia de Emprego: O candidato inscrito goza de estabilidade provisória no emprego desde a inscrição até um ano após o final do mandato, caso eleito, nos moldes do art. 10, II, 'a' do ADCT da CF/88 e item 5.4.12 da NR-5.`,
-          `3. Compromisso: O candidato assume a obrigação de participar do treinamento obrigatório e cumprir as atribuições regimentais da CIPA e da Lei 14.457/2022.`
+          `Prezado Colaborador,`,
+          `Parabéns! Sua candidatura para CIPA foi validada com sucesso!`,
+          `Candidato: ${candidatoNome} | Matrícula: ${candidatoMatricula} | Cargo: ${candidatoCargo} | Setor: ${candidatoSetor} - Gestão ${gestaoAno}`,
+          `Agora que você está oficialmente no processo, é fundamental conhecer e seguir as regras da eleição para que tudo corra de forma justa e tranquila.`,
+          `Fique ligado : Candidatos têm estabilidade no emprego até o dia da eleição —exceto em casos previstos na NR 5 ou em situações de descumprimento das regras, avaliadas pela Comissão Eleitoral .`,
+          `CIPA – Comissão Interna de Prevenção de Acidentes e Assédio`,
+          `Termo de aceite – Regras do Candidato`,
+          `O que você pode fazer:`,
+          `• Apresentar seu plano de trabalho aos colegas, sempre com foco na prevenção de acidentes e doenças no trabalho.`,
+          `• Circular pelas áreas da empresa para divulgar sua candidatura, com bom senso e respeito ao ambiente de trabalho.`,
+          `• Usar o WhatsApp para divulgar sua candidatura e propostas, desde que respeite todas as demais regras.`,
+          `O que não pode:`,
+          `• Usar canais da empresa (como e-mail corporativo, Teams, WorkVivo ou murais) para pedir votos ou divulgar sua candidatura.`,
+          `• Oferecer brindes ou favores em troca de votos — nada de canetas, canecas, churrascos, festas, etc.`,
+          `• Fazer "boca de urna" ou forçar alguém a votar na sua frente.`,
+          `• Usar sua posição na empresa para pressionar ou ameaçar colegas.`,
+          `• Pedir prova de voto, como fotos ou prints de tela.`,
+          `• Interromper o trabalho (seu ou de colegas) para fazer campanha.`,
+          `Obs.: Processo não elegível para colaboradores em regime 100% Remoto.`,
+          `Importante:`,
+          `As denúncias somente serão verificadas se realizadas dentro do período Eleitoral, até a divulgação dos eleitos e acompanhadas de evidências.`,
+          `Descumprir essas regras pode levar a punições e até à exclusão do processo eleitoral. Se tiver dúvidas, é só chamar: cipa.br@telefonica.com Boa sorte!`,
+          `O Processo de eleição é submetido à auditoria e conduzido de forma ética com base nos Princípios de Negócios Responsável.`
         ],
         signatories: [
-          'Presidente da Comissão Eleitoral',
-          'Candidato(a) Inscrito(a)'
+          `${candidatoNome} - Candidato(a) Validado(a)`,
+          `${presidenteNome} - Presidente da Comissão Eleitoral`
         ]
       };
+    }
+
+    case 'ficha_inscricao_manual': {
+      const candidatoNome = extraData?.candidatoNome || 'Colaborador Candidato';
+      const candidatoCargo = extraData?.candidatoCargo || 'Operador';
+      const candidatoMatricula = extraData?.candidatoMatricula || 'CLT-1042';
+      const candidatoSetor = extraData?.candidatoSetor || 'Operacional';
+      const candidatoEmail = extraData?.candidatoEmail || 'candidato@empresa.com.br';
+      const candidatoPropostas = extraData?.candidatoPropostas || 'Atuação preventiva e participação ativa nas reuniões da CIPA.';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const compNome = companyName || 'Telefônica Brasil S/A';
+      const unitName = extraData?.unitName || 'Unidade Local';
+      const presidenteNome = extraData?.comissaoPresidente || 'Luiz Alberto De Barros Junior';
+
+      return {
+        title: 'FICHA DE INSCRIÇÃO MANUAL DE CANDIDATO À CIPA',
+        category: 'Inscrição Manual e Homologação',
+        normativeCode: 'NR-5 · Subitem 5.5.2.2 e 5.5.2.3',
+        companyName: compNome,
+        cnpj,
+        dateGenerated: formattedDate,
+        content: [
+          `FICHA DE INSCRIÇÃO INDIVIDUAL DE CANDIDATO À CIPA - GESTÃO ${gestaoAno}`,
+          `EMPRESA: ${compNome} | CNPJ: ${cnpj} | ESTABELECIMENTO: ${unitName}`,
+          `1. DADOS CADASTRAIS DO CANDIDATO:`,
+          `• Nome Completo: ${candidatoNome}`,
+          `• Matrícula Funcional CLT: ${candidatoMatricula}`,
+          `• Cargo / Função: ${candidatoCargo}`,
+          `• Setor / Lotação: ${candidatoSetor}`,
+          `• E-mail para Notificações: ${candidatoEmail}`,
+          `• Proposta e Foco de Atuação: ${candidatoPropostas}`,
+          `2. DECLARAÇÃO DE CIÊNCIA E REGRAS ELEITORAIS:`,
+          `Declaro que formalizo livremente minha inscrição como candidato(a) a representante dos empregados na CIPA, estando ciente da estabilidade provisória no emprego desde a data desta inscrição até o término do pleito (e por 2 anos após a posse caso eleito titular ou suplente), nos termos do Art. 10, II, 'a' do ADCT e da NR-5.`,
+          `Termo de aceite – Regras do Candidato:`,
+          `• O que pode fazer: Apresentar plano de trabalho com foco em prevenção; circular pelas áreas com bom senso e respeito ao trabalho; usar WhatsApp particular respeitando as regras.`,
+          `• O que não pode: Usar canais corporativos (e-mail, Teams, WorkVivo, murais); oferecer brindes/churrascos/favores; boca de urna; pressão hierárquica; exigir print ou prova de voto; interromper o trabalho alheio.`,
+          `Obs.: Processo não elegível para colaboradores em regime 100% Remoto.`,
+          `Encaminhe-se esta ficha devidamente assinada para a Comissão Eleitoral para fins de homologação e emissão do comprovante de protocolo.`
+        ],
+        signatories: [
+          `${candidatoNome} - Candidato(a) Requerente`,
+          `${presidenteNome} - Presidente da Comissão Eleitoral`
+        ]
+      };
+    }
 
     case 'lista_candidatos':
       return {
