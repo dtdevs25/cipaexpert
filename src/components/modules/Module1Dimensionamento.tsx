@@ -21,6 +21,7 @@ import {
   Download, 
   Upload, 
   Plus, 
+  Minus, 
   Trash2, 
   MapPin, 
   ShieldCheck, 
@@ -437,6 +438,51 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const [isOnlineQuickModalOpen, setIsOnlineQuickModalOpen] = useState(false);
   const [activeEmailCandidate, setActiveEmailCandidate] = useState<Candidato | null>(null);
 
+  // Estado para Apuração da Urna Física (Etapa 9 - quando não contratou módulo de eleição online)
+  const [isManualApuracaoModalOpen, setIsManualApuracaoModalOpen] = useState(false);
+  const [manualApuracaoData, setManualApuracaoData] = useState<{
+    localUrna: string;
+    lacreUrna: string;
+    horarioAbertura: string;
+    horarioEncerramento: string;
+    presidenteMesa: string;
+    secretarioMesa: string;
+    fiscaisPresentes: string;
+    votosBrancos: number;
+    votosNulos: number;
+    votosPorCandidato: Record<string, number>;
+  }>({
+    localUrna: 'Refeitório / Sala de Treinamento - Unidade SP Jundiaí Vila',
+    lacreUrna: 'LACRE-URNA-74829',
+    horarioAbertura: '08:00',
+    horarioEncerramento: '17:00',
+    presidenteMesa: 'Luiz Alberto De Barros Junior',
+    secretarioMesa: 'Marciel Pereira Silva',
+    fiscaisPresentes: 'Representantes dos empregados e da empresa',
+    votosBrancos: 2,
+    votosNulos: 1,
+    votosPorCandidato: {}
+  });
+
+  // Inicializa mapa de votos com valores dos candidatos cadastrados ou padrões
+  useEffect(() => {
+    if (candidatos && candidatos.length > 0) {
+      setManualApuracaoData(prev => {
+        if (Object.keys(prev.votosPorCandidato).length > 0) return prev;
+        const defaultVotes = [24, 18, 12, 9, 6, 3, 2];
+        const newMap: Record<string, number> = {};
+        const aprovados = candidatos.filter(c => c.status === 'confirmado');
+        aprovados.forEach((c, idx) => {
+          newMap[c.id] = c.votos !== undefined && c.votos > 0 ? c.votos : (defaultVotes[idx] ?? 0);
+        });
+        return {
+          ...prev,
+          votosPorCandidato: newMap
+        };
+      });
+    }
+  }, [candidatos]);
+
   // Form State para Inscrição Manual ou Rápida
   const [candSelectedEmployeeId, setCandSelectedEmployeeId] = useState('');
   const [candNome, setCandNome] = useState('');
@@ -653,6 +699,80 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         motivo: c.motivoReprovacao || 'Colaboradora informou que passou em processo seletivo para outro cargo e irá trocar de base.'
       }));
 
+    // Cálculos de Apuração da Eleição (Online vs Urna Física)
+    const totalAptos = effectiveHeadcount || headcount || dimensionamento?.headcount || 88;
+    const vagasTitulares = dimensionamento?.efetivosEmpregados || 2;
+    const vagasSuplentes = dimensionamento?.suplentesEmpregados || 2;
+
+    const candidatosConfirmados = candidatos.filter(c => c.status === 'confirmado');
+    let totVotosNominais = 0;
+    let apuracaoResultados = candidatosConfirmados.map(c => {
+      const v = hasModuloEleicao
+        ? (c.votos || 0)
+        : (manualApuracaoData.votosPorCandidato[c.id] ?? c.votos ?? 0);
+      totVotosNominais += v;
+      return {
+        id: c.id,
+        matricula: c.matricula || c.id.replace('cand-', ''),
+        nome: c.nome,
+        cargo: c.cargo,
+        email: c.email || `${c.nome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`,
+        votos: v,
+        dataAdmissao: c.dataAdmissao || '02/06/2026'
+      };
+    });
+
+    // Ordenação decrescente de votos com desempate por tempo de serviço (admissão mais antiga conforme NR-5)
+    apuracaoResultados.sort((a, b) => {
+      if (b.votos !== a.votos) return b.votos - a.votos;
+      const dateA = a.dataAdmissao ? new Date(a.dataAdmissao.split('/').reverse().join('-')).getTime() : 0;
+      const dateB = b.dataAdmissao ? new Date(b.dataAdmissao.split('/').reverse().join('-')).getTime() : 0;
+      return dateA - dateB;
+    });
+
+    apuracaoResultados = apuracaoResultados.map((item, idx) => {
+      let situacao = 'Não Eleito';
+      if (idx < vagasTitulares) {
+        situacao = `${idx + 1}º Titular Eleito`;
+      } else if (idx < vagasTitulares + vagasSuplentes) {
+        situacao = `${idx - vagasTitulares + 1}º Suplente Eleito`;
+      }
+      const pct = totVotosNominais > 0 ? (item.votos / totVotosNominais) * 100 : 0;
+      return {
+        ...item,
+        classificacao: idx + 1,
+        situacao,
+        percentual: pct
+      };
+    });
+
+    const vBrancos = hasModuloEleicao ? 3 : manualApuracaoData.votosBrancos;
+    const vNulos = hasModuloEleicao ? 1 : manualApuracaoData.votosNulos;
+    const totVotantes = totVotosNominais + vBrancos + vNulos;
+    const qMin = Math.floor(totalAptos / 2) + 1;
+    const qAtingido = totVotantes >= qMin;
+    const pctQuorum = totalAptos > 0 ? Math.round((totVotantes / totalAptos) * 100) : 0;
+
+    const apuracaoFinal = {
+      isOnline: hasModuloEleicao,
+      totalEleitoresAptos: totalAptos,
+      totalVotantes: totVotantes,
+      votosBrancos: vBrancos,
+      votosNulos: vNulos,
+      votosValidos: totVotosNominais,
+      quorumMinimo: qMin,
+      quorumAtingido: qAtingido,
+      percentualQuorum: pctQuorum,
+      lacreUrna: manualApuracaoData.lacreUrna,
+      localUrna: manualApuracaoData.localUrna,
+      horarioAbertura: manualApuracaoData.horarioAbertura,
+      horarioEncerramento: manualApuracaoData.horarioEncerramento,
+      presidenteMesa: manualApuracaoData.presidenteMesa,
+      secretarioMesa: manualApuracaoData.secretarioMesa,
+      fiscaisPresentes: manualApuracaoData.fiscaisPresentes,
+      candidatosResultados: apuracaoResultados
+    };
+
     return {
       sindicatoSigla,
       sindicatoNome,
@@ -664,14 +784,37 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       unitAddress: (currentFilial as any)?.address || 'Avenida Fernando Arens, 470, Vila Arens II, Jundiaí - SP',
       unitCep: (currentFilial as any)?.cep || '13.202-570',
       unitCnpj: currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '02.558.157/0577-84',
-      gestaoAno: '2026-2027',
+      gestaoAno: '2026/2027',
       geradoPor: (currentCompany as any)?.responsavelTecnico || 'Pedro Lobeiro',
       aprovadoPor: (currentCompany as any)?.responsavelTecnico || 'Pedro Lobeiro',
       votantesHabilitados: effectiveHeadcount || headcount || dimensionamento?.headcount || 88,
       quorumMinimo: Math.ceil((effectiveHeadcount || headcount || dimensionamento?.headcount || 88) / 2),
       candidatosAprovados: aprovados.length > 0 ? aprovados : undefined,
-      candidatosReprovados: reprovados.length > 0 ? reprovados : undefined
+      candidatosReprovados: reprovados.length > 0 ? reprovados : undefined,
+      apuracao: apuracaoFinal
     };
+  };
+
+  const handleSaveManualApuracao = (andOpenDoc = false) => {
+    candidatos.forEach(c => {
+      const v = manualApuracaoData.votosPorCandidato[c.id];
+      if (v !== undefined) {
+        saveCandidato({
+          ...c,
+          votos: v
+        });
+      }
+    });
+
+    showToast('Votos da urna física e apuração manual salvos com sucesso!');
+    
+    if (andOpenDoc) {
+      setIsManualApuracaoModalOpen(false);
+      const etapa9 = etapasNormativas.find(e => e.id === 'etapa-9');
+      if (etapa9) {
+        handleViewStep(etapa9);
+      }
+    }
   };
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isSavingDimensionamento, setIsSavingDimensionamento] = useState(false);
@@ -1423,8 +1566,12 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     {
       id: 'etapa-9',
       numero: 9,
-      titulo: 'Apuração dos Votos e Ata de Eleição',
-      subtitulo: 'Verificação do quórum de 50%+1 e lavratura da ata de apuração',
+      titulo: hasModuloEleicao
+        ? 'Apuração dos Votos e Ata de Eleição (Módulo de Eleição Online)'
+        : 'Apuração dos Votos e Ata de Eleição (Urna Física / Coleta Manual)',
+      subtitulo: hasModuloEleicao
+        ? 'Apuração automatizada e auditável em tempo real no Módulo 2 de Eleição Online'
+        : 'Lançamento manual dos votos coletados na urna física e apuração de quórum',
       prazoLabel: 'Imediatamente após o encerramento do pleito',
       dataCalculada: datasPrincipais.apuracao,
       referenciaNormativa: 'NR-5, subitem 5.5.3.3 e 5.5.3.4',
@@ -1433,8 +1580,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       impactoAuditoria: 'A proclamação de resultado sem o atingimento do quórum legal mínimo gera nulidade sumária perante o Ministério do Trabalho.',
       acaoTipo: 'documento_edital' as const,
       docTipo: 'ata_eleicao',
-      botaoTexto: 'Ver Ata de Eleição',
-      botaoIcone: 'checkCircle' as const
+      botaoTexto: hasModuloEleicao ? 'Apuração Online (Módulo 2)' : 'Digitar Votos da Urna Física',
+      botaoIcone: hasModuloEleicao ? ('vote' as const) : ('fileSpreadsheet' as const)
     },
     {
       id: 'etapa-10',
@@ -2684,6 +2831,32 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 >
                                   {etapa.numero}. {etapa.titulo}
                                 </button>
+                              ) : etapa.id === 'etapa-9' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (hasModuloEleicao) {
+                                      if (onNavigateTab) {
+                                        onNavigateTab('eleicao');
+                                        showToast('Redirecionando para o Módulo de Eleição Online para apuração em tempo real.');
+                                      } else {
+                                        showToast('Módulo de Eleição Online ativo.');
+                                      }
+                                    } else {
+                                      setIsManualApuracaoModalOpen(true);
+                                    }
+                                  }}
+                                  className={`text-left font-bold hover:underline cursor-pointer transition-colors ${
+                                    hasModuloEleicao ? 'text-purple-900 hover:text-purple-700' : 'text-amber-900 hover:text-amber-700'
+                                  }`}
+                                  title={
+                                    hasModuloEleicao
+                                      ? 'Apuração 100% no Módulo de Eleição Online (Clique para acessar)'
+                                      : 'Lançar votos coletados na urna física e apurar eleição'
+                                  }
+                                >
+                                  {etapa.numero}. {etapa.titulo}
+                                </button>
                               ) : (
                                 <strong className="text-slate-900 font-bold">
                                   {etapa.numero}. {etapa.titulo}
@@ -2747,6 +2920,44 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   )}
                                   <span className="max-w-0 opacity-0 group-hover:max-w-[130px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
                                     {hasModuloEleicao ? 'Inscrições Online' : 'Fichas Manuais'}
+                                  </span>
+                                </button>
+                              )}
+
+                              {/* BOTÃO ESPECIAL PARA ETAPA 9: APURAÇÃO ONLINE VS URNA FÍSICA */}
+                              {etapa.id === 'etapa-9' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (hasModuloEleicao) {
+                                      if (onNavigateTab) {
+                                        onNavigateTab('eleicao');
+                                        showToast('Redirecionando para o Módulo de Eleição Online para apuração automatizada.');
+                                      } else {
+                                        showToast('Módulo de Eleição Online ativo.');
+                                      }
+                                    } else {
+                                      setIsManualApuracaoModalOpen(true);
+                                    }
+                                  }}
+                                  className={`group inline-flex items-center h-8 rounded-xl active:scale-95 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0 ${
+                                    hasModuloEleicao
+                                      ? 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300'
+                                      : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300'
+                                  }`}
+                                  title={
+                                    hasModuloEleicao
+                                      ? 'Módulo de Eleição Online Contratado: Apuração 100% automatizada e auditável'
+                                      : 'Sem Módulo Online: Lançar dados e votos coletados da urna física'
+                                  }
+                                >
+                                  {hasModuloEleicao ? (
+                                    <Vote className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-purple-700" />
+                                  ) : (
+                                    <FileSpreadsheet className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-700" />
+                                  )}
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[150px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
+                                    {hasModuloEleicao ? 'Eleição Online' : 'Lançar Urna Física'}
                                   </span>
                                 </button>
                               )}
@@ -4871,6 +5082,418 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <span>Candidatura Homologada e Validada</span>
                   </div>
                 )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 9: LANÇAMENTO MANUAL DE VOTOS DA URNA FÍSICA (NR-5 - ETAPA 9)       */}
+      {/* ========================================================================= */}
+      {isManualApuracaoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+            
+            {/* Header do Modal */}
+            <div className="px-6 py-4 border-b border-amber-200 bg-gradient-to-r from-amber-50 via-amber-100/70 to-amber-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-amber-600 text-white rounded-xl shadow-xs">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-950 leading-tight">
+                    Apuração de Urna Física · Lançamento Manual de Votos da CIPA
+                  </h3>
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    {currentFilial.name} · CNPJ {currentFilial.cnpj || currentCompany.cnpj} · Gestão 2026/2027
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                onClick={() => setIsManualApuracaoModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-amber-200/50 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Corpo do Modal */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6 text-xs text-slate-800">
+              
+              {/* Banner Informativo NR-5 */}
+              <div className="p-3.5 bg-amber-50/90 rounded-2xl border border-amber-200 flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold text-amber-950 block text-xs">
+                    Processo Eleitoral com Urna Física (Sem Módulo de Eleição Online)
+                  </span>
+                  <p className="text-[11px] text-amber-900 leading-relaxed">
+                    Insira abaixo os dados coletados da urna física e o total de votos de cada candidato. O sistema calcula automaticamente o quórum de 50%+1 (NR-5, subitem 5.5.4), aplica o critério de antiguidade para desempates, classifica titulares e suplentes, e gera a <strong>Ata Oficial de Eleição e Apuração</strong> pronta para visualização e coleta de assinaturas digitais.
+                  </p>
+                </div>
+              </div>
+
+              {/* Informações da Urna Física e Mesa Apuradora */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                  <span>1. Dados da Urna Física e Mesa Apuradora</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Local da Urna Física:</label>
+                    <input
+                      type="text"
+                      value={manualApuracaoData.localUrna}
+                      onChange={(e) => setManualApuracaoData(prev => ({ ...prev, localUrna: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Lacre de Segurança da Urna:</label>
+                    <input
+                      type="text"
+                      value={manualApuracaoData.lacreUrna}
+                      onChange={(e) => setManualApuracaoData(prev => ({ ...prev, lacreUrna: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Horário de Início:</label>
+                    <input
+                      type="text"
+                      value={manualApuracaoData.horarioAbertura}
+                      onChange={(e) => setManualApuracaoData(prev => ({ ...prev, horarioAbertura: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Horário de Encerramento:</label>
+                    <input
+                      type="text"
+                      value={manualApuracaoData.horarioEncerramento}
+                      onChange={(e) => setManualApuracaoData(prev => ({ ...prev, horarioEncerramento: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700">Presidente da Mesa:</label>
+                    <input
+                      type="text"
+                      value={manualApuracaoData.presidenteMesa}
+                      onChange={(e) => setManualApuracaoData(prev => ({ ...prev, presidenteMesa: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Estatísticas de Quórum da Votação */}
+              {(() => {
+                const totalAptos = effectiveHeadcount || headcount || dimensionamento?.headcount || 88;
+                const vagasTitulares = dimensionamento?.efetivosEmpregados || 2;
+                const vagasSuplentes = dimensionamento?.suplentesEmpregados || 2;
+                const candidatosConfirmados = candidatos.filter(c => c.status === 'confirmado');
+                
+                let totVotosNominais = 0;
+                candidatosConfirmados.forEach(c => {
+                  totVotosNominais += (manualApuracaoData.votosPorCandidato[c.id] ?? c.votos ?? 0);
+                });
+
+                const totVotantes = totVotosNominais + manualApuracaoData.votosBrancos + manualApuracaoData.votosNulos;
+                const qMin = Math.floor(totalAptos / 2) + 1;
+                const qAtingido = totVotantes >= qMin;
+                const pctQuorum = totalAptos > 0 ? Math.round((totVotantes / totalAptos) * 100) : 0;
+
+                return (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-amber-600" />
+                        <span>2. Quórum Legal e Votos Globais da Urna</span>
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        qAtingido ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'
+                      }`}>
+                        {qAtingido ? 'Quórum NR-5 Atingido (1º Dia)' : 'Quórum Insuficiente (<50%)'}
+                      </span>
+                    </h4>
+
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Eleitores Aptos</span>
+                        <span className="text-xl font-black text-slate-900 font-mono">{totalAptos}</span>
+                        <span className="text-[10px] text-slate-400 block">População da base</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Quórum Mínimo (50%+1)</span>
+                        <span className="text-xl font-black text-indigo-700 font-mono">{qMin}</span>
+                        <span className="text-[10px] text-indigo-600 block font-semibold">Exigência NR-5</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Total Votantes Apurados</span>
+                        <span className="text-xl font-black text-amber-800 font-mono">{totVotantes}</span>
+                        <span className="text-[10px] text-slate-500 block">{pctQuorum}% de participação</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">Votos Válidos (Nominais)</span>
+                        <span className="text-xl font-black text-emerald-700 font-mono">{totVotosNominais}</span>
+                        <span className="text-[10px] text-emerald-600 block">Distribuídos aos candidatos</span>
+                      </div>
+                    </div>
+
+                    {/* Inputs de Brancos e Nulos */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-slate-800 block">Votos em Branco:</label>
+                          <span className="text-[10px] text-slate-500">Cédulas assinaladas em branco</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setManualApuracaoData(prev => ({ ...prev, votosBrancos: Math.max(0, prev.votosBrancos - 1) }))}
+                            className="w-7 h-7 bg-white rounded-lg border border-slate-300 font-bold hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            value={manualApuracaoData.votosBrancos}
+                            onChange={(e) => setManualApuracaoData(prev => ({ ...prev, votosBrancos: Math.max(0, parseInt(e.target.value) || 0) }))}
+                            className="w-14 text-center py-1 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setManualApuracaoData(prev => ({ ...prev, votosBrancos: prev.votosBrancos + 1 }))}
+                            className="w-7 h-7 bg-white rounded-lg border border-slate-300 font-bold hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-slate-800 block">Votos Nulos:</label>
+                          <span className="text-[10px] text-slate-500">Cédulas rasuradas ou inválidas</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setManualApuracaoData(prev => ({ ...prev, votosNulos: Math.max(0, prev.votosNulos - 1) }))}
+                            className="w-7 h-7 bg-white rounded-lg border border-slate-300 font-bold hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            value={manualApuracaoData.votosNulos}
+                            onChange={(e) => setManualApuracaoData(prev => ({ ...prev, votosNulos: Math.max(0, parseInt(e.target.value) || 0) }))}
+                            className="w-14 text-center py-1 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setManualApuracaoData(prev => ({ ...prev, votosNulos: prev.votosNulos + 1 }))}
+                            className="w-7 h-7 bg-white rounded-lg border border-slate-300 font-bold hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Tabela de Lançamento de Votos dos Candidatos */}
+              {(() => {
+                const totalAptos = effectiveHeadcount || headcount || dimensionamento?.headcount || 88;
+                const vagasTitulares = dimensionamento?.efetivosEmpregados || 2;
+                const vagasSuplentes = dimensionamento?.suplentesEmpregados || 2;
+                const candidatosConfirmados = candidatos.filter(c => c.status === 'confirmado');
+                
+                let totVotosNominais = 0;
+                const listaClassificada = candidatosConfirmados.map(c => {
+                  const v = manualApuracaoData.votosPorCandidato[c.id] ?? (c.votos || 0);
+                  totVotosNominais += v;
+                  return {
+                    ...c,
+                    votosDigitados: v
+                  };
+                });
+
+                listaClassificada.sort((a, b) => {
+                  if (b.votosDigitados !== a.votosDigitados) return b.votosDigitados - a.votosDigitados;
+                  const dateA = a.dataAdmissao ? new Date(a.dataAdmissao.split('/').reverse().join('-')).getTime() : 0;
+                  const dateB = b.dataAdmissao ? new Date(b.dataAdmissao.split('/').reverse().join('-')).getTime() : 0;
+                  return dateA - dateB;
+                });
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Vote className="w-3.5 h-3.5 text-amber-600" />
+                        <span>3. Digitação de Votos por Candidato (Urna Física)</span>
+                      </h4>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Vagas: <strong className="text-slate-800">{vagasTitulares} Titulares</strong> e <strong className="text-slate-800">{vagasSuplentes} Suplentes</strong>
+                      </span>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100/80 text-[10.5px] uppercase font-bold text-slate-700 border-b border-slate-200">
+                            <th className="py-2.5 px-3 w-16 text-center">Classif.</th>
+                            <th className="py-2.5 px-3 w-24">RE</th>
+                            <th className="py-2.5 px-3">Candidato / Cargo</th>
+                            <th className="py-2.5 px-3 w-28 text-center">Admissão</th>
+                            <th className="py-2.5 px-3 w-40 text-center">Votos Apurados</th>
+                            <th className="py-2.5 px-3 w-24 text-center">% Votos</th>
+                            <th className="py-2.5 px-3 w-36 text-center">Situação</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {listaClassificada.map((cand, idx) => {
+                            const pct = totVotosNominais > 0 ? (cand.votosDigitados / totVotosNominais) * 100 : 0;
+                            let badgeStyle = 'bg-slate-100 text-slate-600 border-slate-200';
+                            let situacaoTexto = 'Não Eleito';
+
+                            if (idx < vagasTitulares) {
+                              badgeStyle = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
+                              situacaoTexto = `${idx + 1}º Titular Eleito`;
+                            } else if (idx < vagasTitulares + vagasSuplentes) {
+                              badgeStyle = 'bg-blue-100 text-blue-800 border-blue-300 font-bold';
+                              situacaoTexto = `${idx - vagasTitulares + 1}º Suplente Eleito`;
+                            }
+
+                            return (
+                              <tr key={cand.id} className="hover:bg-amber-50/40 transition-colors">
+                                <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700">
+                                  {idx + 1}º
+                                </td>
+                                <td className="py-2.5 px-3 font-mono font-bold text-slate-800">
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-[11px]">
+                                    {cand.matricula || cand.id}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <div className="font-bold text-slate-900">{cand.nome}</div>
+                                  <div className="text-[10px] text-slate-500">{cand.cargo}</div>
+                                </td>
+                                <td className="py-2.5 px-3 text-center font-mono text-[11px] text-slate-600">
+                                  {cand.dataAdmissao || '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <div className="inline-flex items-center gap-1.5 justify-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setManualApuracaoData(prev => ({
+                                          ...prev,
+                                          votosPorCandidato: {
+                                            ...prev.votosPorCandidato,
+                                            [cand.id]: Math.max(0, (prev.votosPorCandidato[cand.id] ?? cand.votos ?? 0) - 1)
+                                          }
+                                        }));
+                                      }}
+                                      className="w-7 h-7 bg-slate-100 rounded-lg border border-slate-300 font-bold hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                                    >
+                                      <Minus className="w-3.5 h-3.5 text-slate-700" />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={manualApuracaoData.votosPorCandidato[cand.id] ?? cand.votos ?? 0}
+                                      onChange={(e) => {
+                                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                                        setManualApuracaoData(prev => ({
+                                          ...prev,
+                                          votosPorCandidato: {
+                                            ...prev.votosPorCandidato,
+                                            [cand.id]: val
+                                          }
+                                        }));
+                                      }}
+                                      className="w-14 text-center py-1 bg-amber-50/70 border border-amber-300 rounded-lg font-mono font-bold text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setManualApuracaoData(prev => ({
+                                          ...prev,
+                                          votosPorCandidato: {
+                                            ...prev.votosPorCandidato,
+                                            [cand.id]: (prev.votosPorCandidato[cand.id] ?? cand.votos ?? 0) + 1
+                                          }
+                                        }));
+                                      }}
+                                      className="w-7 h-7 bg-slate-100 rounded-lg border border-slate-300 font-bold hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                                    >
+                                      <Plus className="w-3.5 h-3.5 text-slate-700" />
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700">
+                                  {pct.toFixed(1)}%
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] border whitespace-nowrap ${badgeStyle}`}>
+                                    {situacaoTexto}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+
+            {/* Footer do Modal com Ações */}
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] text-slate-500 font-medium">
+                * As alterações de votos digitadas são salvas e inseridas diretamente na Ata Oficial de Eleição.
+              </span>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsManualApuracaoModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 cursor-pointer"
+                >
+                  Fechar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveManualApuracao(false)}
+                  className="px-4 py-2 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  Salvar Apuração
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveManualApuracao(true)}
+                  className="px-4 py-2 text-xs font-bold text-white bg-amber-700 hover:bg-amber-600 rounded-xl transition-all cursor-pointer shadow-xs flex items-center gap-1.5 active:scale-95"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Gerar e Ver Ata Oficial</span>
+                </button>
               </div>
             </div>
 

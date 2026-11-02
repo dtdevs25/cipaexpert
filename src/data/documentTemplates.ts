@@ -81,6 +81,38 @@ export function generateCipaDocument(
       posse?: string;
       envioSindicato?: string;
     };
+    apuracao?: {
+      isOnline?: boolean;
+      totalEleitoresAptos?: number;
+      totalVotantes?: number;
+      votosBrancos?: number;
+      votosNulos?: number;
+      votosValidos?: number;
+      quorumMinimo?: number;
+      quorumAtingido?: boolean;
+      percentualQuorum?: number;
+      lacreUrna?: string;
+      localUrna?: string;
+      horarioAbertura?: string;
+      horarioEncerramento?: string;
+      presidenteMesa?: string;
+      secretarioMesa?: string;
+      fiscaisPresentes?: string;
+      candidatosResultados?: Array<{
+        id?: string;
+        matricula?: string;
+        nome: string;
+        cargo: string;
+        email?: string;
+        votos: number;
+        percentual?: number;
+        classificacao?: number;
+        situacao?: string;
+        dataAdmissao?: string;
+      }>;
+      titulares?: string[];
+      suplentes?: string[];
+    };
   }
 ): GeneratedDocument {
   const formattedDate = new Date(dataBase).toLocaleDateString('pt-BR');
@@ -358,27 +390,96 @@ export function generateCipaDocument(
       };
     }
 
-    case 'ata_eleicao':
+    case 'ata_eleicao': {
+      const unitName = extraData?.unitName || 'Unidade SP JUNDIAÍ VILA';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const compNome = companyName || 'Telefônica Brasil S/A';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0577-84';
+      const dataApuracao = extraData?.cronogramaDatas?.apuracao || formattedDate || '23/11/2026';
+      
+      const ap = extraData?.apuracao;
+      const isOnline = ap?.isOnline ?? true;
+      const totalAptos = ap?.totalEleitoresAptos || extraData?.votantesHabilitados || 88;
+      const totalVotantes = ap?.totalVotantes || 75;
+      const quorumMinimo = ap?.quorumMinimo || Math.floor(totalAptos / 2) + 1;
+      const quorumAtingido = ap?.quorumAtingido ?? (totalVotantes >= quorumMinimo);
+      const percentualQuorum = ap?.percentualQuorum || Math.round((totalVotantes / totalAptos) * 100);
+      const votosBrancos = ap?.votosBrancos ?? 2;
+      const votosNulos = ap?.votosNulos ?? 1;
+      const votosValidos = ap?.votosValidos ?? (totalVotantes - votosBrancos - votosNulos);
+      const lacre = ap?.lacreUrna || 'LACRE-URNA-74829';
+      const localUrna = ap?.localUrna || 'Sala de Treinamento / Refeitório da Unidade';
+      const horarioEncerramento = ap?.horarioEncerramento || '17:00';
+      const presidenteMesa = ap?.presidenteMesa || extraData?.comissaoPresidente || 'Luiz Alberto De Barros Junior';
+      const secretarioMesa = ap?.secretarioMesa || extraData?.comissaoVice || 'Marciel Pereira Silva';
+
+      // Candidatos e votos apurados
+      const resultados = ap?.candidatosResultados || [
+        { classificacao: 1, matricula: '179645', nome: 'GUSTAVO FERREIRA DA CONCEICAO', cargo: 'TECNICO SERVICO AO CLIENTE', votos: 24, percentual: 33.3, situacao: '1º Titular Eleito' },
+        { classificacao: 2, matricula: '154266', nome: 'JULIA ROCHA DOS SANTOS', cargo: 'ASSISTENTE TECNICO', votos: 18, percentual: 25.0, situacao: '2º Titular Eleito' },
+        { classificacao: 3, matricula: '180550', nome: 'LUANNA SANTANA BEZERRA', cargo: 'ASSISTENTE TECNICO', votos: 12, percentual: 16.7, situacao: '1º Suplente Eleito' },
+        { classificacao: 4, matricula: '3518036', nome: 'MANOEL FRANCISCO DOS SANTOS', cargo: 'TECNICO SERVICO AO CLIENTE', votos: 8, percentual: 11.1, situacao: '2º Suplente Eleito' },
+        { classificacao: 5, matricula: '3538328', nome: 'MARCELO AUGUSTO ARCIFA SAMPAIO', cargo: 'TECNICO SERVICO AO CLIENTE', votos: 5, percentual: 6.9, situacao: 'Não Eleito' },
+        { classificacao: 6, matricula: '179595', nome: 'MARCELO AUGUSTO FERREIRA', cargo: 'TECNICO SERVICO AO CLIENTE', votos: 3, percentual: 4.2, situacao: 'Não Eleito' },
+        { classificacao: 7, matricula: '3540169', nome: 'VANDERSON DE JESUS OLIVEIRA', cargo: 'TECNICO SERVICO AO CLIENTE', votos: 2, percentual: 2.8, situacao: 'Não Eleito' }
+      ];
+
+      const titularesList = resultados.filter(r => r.situacao?.includes('Titular')).map(r => `• ${r.classificacao}º Lugar: ${r.nome} (RE: ${r.matricula || '-'}, Cargo: ${r.cargo}) – ${r.votos} votos válidos`);
+      const suplentesList = resultados.filter(r => r.situacao?.includes('Suplente')).map(r => `• ${r.classificacao}º Lugar: ${r.nome} (RE: ${r.matricula || '-'}, Cargo: ${r.cargo}) – ${r.votos} votos válidos`);
+
       return {
-        title: 'ATA DE ELEIÇÃO E APURAÇÃO DOS VOTOS DA CIPA',
-        category: 'Ata Eleitoral',
-        normativeCode: 'NR-5 - Itens 5.5.4 a 5.5.9',
-        companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        title: `ATA DE ELEIÇÃO E APURAÇÃO DOS VOTOS DA CIPA - ${unitName}`,
+        category: 'Ata Eleitoral e Homologação de Resultado',
+        normativeCode: 'NR-05 · Subitens 5.5.3, 5.5.4 a 5.5.9',
+        companyName: compNome,
+        cnpj: unitCnpj,
+        dateGenerated: dataApuracao,
         content: [
-          `Aos dias indicados, nas dependências da empresa ${companyName} e em sua plataforma eletrônica segura de votação auditada CIPA Expert, reuniu-se a Comissão Eleitoral para realizar a apuração dos votos da eleição para membros da CIPA - Gestão 2026/2027.`,
-          `1. Quórum: Constatou-se a participação de mais de 50% dos empregados aptos a votar em primeiro escrutínio, cumprindo rigorosamente a exigência do subitem 5.5.4 da NR-5.`,
-          `2. Apuração: Concluída a votação secreta, foram abertos os registros criptográficos dos votos gerados no sistema inviolável, sem qualquer voto em duplicidade.`,
-          `3. Resultado: Proclamados os eleitos por ordem decrescente de votos recebidos, classificando-se como Membros Titulares e Membros Suplentes, registrando-se os critérios normativos de desempate por tempo de serviço na empresa.`
+          `ATA DE ELEIÇÃO E APURAÇÃO DOS VOTOS DOS REPRESENTANTES DOS EMPREGADOS NA CIPA`,
+          `${unitName} · Gestão ${gestaoAno}`,
+          `Aos ${dataApuracao}, às ${horarioEncerramento} horas, nas dependências da empresa ${compNome}, estabelecimento ${unitName}, inscrita no CNPJ sob o nº ${unitCnpj}, reuniu-se a Comissão Eleitoral juntamente com a Mesa Apuradora para realizar a apuração dos votos da eleição para membros representantes dos empregados na Comissão Interna de Prevenção de Acidentes e Assédio (CIPA) - Gestão ${gestaoAno}.`,
+          isOnline
+            ? `MODALIDADE DE VOTAÇÃO: Votação Eletrônica Online via Urna Digital CIPA Expert com registro individualizado, sigilo criptográfico inviolável e auditoria em tempo real.`
+            : `MODALIDADE DE VOTAÇÃO: Votação Presencial via Urna Física Convencional, instalada em ${localUrna}, com verificação formal e rompimento do Lacre de Segurança nº ${lacre} na presença dos mesários e fiscais de pleito.`,
+          `MESA APURADORA E FISCAIS:`,
+          `• Presidente da Mesa Apuradora: ${presidenteMesa}`,
+          `• Secretário / Mesário: ${secretarioMesa}`,
+          `• Fiscais do Pleito: Representantes dos empregados e da empresa`,
+          `VERIFICAÇÃO DO QUÓRUM LEGAL (NR-5, SUBITEM 5.5.4):`,
+          `• Total de Empregados Aptos a Votar na Unidade: ${totalAptos} colaboradores`,
+          `• Quórum Mínimo Exigido para Validade em 1º Escrutínio (50% + 1): ${quorumMinimo} votantes`,
+          `• Total de Empregados que Votaram: ${totalVotantes} participantes (${percentualQuorum}% de participação)`,
+          quorumAtingido
+            ? `• PARECER DO QUÓRUM: QUÓRUM LEGAL ATINGIDO COM SUCESSO EM 1º ESCRUTÍNIO, convalidando a apuração em conformidade com o subitem 5.5.4 da Norma Regulamentadora nº 05.`
+            : `• PARECER DO QUÓRUM: Quórum legal não atingido no 1º dia. Conforme subitem 5.5.4.1 da NR-5, fica convocada a prorrogação para o 2º dia com quórum mínimo de 1/3.`,
+          `MAPA GERAL DE APURAÇÃO DOS VOTOS:`,
+          `• Total de Votos Válidos (Nominais aos Candidatos): ${votosValidos}`,
+          `• Votos em Branco: ${votosBrancos}`,
+          `• Votos Nulos: ${votosNulos}`,
+          `• Total Geral de Votos Apurados na Urna: ${totalVotantes}`,
+          `RESULTADO DA VOTAÇÃO POR CANDIDATO:`,
+          `| Classificação | RE | Candidato | Cargo | Votos | % Válidos | Situação Oficial |`,
+          `|---|---|---|---|---|---|---|`,
+          ...resultados.map(r => `| ${r.classificacao}º | ${r.matricula || '-'} | ${r.nome} | ${r.cargo} | ${r.votos} | ${r.percentual !== undefined ? r.percentual.toFixed(1) + '%' : '-'} | ${r.situacao || '-'} |`),
+          `PROCLAMAÇÃO DOS ELEITOS (REPRESENTANTES DOS EMPREGADOS):`,
+          `MEMBROS TITULARES ELEITOS:`,
+          ...(titularesList.length > 0 ? titularesList : ['Nenhum titular classificado']),
+          `MEMBROS SUPLENTES ELEITOS:`,
+          ...(suplentesList.length > 0 ? suplentesList : ['Nenhum suplente classificado']),
+          `CRITÉRIO DE DESEMPATE NORMATIVO (NR-5):`,
+          `Em cumprimento ao disposto na NR-5, em caso de empate na contagem de votos, assume preferência o candidato com maior tempo de serviço no estabelecimento.`,
+          `GARANTIA DE ESTABILIDADE PROVISÓRIA NO EMPREGO:`,
+          `Conforme preceitua o artigo 10, inciso II, alínea "a" do Ato das Disposições Constitucionais Transitórias (ADCT) da Constituição Federal e subitem 5.4.12 da NR-5, é vedada a dispensa arbitrária ou sem justa causa dos empregados eleitos para cargo de direção de CIPA, desde o registro de sua candidatura até um ano após o final do mandato.`,
+          `Nada mais havendo a constar, encerrou-se a apuração e lavrou-se a presente ata, que lida e achada conforme, vai assinada pelos membros da mesa apuradora e pelos eleitos.`
         ],
         signatories: [
-          'Presidente da Comissão Eleitoral',
-          'Representante dos Empregados Eleito Mais Votado',
-          'Testemunha 1 (Auditor Interno)',
-          'Testemunha 2 (Técnico de Segurança do Trabalho)'
+          `${presidenteMesa} - Presidente da Mesa Apuradora`,
+          `${secretarioMesa} - Secretário da Mesa Apuradora`,
+          `${resultados[0]?.nome || 'Representante dos Empregados'} - Cipeiro Mais Votado`,
+          `${compNome} - Representante Legal da Empresa`
         ]
       };
+    }
 
     case 'ata_posse':
       return {
