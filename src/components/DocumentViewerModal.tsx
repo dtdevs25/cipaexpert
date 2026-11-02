@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check, Users, Calendar, Building2 } from 'lucide-react';
 import { GeneratedDocument } from '../data/documentTemplates';
+import { QrCodeService } from '../services/qrCodeService';
 
 interface DocumentViewerModalProps {
   document: GeneratedDocument | null;
@@ -36,6 +37,26 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   signaturePositions
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const [realQrCodeUrl, setRealQrCodeUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (!docData) {
+      setRealQrCodeUrl('');
+      return;
+    }
+    if (docData.qrCodeDataUrl) {
+      setRealQrCodeUrl(docData.qrCodeDataUrl);
+      return;
+    }
+    const linkFound = docData.content.find(p => p.startsWith('http://') || p.startsWith('https://')) || docData.eleicaoLink;
+    if (linkFound) {
+      QrCodeService.generateDataUrl(linkFound.trim(), 240).then(url => {
+        if (url) setRealQrCodeUrl(url);
+      });
+    } else {
+      setRealQrCodeUrl('');
+    }
+  }, [docData]);
 
   if (!isOpen || !docData) return null;
 
@@ -367,14 +388,27 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                 // 7. QR Code Box
                 if (paragraph.toLowerCase().includes('scan me')) {
                   blocks.push(
-                    <div key={i} className="my-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-4 text-center">
-                      <div className="p-2.5 bg-white border border-slate-300 rounded-xl shadow-xs">
-                        <QrCode className="w-12 h-12 text-slate-900" />
+                    <div key={i} className="my-4 p-4 sm:p-5 bg-gradient-to-r from-emerald-50/70 via-slate-50 to-emerald-50/70 border-2 border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left shadow-xs">
+                      <div className="p-2.5 bg-white border border-emerald-200 rounded-xl shadow-xs shrink-0 flex items-center justify-center">
+                        {realQrCodeUrl ? (
+                          <img 
+                            src={realQrCodeUrl} 
+                            alt="QR Code Oficial CIPA Expert" 
+                            className="w-24 h-24 object-contain rounded"
+                          />
+                        ) : (
+                          <QrCode className="w-16 h-16 text-slate-800" />
+                        )}
                       </div>
-                      <div className="text-left space-y-0.5">
-                        <span className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider block">QR Code Exclusivo</span>
-                        <strong className="text-xs font-bold text-slate-900 block">Scan me para Inscrição / Votação</strong>
-                        <span className="text-[11px] text-slate-500 block">Aponte a câmera do celular para abrir o link oficial</span>
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase font-extrabold text-emerald-800 tracking-wider block">QR Code Dinâmico Oficial · CIPA Expert</span>
+                        <strong className="text-sm font-extrabold text-slate-900 block leading-tight">Aponte a câmera do celular para se inscrever</strong>
+                        <p className="text-xs text-slate-600 leading-snug">
+                          Acesso sincronizado e exclusivo ao formulário oficial de candidatura desta unidade.
+                        </p>
+                        <span className="text-[10px] font-mono text-emerald-700 bg-white/80 px-2 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                          ✓ Gerado eletronicamente pela Plataforma CIPA Expert
+                        </span>
                       </div>
                     </div>
                   );

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { SignatureEnvelope } from './signatureService';
+import { QrCodeService } from './qrCodeService';
 
 export interface DimensionamentoPdfData {
   companyName: string;
@@ -849,7 +850,7 @@ export class PdfService {
     if (logoUrl) {
       try {
         logoImg = await loadImgData(logoUrl);
-      } catch {}
+      } catch { }
     }
 
     if (logoImg) {
@@ -939,6 +940,15 @@ export class PdfService {
       }
     }
     const filteredContent = envelope.content.slice(startIndex);
+
+    // Pré-carrega QR Code dinâmico do sistema se houver link de eleição no documento
+    let qrDataUrl = (envelope as any).qrCodeDataUrl || '';
+    const electionLinkInDoc = (envelope as any).eleicaoLink || filteredContent.find(p => p.startsWith('http://') || p.startsWith('https://'));
+    if (!qrDataUrl && electionLinkInDoc) {
+      try {
+        qrDataUrl = await QrCodeService.generateDataUrl(electionLinkInDoc.trim(), 200);
+      } catch {}
+    }
 
     // Conteúdo do Documento (Parágrafos e Tabelas Inteligentes)
     let currentY = 49;
@@ -1035,6 +1045,56 @@ export class PdfService {
         doc.setTextColor(15, 23, 42);
         doc.text(para, margin + 3, currentY + 0.8);
         currentY += 8;
+        return;
+      }
+
+      // Link Oficial da Eleição (Destaque em Box Esmeralda)
+      if (para.startsWith('http://') || para.startsWith('https://')) {
+        if (currentY + 12 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        doc.setFillColor(240, 253, 244);
+        doc.setDrawColor(167, 243, 208);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, currentY - 3, contentWidth, 8, 1.5, 1.5, 'FD');
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(6, 95, 70);
+        doc.text(para, margin + 4, currentY + 2.2);
+        currentY += 9;
+        return;
+      }
+
+      // QR Code Dinâmico Oficial do Sistema
+      if (para.toLowerCase().includes('scan me')) {
+        if (currentY + 28 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, currentY - 2, contentWidth, 23, 2, 2, 'FD');
+
+        if (qrDataUrl) {
+          try {
+            doc.addImage(qrDataUrl, 'PNG', margin + 3.5, currentY, 19, 19);
+          } catch {}
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        doc.text('QR CODE OFICIAL DE INSCRIÇÃO / VOTAÇÃO (CIPA EXPERT)', margin + 26, currentY + 4.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(71, 85, 105);
+        doc.text('Aponte a câmera do seu celular para abrir o link oficial e preencher sua candidatura.', margin + 26, currentY + 9.5);
+        doc.text('Acesso sincronizado ao cronograma da unidade com controle criptográfico.', margin + 26, currentY + 13.5);
+
+        currentY += 25;
         return;
       }
 

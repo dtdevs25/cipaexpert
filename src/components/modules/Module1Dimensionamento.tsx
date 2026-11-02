@@ -65,6 +65,7 @@ import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
 import { ApiService } from '../../services/apiService';
 import { PdfService } from '../../services/pdfService';
+import { QrCodeService } from '../../services/qrCodeService';
 import { SignatureService, SignatureEnvelope, computeSha256 } from '../../services/signatureService';
 import { NewEnvelopeModal, InitialEnvelopeData } from '../admin/NewEnvelopeModal';
 
@@ -477,6 +478,23 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     return `${currentCompany?.id || 'emp'}_${currentFilial?.id || 'unit'}`;
   }, [currentCompany?.id, currentFilial?.id]);
 
+  // Link e QR Code de Inscrição gerados dinamicamente pela própria plataforma CIPA Expert
+  const systemElectionLink = useMemo(() => {
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://cipaexpert.com.br';
+    const cleanComp = (currentCompany?.id || 'empresa').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const cleanUnit = (currentFilial?.id || 'unidade').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const token = `cipa-${cleanComp}-${cleanUnit}-2026`;
+    return `${origin}/eleicao/${cleanComp}/${cleanUnit}/inscricao?token=${token}`;
+  }, [currentCompany?.id, currentFilial?.id]);
+
+  const [systemQrCodeDataUrl, setSystemQrCodeDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    QrCodeService.generateDataUrl(systemElectionLink, 240).then(url => {
+      if (url) setSystemQrCodeDataUrl(url);
+    });
+  }, [systemElectionLink]);
+
   const initialProcessConfig = useMemo(() => {
     return getDefaultProcessConfig(currentCompany?.id, currentFilial?.id);
   }, [currentCompany?.id, currentFilial?.id]);
@@ -879,6 +897,9 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
 
     return {
       logoUrl: (currentFilial as any)?.logoUrl || currentCompany?.logoUrl,
+      electionToken: `cipa-${(currentCompany?.id || 'empresa').toLowerCase()}-${(currentFilial?.id || 'unidade').toLowerCase()}-2026`,
+      eleicaoLink: systemElectionLink,
+      qrCodeDataUrl: systemQrCodeDataUrl,
       sindicatoSigla,
       sindicatoNome,
       sindicatoEmail,
@@ -3871,17 +3892,21 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     );
                   }
 
-                  // Scan me / QR Code Box
+                  // Scan me / QR Code Box Dinâmico do CIPA Expert
                   if (p.toLowerCase().includes('scan me')) {
                     return (
-                      <div key={idx} className="my-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-4 text-center">
-                        <div className="p-2.5 bg-white border border-slate-300 rounded-xl shadow-xs">
-                          <QrCode className="w-10 h-10 text-slate-900" />
+                      <div key={idx} className="my-3 p-4 bg-gradient-to-r from-emerald-50/60 via-slate-50 to-emerald-50/60 border border-emerald-300 rounded-2xl flex items-center justify-center gap-4 text-center">
+                        <div className="p-2 bg-white border border-emerald-200 rounded-xl shadow-xs shrink-0">
+                          {systemQrCodeDataUrl ? (
+                            <img src={systemQrCodeDataUrl} alt="QR Code Escaneável Oficial CIPA Expert" className="w-16 h-16 object-contain rounded" />
+                          ) : (
+                            <QrCode className="w-12 h-12 text-slate-900" />
+                          )}
                         </div>
                         <div className="text-left space-y-0.5">
-                          <span className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider block">QR Code Exclusivo</span>
-                          <strong className="text-xs font-bold text-slate-900 block">Scan me para Inscrição / Votação</strong>
-                          <span className="text-[11px] text-slate-500 block">Aponte a câmera do celular para abrir o link oficial</span>
+                          <span className="text-[10px] uppercase font-extrabold text-emerald-800 tracking-wider block">QR Code Dinâmico Oficial · CIPA Expert</span>
+                          <strong className="text-xs font-bold text-slate-900 block">Scan me para Inscrição / Candidatura</strong>
+                          <span className="text-[11px] text-slate-500 block">Aponte a câmera do celular para se candidatar online</span>
                         </div>
                       </div>
                     );
@@ -4550,22 +4575,22 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       </div>
                     </div>
 
-                    {/* Card de Link e QR Code */}
+                    {/* Card de Link e QR Code Gerados pelo CIPA Expert */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
                       <div className="md:col-span-2 p-3 bg-white rounded-xl border border-emerald-200 flex flex-col justify-between space-y-2">
                         <div className="flex items-center gap-2">
                           <ExternalLink className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span className="font-mono text-emerald-900 font-bold break-all text-[11px]">
-                            https://assembleia.grtsdigital.com.br/2lsCc1wU4b3qgsXcjGJKVy6dUbqX0l/preInscricao
+                            {systemElectionLink}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-emerald-100 text-[10px] text-slate-500">
-                          <span>Token criptográfico individual da eleição</span>
+                          <span>Token criptográfico da eleição (CIPA Expert)</span>
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText('https://assembleia.grtsdigital.com.br/2lsCc1wU4b3qgsXcjGJKVy6dUbqX0l/preInscricao');
-                              showToast('Link copiado para a área de transferência!');
+                              navigator.clipboard.writeText(systemElectionLink);
+                              showToast('Link oficial copiado para a área de transferência!');
                             }}
                             className="font-bold text-emerald-700 hover:underline cursor-pointer"
                           >
@@ -4575,11 +4600,19 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       </div>
 
                       <div className="p-3 bg-white rounded-xl border border-emerald-200 flex items-center justify-center gap-3 text-left">
-                        <QrCode className="w-10 h-10 text-slate-900 shrink-0" />
+                        {systemQrCodeDataUrl ? (
+                          <img 
+                            src={systemQrCodeDataUrl} 
+                            alt="QR Code Oficial CIPA Expert" 
+                            className="w-12 h-12 object-contain rounded border border-slate-200" 
+                          />
+                        ) : (
+                          <QrCode className="w-10 h-10 text-slate-900 shrink-0" />
+                        )}
                         <div>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Scan me</span>
                           <strong className="text-slate-900 text-xs block leading-tight">QR Code Eleitoral</strong>
-                          <span className="text-[10px] text-slate-500 block">Celulares da unidade</span>
+                          <span className="text-[10px] text-emerald-700 font-mono block">CIPA Expert</span>
                         </div>
                       </div>
                     </div>
