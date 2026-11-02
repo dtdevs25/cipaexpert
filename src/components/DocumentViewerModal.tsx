@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check, Users } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check, Users, Calendar } from 'lucide-react';
 import { GeneratedDocument } from '../data/documentTemplates';
 
 interface DocumentViewerModalProps {
@@ -179,7 +179,11 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                               <tr key={rIdx} className="hover:bg-slate-50/80 transition-colors">
                                 {row.map((cell, cIdx) => (
                                   <td key={cIdx} className="px-3 py-2 text-slate-700 font-mono text-[11px]">
-                                    {cell}
+                                    {cell === '👤' ? (
+                                      <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-[10px] text-slate-600 shadow-2xs">👤</span>
+                                    ) : (
+                                      cell
+                                    )}
                                   </td>
                                 ))}
                               </tr>
@@ -330,10 +334,61 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                   continue;
                 }
 
-                // 10. Títulos e Seções
-                if (paragraph === 'Você sabia o que cabe ao Cipeiro?' || paragraph === 'COMISSÃO ELEITORAL:' || paragraph.startsWith('Edital de Inscrições') || paragraph.startsWith('Unidade ')) {
+                // 10. Chamada de Votação & Banners Especiais
+                if (paragraph === 'Chegou o momento de votar no seu representante da CIPA!') {
                   blocks.push(
-                    <h4 key={i} className={`font-bold text-slate-900 ${paragraph.startsWith('Edital') ? 'text-base text-center uppercase tracking-tight pb-1' : paragraph.startsWith('Unidade') ? 'text-xs text-center text-slate-600 pb-2' : 'pt-3 text-xs uppercase text-slate-800'}`}>
+                    <div key={i} className="my-3 p-3.5 bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border-l-4 border-emerald-600 rounded-r-xl">
+                      <h3 className="text-sm font-extrabold text-emerald-950 uppercase tracking-tight">
+                        Chegou o momento de votar no seu representante da CIPA!
+                      </h3>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                if (paragraph === 'Relembre quem são os candidatos da CIPA:') {
+                  blocks.push(
+                    <div key={i} className="pt-3 pb-1 flex items-center gap-2 text-slate-900 font-extrabold text-xs uppercase tracking-wider">
+                      <Users className="w-4 h-4 text-emerald-600" />
+                      <span>Relembre quem são os candidatos da CIPA</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                if (paragraph === 'Confira os detalhes sobre a eleição e programe-se para a votação:') {
+                  blocks.push(
+                    <div key={i} className="pt-4 pb-1 flex items-center gap-2 text-slate-900 font-extrabold text-xs uppercase tracking-wider">
+                      <Calendar className="w-4 h-4 text-emerald-600" />
+                      <span>Confira os detalhes sobre a eleição e programe-se para a votação</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 11. Títulos e Seções
+                if (
+                  paragraph === 'Você sabia o que cabe ao Cipeiro?' ||
+                  paragraph === 'COMISSÃO ELEITORAL:' ||
+                  paragraph.startsWith('Edital de Inscrições') ||
+                  paragraph.startsWith('Votação da CIPA') ||
+                  paragraph.startsWith('Gestão ') ||
+                  paragraph.startsWith('Unidade ')
+                ) {
+                  blocks.push(
+                    <h4
+                      key={i}
+                      className={`font-bold text-slate-900 ${
+                        paragraph.startsWith('Edital') || paragraph.startsWith('Votação')
+                          ? 'text-base text-center uppercase tracking-tight pb-1 text-emerald-950 font-black'
+                          : paragraph.startsWith('Unidade') || paragraph.startsWith('Gestão')
+                          ? 'text-xs text-center text-slate-600 pb-1 font-medium'
+                          : 'pt-3 text-xs uppercase text-slate-800'
+                      }`}
+                    >
                       {paragraph}
                     </h4>
                   );
@@ -341,7 +396,7 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                   continue;
                 }
 
-                // 11. Parâmetros em Chave: Valor
+                // 12. Parâmetros em Chave: Valor
                 if (
                   (paragraph.startsWith('DATA DE GERAÇÃO') ||
                   paragraph.startsWith('GERADO POR:') ||
@@ -365,7 +420,14 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                   paragraph.startsWith('ACOMPANHAMENTO DO RESULTADO') ||
                   paragraph.startsWith('INÍCIO DO PERÍODO') ||
                   paragraph.startsWith('FIM DO PERÍODO') ||
-                  paragraph.startsWith('APROVADO POR:')) &&
+                  paragraph.startsWith('APROVADO POR:') ||
+                  paragraph.startsWith('Data da Eleição:') ||
+                  paragraph.startsWith('Horário:') ||
+                  paragraph.startsWith('Sistema de Votação:') ||
+                  paragraph.startsWith('Telefone') ||
+                  paragraph.startsWith('Endereço:') ||
+                  paragraph.startsWith('CEP') ||
+                  paragraph.startsWith('CNPJ:')) &&
                   paragraph.includes(':')
                 ) {
                   const [label, ...valParts] = paragraph.split(':');

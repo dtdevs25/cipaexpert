@@ -633,7 +633,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     const aprovados = candidatos
       .filter(c => c.status === 'confirmado')
       .map(c => ({
-        id: c.id.replace('cand-', ''),
+        id: c.matricula || c.id.replace('cand-', ''),
+        matricula: c.matricula || c.id.replace('cand-', ''),
         nome: c.nome,
         email: c.email || `${c.nome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`,
         cargo: c.cargo,
@@ -1406,8 +1407,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     {
       id: 'etapa-8',
       numero: 8,
-      titulo: 'Eleição dos Representantes dos Empregados',
-      subtitulo: 'Votação em escrutínio secreto presencial ou em urna digital auditada',
+      titulo: 'Eleição dos Representantes dos Empregados (Votação On-line)',
+      subtitulo: 'Edital oficial e convocação com a relação dos candidatos para a votação online',
       prazoLabel: 'Pelo menos 30 dias antes da posse',
       dataCalculada: datasPrincipais.eleicao,
       referenciaNormativa: 'NR-5, subitem 5.5.3 e 5.5.3.1',
@@ -1415,8 +1416,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       porQueExiste: 'Garante que os colaboradores elejam seus pares sob sigilo absoluto em dia normal de trabalho. O prazo mínimo de 30 dias antes da posse é vital para realização do treinamento de até 20h dos eleitos.',
       impactoAuditoria: 'A violação do sigilo do voto ou realização do pleito fora do expediente enseja anulação e responsabilização civil da empresa.',
       acaoTipo: 'documento_edital' as const,
-      docTipo: 'cedula_urna',
-      botaoTexto: 'Ver Urna / Cédula',
+      docTipo: 'edital_votacao',
+      botaoTexto: 'Ver Edital de Votação',
       botaoIcone: 'vote' as const
     },
     {

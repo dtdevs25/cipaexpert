@@ -123,8 +123,8 @@ export class PdfService {
     // Carga horária calculada pela NR-5 conforme Grau de Risco
     const cargaTreinamento = data.cargaHorariaTreinamento || (
       grauDeRisco === 1 ? '8 horas' :
-      grauDeRisco === 2 ? '12 horas' :
-      grauDeRisco === 3 ? '16 horas' : '20 horas'
+        grauDeRisco === 2 ? '12 horas' :
+          grauDeRisco === 3 ? '16 horas' : '20 horas'
     );
 
     // =========================================================================
@@ -557,7 +557,7 @@ export class PdfService {
     // Identificação da Empresa (ao lado do logo, coluna esquerda delimitada)
     const textStartX = margin + logoRenderedWidth;
     const maxLeftColW = 140; // Garante que a coluna da esquerda nunca invada a da direita
-    
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42); // Slate-900
@@ -1130,7 +1130,7 @@ export class PdfService {
 
     envelope.signers.forEach((signer, idx) => {
       const isSigned = signer.status === 'assinado';
-      
+
       doc.setFillColor(isSigned ? 240 : 250, isSigned ? 253 : 250, isSigned ? 244 : 250);
       doc.rect(margin, certY, contentWidth, 23, 'F');
       doc.setDrawColor(isSigned ? 167 : 226, isSigned ? 243 : 232, isSigned ? 208 : 240);
@@ -1147,7 +1147,7 @@ export class PdfService {
       doc.setTextColor(71, 85, 105);
       doc.text(`E-mail: ${signer.email}`, margin + 3, certY + 9.5);
       doc.text(`Status: ${isSigned ? 'ASSINADO DIGITALMENTE' : 'PENDENTE'}`, margin + 3, certY + 13.5);
-      
+
       if (isSigned) {
         doc.text(`Data/Hora: ${signer.signedAt ? new Date(signer.signedAt).toLocaleString('pt-BR') : timestampDoc} BRT`, margin + 3, certY + 17.5);
         doc.text(`Hash: ${signer.hash ? signer.hash : hashDoc}`, margin + 3, certY + 21);
@@ -1169,7 +1169,7 @@ export class PdfService {
     doc.setFontSize(7.5);
     doc.setTextColor(5, 122, 85);
     doc.text('CHANCELA DE INTEGRIDADE CIPA EXPERT · SISTEMA CIPASIGN', pageWidth / 2, certY, { align: 'center' });
-    
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
@@ -1185,7 +1185,7 @@ export class PdfService {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      
+
       const authHeaderLine = `Autenticação Digital MP 2.200-2/01 · SHA-256: ${hashDoc.slice(0, 20)}... · ${timestampDoc}`;
       doc.text(authHeaderLine, margin, 8);
 

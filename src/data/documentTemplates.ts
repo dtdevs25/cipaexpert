@@ -53,6 +53,8 @@ export function generateCipaDocument(
       cargo: string;
       dataAdmissao?: string;
       apelido?: string;
+      matricula?: string;
+      fotoUrl?: string;
     }>;
     candidatosReprovados?: Array<{
       id: string;
@@ -586,25 +588,71 @@ export function generateCipaDocument(
     }
 
     case 'cedula_urna':
+    case 'edital_votacao': {
+      const unitName = extraData?.unitName || 'Unidade SP JUNDIAÍ VILA';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const compNome = companyName || 'Telefônica Brasil S/A';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0577-84';
+      const emailContato = extraData?.emailContato || 'cipa.br@telefonica.com ou pedro.lobeiro.ext@telefonica.com';
+      const telefoneContato = extraData?.telefoneContato || '(19)99784-1065';
+      const unitAddress = extraData?.unitAddress || 'AVENIDA FERNANDO ARENS , nº470 , JUNDIAÍ– SP';
+      const unitCep = extraData?.unitCep || '13202-570';
+
+      const c = extraData?.cronogramaDatas;
+      const dataEleicao = c?.eleicao || '13/10/2026';
+      const dataEleicaoProrrogada = c?.eleicaoProrrogada || '15/10/2026';
+
+      const candidatosEleicao = extraData?.candidatosAprovados && extraData.candidatosAprovados.length > 0
+        ? extraData.candidatosAprovados
+        : [
+            { id: '179595', matricula: '179595', nome: 'MARCELO AUGUSTO FERREIRA', email: 'MARCELO.FERREIRA@TELEFONICA.COM', dataAdmissao: '02/06/2026', cargo: 'TECNICO SERVICO AO CLIENTE' },
+            { id: '154266', matricula: '154266', nome: 'JULIA ROCHA DOS SANTOS', email: 'JULIA.RSANTOS@TELEFONICA.COM', dataAdmissao: '14/10/2022', cargo: 'ASSISTENTE TECNICO' },
+            { id: '179645', matricula: '179645', nome: 'GUSTAVO FERREIRA DA CONCEICAO', email: 'GUSTAVO.CONCEICAO@TELEFONICA.COM', dataAdmissao: '02/06/2026', cargo: 'TECNICO SERVICO AO CLIENTE' },
+            { id: '180550', matricula: '180550', nome: 'LUANNA SANTANA BEZERRA', email: 'LUANNA.BEZERRA@TELEFONICA.COM', dataAdmissao: '06/07/2026', cargo: 'ASSISTENTE TECNICO' },
+            { id: '3538328', matricula: '3538328', nome: 'MARCELO AUGUSTO ARCIFA SAMPAIO', email: 'MARCELO.SAMPAIO@TELEFONICA.COM', dataAdmissao: '17/04/2013', cargo: 'TECNICO SERVICO AO CLIENTE' },
+            { id: '3540169', matricula: '3540169', nome: 'VANDERSON DE JESUS OLIVEIRA', email: 'VANDERSON.OLIVEIRA@TELEFONICA.COM', dataAdmissao: '17/07/2013', cargo: 'TECNICO SERVICO AO CLIENTE' },
+            { id: '3518036', matricula: '3518036', nome: 'MANOEL FRANCISCO DOS SANTOS', email: 'MANOEL.SANTOS@TELEFONICA.COM', dataAdmissao: '15/03/2011', cargo: 'TECNICO SERVICO AO CLIENTE' }
+          ];
+
       return {
-        title: 'PROTOCOLO DE LACRAÇÃO E CÉDULA DA URNA ELETRÔNICA',
-        category: 'Votação e Escrutínio',
-        normativeCode: 'NR-5 - Item 5.5.4',
-        companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        title: `Votação da CIPA (on-line) - ${unitName}`,
+        category: 'Convocação para Votação e Cédula Eleitoral',
+        normativeCode: 'NR-05 · Subitem 5.5.3 e 5.5.3.1',
+        companyName: compNome,
+        cnpj: unitCnpj,
+        dateGenerated: dataEleicao,
         content: [
-          `Aos dias indicados, a Comissão Eleitoral da empresa ${companyName} realizou a cerimônia de 'Zerésima' e lacração da Urna Eletrônica Digital da plataforma CIPA Expert.`,
-          `1. Zerésima: Constatou-se a inexistência de quaisquer votos prévios registrados no banco de dados.`,
-          `2. Criptografia e Sigilo: O sistema garante o desacoplamento irreversível entre a identidade do votante e o voto computado, assegurando sigilo absoluto nos termos da NR-5 e LGPD.`,
-          `3. Auditoria: Todo o processo eleitoral conta com trilha imutável de logs e chave hash criptográfica SHA-256.`
+          `Votação da CIPA (on-line)`,
+          `${unitName}`,
+          `Gestão ${gestaoAno}`,
+          `Chegou o momento de votar no seu representante da CIPA!`,
+          `A votação será registrada de forma online e é exclusiva para colaboradores lotados no CNPJ ${unitCnpj}`,
+          `O link para votação será encaminhado diretamente pela plataforma virtual, atente-se ao remetente Assembleias Virtuais.`,
+          `Relembre quem são os candidatos da CIPA:`,
+          `| RE | Foto | Nome | E-mail | Admissão | Cargo |`,
+          `|---|---|---|---|---|---|`,
+          ...candidatosEleicao.map(cand => `| ${cand.matricula || cand.id} | 👤 | ${cand.nome} | ${cand.email || '-'} | ${cand.dataAdmissao || '-'} | ${cand.cargo} |`),
+          `Confira os detalhes sobre a eleição e programe-se para a votação:`,
+          `Data da Eleição: ${dataEleicao}`,
+          `Horário: das 08:00 às 17:00`,
+          `Sistema de Votação: On-line`,
+          `*A data da eleição poderá ser prorrogada até o dia ${dataEleicaoProrrogada} caso não seja atingindo o número de votantes válidos necessários, conforme o disposto no item 5.5 da NR 5:`,
+          `• 1º dia: 50% dos empregados;`,
+          `• 2º dia: 1/3 dos empregados;`,
+          `• 3º dia: Qualquer valor da população do prédio.`,
+          `Em caso de dúvidas, entre em contato com ${emailContato}`,
+          `Telefone ${telefoneContato}`,
+          `${unitName}`,
+          `Endereço: ${unitAddress}`,
+          `CEP ${unitCep}`,
+          `CNPJ: ${unitCnpj}`
         ],
         signatories: [
           'Presidente da Comissão Eleitoral',
-          'Auditor / Técnico SST',
-          'Representante dos Empregados'
+          `${compNome} - Representante Legal da Empresa`
         ]
       };
+    }
 
     case 'certificado_treinamento':
       return {
