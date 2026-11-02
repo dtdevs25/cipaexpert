@@ -2958,11 +2958,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               <div className="overflow-x-auto border border-slate-200 rounded-xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <table className="w-full min-w-[880px] text-left text-xs">
                   <thead className="bg-slate-100 text-slate-700 font-bold text-[11px] uppercase tracking-wider">
-                    <tr>
-                      <th className="py-3 px-3 text-center w-14 shrink-0">Status</th>
-                      <th className="py-3 px-4 min-w-[280px]">Etapa do Processo</th>
-                      <th className="py-3 px-4 min-w-[180px] whitespace-nowrap">Prazo / Data Oficial</th>
-                      <th className="py-3 px-4 text-right min-w-[260px] whitespace-nowrap">Ações</th>
+                    <tr className="align-middle">
+                      <th className="py-3.5 px-3 text-center align-middle w-16 shrink-0">Status</th>
+                      <th className="py-3.5 px-4 text-center align-middle min-w-[280px]">Etapa do Processo</th>
+                      <th className="py-3.5 px-4 text-center align-middle min-w-[180px] whitespace-nowrap">Prazo / Data Oficial</th>
+                      <th className="py-3.5 px-4 text-center align-middle min-w-[260px] whitespace-nowrap">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -2981,8 +2981,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       };
 
                       return (
-                        <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-3 text-center">
+                        <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors align-middle">
+                          <td className="py-3 px-3 text-center align-middle">
                             <button
                               type="button"
                               onClick={() => toggleStepCompleted(etapa.id)}
@@ -2996,7 +2996,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               )}
                             </button>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 align-middle">
                             <div className="flex items-center gap-2 flex-wrap">
                               {etapa.id === 'etapa-6' ? (
                                 <button
@@ -3052,7 +3052,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               {etapa.subtitulo}
                             </span>
                           </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="py-3 px-4 whitespace-nowrap text-center align-middle">
                             <span className="font-mono text-[11px] font-bold text-slate-800 block">
                               {etapa.dataCalculada}
                             </span>
@@ -3060,8 +3060,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               {etapa.prazoLabel}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="inline-flex items-center gap-1.5 justify-end">
+                          <td className="py-3 px-4 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                            <div className="inline-flex items-center gap-1.5 justify-center">
                               {/* 1. EDITAR (Apenas etapas com edição de texto permitida: 2, 3, 4, 5, 12, 13) */}
                               {caps.canEdit && (
                                 <button

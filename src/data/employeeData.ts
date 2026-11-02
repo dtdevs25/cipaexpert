@@ -502,3 +502,4 @@ export function validateCandidateEligibility(
     message: `Identidade e lotação confirmadas com sucesso! Colaborador apto para inscrição na CIPA.`
   };
 }
+

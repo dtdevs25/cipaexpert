@@ -790,3 +790,4 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
     </div>
   );
 };
+
