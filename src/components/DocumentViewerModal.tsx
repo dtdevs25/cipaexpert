@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check, Users } from 'lucide-react';
 import { GeneratedDocument } from '../data/documentTemplates';
 
 interface DocumentViewerModalProps {
@@ -138,89 +138,271 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             </div>
           </div>
 
-          {/* Document Paragraphs */}
-          <div className="space-y-3 pt-2 text-slate-800 text-sm leading-relaxed">
-            {docData.content.map((paragraph, idx) => {
-              // URL de Eleição / Inscrição
-              if (paragraph.startsWith('http://') || paragraph.startsWith('https://')) {
-                return (
-                  <div key={idx} className="my-3 p-3.5 bg-emerald-50/80 border border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-emerald-950">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
-                        <ExternalLink className="w-4 h-4" />
+          {/* Document Content Blocks com Suporte a Tabelas, Parâmetros e Credenciamento */}
+          <div className="space-y-2.5 pt-2 text-slate-800 text-sm leading-relaxed">
+            {(() => {
+              const blocks: React.ReactNode[] = [];
+              let i = 0;
+              const content = docData.content;
+
+              while (i < content.length) {
+                const paragraph = content[i];
+
+                // 1. Tabela Markdown (inicia com '|')
+                if (paragraph.trim().startsWith('|')) {
+                  const tableLines: string[] = [];
+                  while (i < content.length && content[i].trim().startsWith('|')) {
+                    tableLines.push(content[i].trim());
+                    i++;
+                  }
+                  
+                  if (tableLines.length >= 2) {
+                    const headerCells = tableLines[0].split('|').map(c => c.trim()).filter(Boolean);
+                    const dataRows = tableLines.slice(1)
+                      .filter(l => !l.replace(/[\s\-|:]/g, '') === false)
+                      .map(l => l.split('|').map(c => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1));
+
+                    blocks.push(
+                      <div key={`table-${i}`} className="overflow-x-auto my-3 rounded-xl border border-slate-200 shadow-2xs">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100/90 text-slate-800 font-extrabold uppercase border-b border-slate-200">
+                              {headerCells.map((h, hIdx) => (
+                                <th key={hIdx} className="px-3 py-2 text-[10.5px] tracking-wider whitespace-nowrap">
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {dataRows.map((row, rIdx) => (
+                              <tr key={rIdx} className="hover:bg-slate-50/80 transition-colors">
+                                {row.map((cell, cIdx) => (
+                                  <td key={cIdx} className="px-3 py-2 text-slate-700 font-mono text-[11px]">
+                                    {cell}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="truncate">
-                        <span className="text-[10px] uppercase font-bold text-emerald-700 block tracking-wider">Link Oficial de Inscrição / Votação</span>
-                        <a href={paragraph} target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-900 underline hover:text-emerald-700 truncate block">
-                          {paragraph}
-                        </a>
+                    );
+                    continue;
+                  }
+                }
+
+                // 2. Banner de Inscrições Aprovadas
+                if (paragraph.startsWith('INSCRIÇÕES APROVADAS:')) {
+                  const count = paragraph.replace('INSCRIÇÕES APROVADAS:', '').trim();
+                  blocks.push(
+                    <div key={i} className="flex items-center justify-between p-3 bg-emerald-50/90 border border-emerald-300 rounded-xl mt-4 mb-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-950">Inscrições Aprovadas</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-600 text-white shadow-2xs">{count} Homologadas</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 3. Banner de Inscrições Reprovadas
+                if (paragraph.startsWith('INSCRIÇÕES REPROVADAS:')) {
+                  const count = paragraph.replace('INSCRIÇÕES REPROVADAS:', '').trim();
+                  blocks.push(
+                    <div key={i} className="flex items-center justify-between p-3 bg-rose-50/90 border border-rose-300 rounded-xl mt-4 mb-2">
+                      <div className="flex items-center gap-2">
+                        <X className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span className="font-extrabold text-xs uppercase tracking-wider text-rose-950">Inscrições Reprovadas / Indeferidas</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-600 text-white shadow-2xs">{count} Indeferida</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 4. Banner de Candidatos na Votação
+                if (paragraph === 'CANDIDATOS CADASTRADOS NA VOTAÇÃO') {
+                  blocks.push(
+                    <div key={i} className="p-3 bg-slate-100 border border-slate-300 rounded-xl mt-5 mb-2 flex items-center gap-2 text-slate-900 font-extrabold text-xs uppercase tracking-wider">
+                      <Users className="w-4 h-4 text-slate-700" />
+                      <span>Candidatos Cadastrados na Votação (Cédula Eleitoral Oficial)</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 5. Card de Candidato na Votação (Nome + Descrição)
+                if (paragraph.startsWith('NOME DO CANDIDATO:')) {
+                  const nome = paragraph.replace('NOME DO CANDIDATO:', '').trim();
+                  let desc = '';
+                  if (i + 1 < content.length && content[i + 1].startsWith('DESCRIÇÃO DO CANDIDATO:')) {
+                    desc = content[i + 1].replace('DESCRIÇÃO DO CANDIDATO:', '').trim();
+                    i++;
+                  }
+                  blocks.push(
+                    <div key={i} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                      <div>
+                        <strong className="text-slate-900 font-bold block">{nome}</strong>
+                        <span className="text-slate-600 font-mono text-[11px] block">{desc}</span>
+                      </div>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-md shrink-0 uppercase tracking-tight">Habilitado</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 6. URLs
+                if (paragraph.startsWith('http://') || paragraph.startsWith('https://')) {
+                  blocks.push(
+                    <div key={i} className="my-3 p-3.5 bg-emerald-50/80 border border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-emerald-950">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+                          <ExternalLink className="w-4 h-4" />
+                        </div>
+                        <div className="truncate">
+                          <span className="text-[10px] uppercase font-bold text-emerald-700 block tracking-wider">Link Oficial de Inscrição / Votação</span>
+                          <a href={paragraph} target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-900 underline hover:text-emerald-700 truncate block">
+                            {paragraph}
+                          </a>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(paragraph)}
+                        className="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-[11px] font-bold text-emerald-800 hover:bg-emerald-100/60 transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Copiar Link</span>
+                      </button>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 7. QR Code Box
+                if (paragraph.toLowerCase().includes('scan me')) {
+                  blocks.push(
+                    <div key={i} className="my-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-4 text-center">
+                      <div className="p-2.5 bg-white border border-slate-300 rounded-xl shadow-xs">
+                        <QrCode className="w-12 h-12 text-slate-900" />
+                      </div>
+                      <div className="text-left space-y-0.5">
+                        <span className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider block">QR Code Exclusivo</span>
+                        <strong className="text-xs font-bold text-slate-900 block">Scan me para Inscrição / Votação</strong>
+                        <span className="text-[11px] text-slate-500 block">Aponte a câmera do celular para abrir o link oficial</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard.writeText(paragraph)}
-                      className="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-[11px] font-bold text-emerald-800 hover:bg-emerald-100/60 transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Copiar Link</span>
-                    </button>
-                  </div>
-                );
-              }
+                  );
+                  i++;
+                  continue;
+                }
 
-              // QR Code Box
-              if (paragraph.toLowerCase().includes('scan me')) {
-                return (
-                  <div key={idx} className="my-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-4 text-center">
-                    <div className="p-2.5 bg-white border border-slate-300 rounded-xl shadow-xs">
-                      <QrCode className="w-12 h-12 text-slate-900" />
+                // 8. Aviso de Bloqueio Temporal
+                if (paragraph.startsWith('🔒')) {
+                  blocks.push(
+                    <div key={i} className="my-3 p-3.5 bg-amber-50/80 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-amber-950">
+                      <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs font-medium leading-relaxed">
+                        {paragraph.replace('🔒 ', '')}
+                      </div>
                     </div>
-                    <div className="text-left space-y-0.5">
-                      <span className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider block">QR Code Exclusivo</span>
-                      <strong className="text-xs font-bold text-slate-900 block">Scan me para Inscrição / Votação</strong>
-                      <span className="text-[11px] text-slate-500 block">Aponte a câmera do celular para abrir o link oficial</span>
-                    </div>
-                  </div>
-                );
-              }
+                  );
+                  i++;
+                  continue;
+                }
 
-              // Aviso de Bloqueio Temporal
-              if (paragraph.startsWith('🔒')) {
-                return (
-                  <div key={idx} className="my-3 p-3.5 bg-amber-50/80 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-amber-950">
-                    <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="text-xs font-medium leading-relaxed">
-                      {paragraph.replace('🔒 ', '')}
+                // 9. Certificação Digital / ITI
+                if (paragraph.includes('grtsdigital.com.br') || paragraph.includes('validar.iti.gov.br')) {
+                  blocks.push(
+                    <div key={i} className="my-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-2.5 text-xs text-slate-600">
+                      <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-mono text-[11px]">{paragraph}</span>
                     </div>
-                  </div>
-                );
-              }
+                  );
+                  i++;
+                  continue;
+                }
 
-              // Títulos e Seções
-              if (paragraph === 'Você sabia o que cabe ao Cipeiro?' || paragraph === 'COMISSÃO ELEITORAL:' || paragraph.startsWith('Edital de Inscrições') || paragraph.startsWith('Unidade ')) {
-                return (
-                  <h4 key={idx} className={`font-bold text-slate-900 ${paragraph.startsWith('Edital') ? 'text-base text-center uppercase tracking-tight pb-1' : paragraph.startsWith('Unidade') ? 'text-xs text-center text-slate-600 pb-2' : 'pt-3 text-xs uppercase text-slate-800'}`}>
+                // 10. Títulos e Seções
+                if (paragraph === 'Você sabia o que cabe ao Cipeiro?' || paragraph === 'COMISSÃO ELEITORAL:' || paragraph.startsWith('Edital de Inscrições') || paragraph.startsWith('Unidade ')) {
+                  blocks.push(
+                    <h4 key={i} className={`font-bold text-slate-900 ${paragraph.startsWith('Edital') ? 'text-base text-center uppercase tracking-tight pb-1' : paragraph.startsWith('Unidade') ? 'text-xs text-center text-slate-600 pb-2' : 'pt-3 text-xs uppercase text-slate-800'}`}>
+                      {paragraph}
+                    </h4>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 11. Parâmetros em Chave: Valor
+                if (
+                  (paragraph.startsWith('DATA DE GERAÇÃO') ||
+                  paragraph.startsWith('GERADO POR:') ||
+                  paragraph.startsWith('NOME DA CIPA') ||
+                  paragraph.startsWith('PERÍODO DE REALIZAÇÃO') ||
+                  paragraph.startsWith('PERÍODO DA 1º') ||
+                  paragraph.startsWith('PERÍODO DA 2º') ||
+                  paragraph.startsWith('DESCRIÇÃO DA CIPA') ||
+                  paragraph.startsWith('REALIZADOR DA CIPA') ||
+                  paragraph.startsWith('CNPJ DO REALIZADOR') ||
+                  paragraph.startsWith('INCLUSÃO DE PAUTAS') ||
+                  paragraph.startsWith('VOTAÇÃO COM PESO') ||
+                  paragraph.startsWith('VOTO SECRETO:') ||
+                  paragraph.startsWith('ACOMPANHAMENTO DE QUÓRUM:') ||
+                  paragraph.startsWith('CONVOCAÇÃO DE CIPA') ||
+                  paragraph.startsWith('VOTANTES HABILITADOS:') ||
+                  paragraph.startsWith('QUÓRUM MÍNIMO') ||
+                  paragraph.startsWith('REALIZAÇÃO DE VIDEO') ||
+                  paragraph.startsWith('TÍTULO DA PAUTA:') ||
+                  paragraph.startsWith('DESCRIÇÃO DA PAUTA:') ||
+                  paragraph.startsWith('ACOMPANHAMENTO DO RESULTADO') ||
+                  paragraph.startsWith('INÍCIO DO PERÍODO') ||
+                  paragraph.startsWith('FIM DO PERÍODO') ||
+                  paragraph.startsWith('APROVADO POR:')) &&
+                  paragraph.includes(':')
+                ) {
+                  const [label, ...valParts] = paragraph.split(':');
+                  const val = valParts.join(':').trim();
+                  blocks.push(
+                    <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 px-3 bg-slate-50/80 border-b border-slate-100 rounded-md text-xs">
+                      <span className="font-bold text-slate-700 uppercase tracking-tight text-[11px]">{label.trim()}</span>
+                      <span className="font-mono text-slate-900 font-semibold text-[11px]">{val}</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 12. Bullets
+                if (paragraph.startsWith('•') || paragraph.startsWith('*')) {
+                  blocks.push(
+                    <div key={i} className="flex items-start gap-2 pl-4 text-slate-700">
+                      <span className="text-emerald-600 font-bold leading-tight">•</span>
+                      <span className="leading-relaxed">{paragraph.replace(/^[•*]\s*/, '')}</span>
+                    </div>
+                  );
+                  i++;
+                  continue;
+                }
+
+                // 13. Parágrafo Padrão
+                blocks.push(
+                  <p key={i} className="text-justify text-slate-700 indent-8 leading-relaxed">
                     {paragraph}
-                  </h4>
+                  </p>
                 );
+                i++;
               }
 
-              // Itens de Lista / Bullets
-              if (paragraph.startsWith('•') || paragraph.startsWith('*')) {
-                return (
-                  <div key={idx} className="flex items-start gap-2 pl-4 text-slate-700">
-                    <span className="text-emerald-600 font-bold leading-tight">•</span>
-                    <span className="leading-relaxed">{paragraph.replace(/^[•*]\s*/, '')}</span>
-                  </div>
-                );
-              }
-
-              return (
-                <p key={idx} className="text-justify text-slate-700 indent-8 leading-relaxed">
-                  {paragraph}
-                </p>
-              );
-            })}
+              return blocks;
+            })()}
           </div>
 
           {/* Official Signatures Section */}

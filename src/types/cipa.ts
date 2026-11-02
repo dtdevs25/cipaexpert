@@ -61,6 +61,9 @@ export interface Candidato {
   termoAceito?: boolean;
   metodoInscricao?: 'online' | 'manual';
   envelopeId?: string;
+  dataAdmissao?: string;
+  apelido?: string;
+  motivoReprovacao?: string;
 }
 
 export interface VotoAuditoria {

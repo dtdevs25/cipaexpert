@@ -414,8 +414,10 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       comprovanteInscricao: 'No ato da inscrição',
       listaCandidatos: formatDate(-30),
       eleicao: formatDate(-30),
+      eleicaoProrrogada: formatDate(-27),
       apuracao: formatDate(-30),
       treinamento: `${formatDate(-15)} a ${formatDate(-5)}`,
+      treinamentoPresencial: formatDate(-7),
       posse: dFim.toLocaleDateString('pt-BR'),
       envioSindicato: formatDate(10)
     };
@@ -624,6 +626,51 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       setActiveEmailCandidate(updated);
     }
     showToast(`Candidatura de "${cand.nome}" confirmada e homologada com sucesso!`);
+  };
+
+  // Helper centralizado para geração fiel dos documentos da NR-5 e Relatórios Oficiais
+  const getExtraDataForStep = (etapa?: any) => {
+    const aprovados = candidatos
+      .filter(c => c.status === 'confirmado')
+      .map(c => ({
+        id: c.id.replace('cand-', ''),
+        nome: c.nome,
+        email: c.email || `${c.nome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`,
+        cargo: c.cargo,
+        dataAdmissao: c.dataAdmissao || '02/06/2026',
+        apelido: c.apelido || c.nome.split(' ').slice(0, 2).join(' ')
+      }));
+
+    const reprovados = candidatos
+      .filter(c => c.status === 'rejeitado')
+      .map(c => ({
+        id: c.id.replace('cand-', ''),
+        nome: c.nome,
+        email: c.email || `${c.nome.toLowerCase().replace(/\s+/g, '.')}@telefonica.com`,
+        cargo: c.cargo,
+        dataAdmissao: c.dataAdmissao || '12/09/2024',
+        motivo: c.motivoReprovacao || 'Colaboradora informou que passou em processo seletivo para outro cargo e irá trocar de base.'
+      }));
+
+    return {
+      sindicatoSigla,
+      sindicatoNome,
+      sindicatoEmail,
+      cronogramaDatas: datasPrincipais,
+      unitName: currentFilial?.name || 'Unidade Jundiaí',
+      unitState: currentFilial?.state || 'SP',
+      unitCity: currentFilial?.city || 'Jundiaí',
+      unitAddress: (currentFilial as any)?.address || 'Avenida Fernando Arens, 470, Vila Arens II, Jundiaí - SP',
+      unitCep: (currentFilial as any)?.cep || '13.202-570',
+      unitCnpj: currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '02.558.157/0577-84',
+      gestaoAno: '2026-2027',
+      geradoPor: (currentCompany as any)?.responsavelTecnico || 'Pedro Lobeiro',
+      aprovadoPor: (currentCompany as any)?.responsavelTecnico || 'Pedro Lobeiro',
+      votantesHabilitados: effectiveHeadcount || headcount || dimensionamento?.headcount || 88,
+      quorumMinimo: Math.ceil((effectiveHeadcount || headcount || dimensionamento?.headcount || 88) / 2),
+      candidatosAprovados: aprovados.length > 0 ? aprovados : undefined,
+      candidatosReprovados: reprovados.length > 0 ? reprovados : undefined
+    };
   };
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isSavingDimensionamento, setIsSavingDimensionamento] = useState(false);
@@ -1343,38 +1390,22 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     {
       id: 'etapa-7',
       numero: 7,
-      titulo: 'Comprovante de Inscrição e Estabilidade Provisória',
-      subtitulo: 'Termo de Aceite das Regras do Candidato e Protocolo Formal',
-      prazoLabel: 'Imediato no ato da inscrição',
-      dataCalculada: 'No ato da inscrição',
-      referenciaNormativa: 'NR-5, subitem 5.5.2.3; CLT Art. 165; ADCT Art. 10, II, "a"',
-      baseLegalDetalhada: 'Item 5.5.2.3 da NR-05 e Art. 165 da CLT: "Fornecimento de comprovante de inscrição, indicando dia e hora do recebimento."',
-      porQueExiste: 'O comprovante com dia e hora é a prova material que consolida a garantia de emprego contra demissão arbitrária (desde o registro até 1 ano após mandato para eleitos).',
-      impactoAuditoria: 'A recusa ou omissão na entrega de protocolo aos inscritos gera direito à reintegração judicial do empregado em caso de dispensa e processo no MPT.',
+      titulo: 'Homologação e Publicação da Relação dos Inscritos',
+      subtitulo: 'Relatório Oficial de Aprovação de Inscrições e Habilitação para Votação',
+      prazoLabel: 'Logo após o encerramento das inscrições',
+      dataCalculada: datasPrincipais.listaCandidatos,
+      referenciaNormativa: 'NR-5, subitem 5.5.2.4 e 5.5.3.2',
+      baseLegalDetalhada: 'Item 5.5.2.4 da NR-05: "Publicação e divulgação da relação dos candidatos inscritos, em locais de fácil acesso e visualização."',
+      porQueExiste: 'Homologa perante a comissão e colaboradores a relação de inscrições deferidas e indeferidas com os motivos formais, discriminando quórum, parâmetros e candidatos habilitados à cédula eletrônica.',
+      impactoAuditoria: 'A ausência de publicação do relatório de homologação antes do pleito viola o princípio da publicidade e a isonomia da votação.',
       acaoTipo: 'documento_edital' as const,
-      docTipo: 'comprovante_inscricao',
-      botaoTexto: 'Ver Comprovante / Regras',
-      botaoIcone: 'award' as const
+      docTipo: 'relatorio_aprovacao_inscricoes',
+      botaoTexto: 'Ver Relatório',
+      botaoIcone: 'users' as const
     },
     {
       id: 'etapa-8',
       numero: 8,
-      titulo: 'Homologação e Divulgação da Lista de Candidatos',
-      subtitulo: 'Publicação oficial dos nomes e cargos dos candidatos deferidos',
-      prazoLabel: 'Logo após o encerramento das inscrições',
-      dataCalculada: datasPrincipais.listaCandidatos,
-      referenciaNormativa: 'NR-5, subitem 5.5.2.4',
-      baseLegalDetalhada: 'Item 5.5.2.4 da NR-05: "Publicação e divulgação da relação dos candidatos inscritos, em locais de fácil acesso e visualização."',
-      porQueExiste: 'Homologa perante o corpo de colaboradores quais registros foram deferidos pela CE, possibilitando o início da campanha e auditoria de eventuais impugnações fundamentadas.',
-      impactoAuditoria: 'Realizar a votação sem a divulgação tempestiva da lista de candidatos fere a isonomia do pleito.',
-      acaoTipo: 'documento_edital' as const,
-      docTipo: 'lista_candidatos',
-      botaoTexto: 'Ver Lista',
-      botaoIcone: 'users' as const
-    },
-    {
-      id: 'etapa-9',
-      numero: 9,
       titulo: 'Eleição dos Representantes dos Empregados',
       subtitulo: 'Votação em escrutínio secreto presencial ou em urna digital auditada',
       prazoLabel: 'Pelo menos 30 dias antes da posse',
@@ -1389,8 +1420,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       botaoIcone: 'vote' as const
     },
     {
-      id: 'etapa-10',
-      numero: 10,
+      id: 'etapa-9',
+      numero: 9,
       titulo: 'Apuração dos Votos e Ata de Eleição',
       subtitulo: 'Verificação do quórum de 50%+1 e lavratura da ata de apuração',
       prazoLabel: 'Imediatamente após o encerramento do pleito',
@@ -1405,10 +1436,10 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       botaoIcone: 'checkCircle' as const
     },
     {
-      id: 'etapa-11',
-      numero: 11,
-      titulo: 'Treinamento Obrigatório dos Membros da CIPA',
-      subtitulo: 'Capacitação conforme Grau de Risco e Lei nº 14.457/2022',
+      id: 'etapa-10',
+      numero: 10,
+      titulo: 'Treinamento Obrigatório dos Membros da CIPA (20h)',
+      subtitulo: 'Capacitação teórica conforme Grau de Risco e Lei nº 14.457/2022',
       prazoLabel: 'Realizado antes da posse dos membros',
       dataCalculada: datasPrincipais.treinamento,
       referenciaNormativa: 'NR-5, item 5.7 e Lei Federal nº 14.457/2022',
@@ -1418,6 +1449,22 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       acaoTipo: 'documento_edital' as const,
       docTipo: 'certificado_treinamento',
       botaoTexto: 'Ver Certificado',
+      botaoIcone: 'award' as const
+    },
+    {
+      id: 'etapa-11',
+      numero: 11,
+      titulo: 'Treinamento Presencial da CIPA (4h)',
+      subtitulo: 'Instrução prática in loco sobre rotas de fuga, primeiros socorros e inspeção de extintores',
+      prazoLabel: 'Realizado na semana que antecede a posse',
+      dataCalculada: datasPrincipais.treinamentoPresencial || '15/12/2026',
+      referenciaNormativa: 'NR-5, item 5.7.4',
+      baseLegalDetalhada: 'Item 5.7.4 da NR-05: Parte prática e presencial do treinamento de segurança.',
+      porQueExiste: 'Permite vivência prática nas dependências da unidade.',
+      impactoAuditoria: 'A omissão da capacitação prática invalida a posse.',
+      acaoTipo: 'documento_edital' as const,
+      docTipo: 'certificado_treinamento',
+      botaoTexto: 'Ver Treinamento Presencial',
       botaoIcone: 'award' as const
     },
     {
@@ -1599,17 +1646,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       finalCnpj,
       mandateEndDate,
       dimensionamento?.totalMembros || 0,
-      {
-        sindicatoSigla,
-        sindicatoNome,
-        sindicatoEmail,
-        cronogramaDatas: datasPrincipais,
-        unitName: currentFilial?.name,
-        unitState: currentFilial?.state,
-        unitCity: currentFilial?.city,
-        unitAddress: (currentFilial as any)?.address,
-        unitCep: (currentFilial as any)?.cep
-      }
+      getExtraDataForStep(etapa)
     );
 
     const custom = stepCustomizations[etapa.id];
@@ -1646,17 +1683,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       finalCnpj,
       mandateEndDate,
       dimensionamento?.totalMembros || 0,
-      {
-        sindicatoSigla,
-        sindicatoNome,
-        sindicatoEmail,
-        cronogramaDatas: datasPrincipais,
-        unitName: currentFilial?.name,
-        unitState: currentFilial?.state,
-        unitCity: currentFilial?.city,
-        unitAddress: (currentFilial as any)?.address,
-        unitCep: (currentFilial as any)?.cep
-      }
+      getExtraDataForStep(etapa)
     );
 
     const custom = stepCustomizations[etapa.id];
@@ -1720,16 +1747,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         finalCnpj,
         mandateEndDate,
         dimensionamento?.totalMembros || 0,
-        {
-          sindicatoSigla,
-          sindicatoNome,
-          sindicatoEmail,
-          cronogramaDatas: datasPrincipais,
-          unitName: currentFilial?.name,
-          unitState: currentFilial?.state,
-          unitCity: currentFilial?.city,
-          unitAddress: (currentFilial as any)?.address
-        }
+        getExtraDataForStep(etapa)
       );
 
       const custom = stepCustomizations[etapa.id];
@@ -1771,7 +1789,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   };
 
   // AÇÃO 5: DISPARAR EDITAL POR E-MAIL (AMPLA DIVULGAÇÃO NR-5)
-  const BROADCAST_STEPS = ['etapa-2', 'etapa-5', 'etapa-8', 'etapa-9', 'etapa-10'];
+  const BROADCAST_STEPS = ['etapa-2', 'etapa-5', 'etapa-7', 'etapa-8', 'etapa-9', 'etapa-10'];
 
   const handleOpenEmailBroadcast = (etapa: any) => {
     setBroadcastingStep(etapa);
@@ -1787,6 +1805,9 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     } else if (etapa.id === 'etapa-5') {
       defaultSubject = `[EDITAL CIPA] Abertura de Inscrições para Candidatura CIPA - Gestão ${gestaoAno}`;
       defaultMsg = `Prezados colaboradores,\n\nEstão abertas as inscrições para todos os empregados interessados em concorrer como representantes dos empregados na CIPA - Gestão ${gestaoAno}, conforme subitem 5.5.2.1 da NR-5.\n\nTodos os trabalhadores da empresa têm o direito de se candidatar livremente. As inscrições podem ser realizadas no setor de RH/SESMT ou diretamente pela plataforma CIPA Expert.\n\nPrazo de inscrição oficial: ${custom?.date || etapa.dataCalculada}.`;
+    } else if (etapa.id === 'etapa-7') {
+      defaultSubject = `[RELAÇÃO OFICIAL CIPA] Homologação e Relação dos Candidatos Inscritos - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nEm cumprimento ao subitem 5.5.2.4 da NR-5, publicamos o Relatório Oficial de Aprovação de Inscrições com a relação nominal dos candidatos deferidos para a eleição da CIPA - Gestão ${gestaoAno}.\n\nOs candidatos homologados estão aptos para a disputa eleitoral auditada. Acesse o portal CIPA Expert para conferir a relação completa e os parâmetros da votação.`;
     } else if (etapa.id === 'etapa-8') {
       defaultSubject = `[RELAÇÃO OFICIAL] Candidatos Inscritos na Eleição CIPA - Gestão ${gestaoAno}`;
       defaultMsg = `Prezados colaboradores,\n\nEm cumprimento ao subitem 5.5.2.4 da NR-5, divulgamos a relação oficial de todos os empregados que registraram suas candidaturas para a eleição da CIPA - Gestão ${gestaoAno}.\n\nOs candidatos homologados estão aptos a receber os votos de todos os colaboradores do estabelecimento nos dias de votação programados. Conheça as propostas e participe ativamente da escolha dos seus representantes.`;

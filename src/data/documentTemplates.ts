@@ -42,6 +42,26 @@ export function generateCipaDocument(
     candidatoSetor?: string;
     candidatoEmail?: string;
     candidatoPropostas?: string;
+    geradoPor?: string;
+    aprovadoPor?: string;
+    votantesHabilitados?: number;
+    quorumMinimo?: number;
+    candidatosAprovados?: Array<{
+      id: string;
+      nome: string;
+      email?: string;
+      cargo: string;
+      dataAdmissao?: string;
+      apelido?: string;
+    }>;
+    candidatosReprovados?: Array<{
+      id: string;
+      nome: string;
+      email?: string;
+      cargo: string;
+      dataAdmissao?: string;
+      motivo?: string;
+    }>;
     cronogramaDatas?: {
       convocacao?: string;
       comunicadoSindicato?: string;
@@ -472,24 +492,98 @@ export function generateCipaDocument(
       };
     }
 
-    case 'lista_candidatos':
+    case 'relatorio_aprovacao_inscricoes':
+    case 'lista_candidatos': {
+      const unitName = extraData?.unitName || 'Unidade Jundiai';
+      const gestaoAno = extraData?.gestaoAno || '2026-2027';
+      const compNome = companyName || 'TELEFONICA S/A';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0577-84';
+      const geradoPor = extraData?.geradoPor || extraData?.comissaoPresidente || 'Pedro Lobeiro';
+      const aprovadoPor = extraData?.aprovadoPor || extraData?.comissaoPresidente || 'Pedro Lobeiro';
+
+      const c = extraData?.cronogramaDatas;
+      const dataGeracao = c?.listaCandidatos ? `${c.listaCandidatos} às 11:14` : '07/10/2026 às 11:14';
+      const dataEleicao = c?.eleicao ? `${c.eleicao} das 08:00h às 18:00h` : '13/10/2026 das 08:00h às 18:00h';
+      const dataProrrogacao1 = '14/10/2026(qua) das 08:00h às 18:00h';
+      const dataProrrogacao2 = c?.eleicaoProrrogada ? `${c.eleicaoProrrogada}(qui) das 08:00h às 18:00h` : '15/10/2026(qui) das 08:00h às 18:00h';
+      const inscricaoInicio = c?.inscricaoInicio ? `${c.inscricaoInicio} às 08:00` : '21/09/2026 às 08:00';
+      const inscricaoFim = c?.inscricaoFim ? `${c.inscricaoFim} às 14:31` : '05/10/2026 às 14:31';
+
+      const votantesHabilitados = extraData?.votantesHabilitados || 88;
+      const quorumMinimo = extraData?.quorumMinimo || Math.ceil(votantesHabilitados / 2);
+
+      const aprovados = extraData?.candidatosAprovados && extraData.candidatosAprovados.length > 0
+        ? extraData.candidatosAprovados
+        : [
+            { id: '4977', nome: 'GUSTAVO FERREIRA DA CONCEICAO', email: 'GUSTAVO.CONCEICAO@TELEFONICA.COM', cargo: 'TECNICO SERVICO AO CLIENTE', dataAdmissao: '02/06/2026', apelido: 'GUSTAVO CONCEICAO' },
+            { id: '4976', nome: 'JULIA ROCHA DOS SANTOS', email: 'JULIA.RSANTOS@TELEFONICA.COM', cargo: 'ASSISTENTE TECNICO', dataAdmissao: '14/10/2022', apelido: 'JULIA SANTOS' },
+            { id: '4998', nome: 'LUANNA SANTANA BEZERRA', email: 'LUANNA.BEZERRA@TELEFONICA.COM', cargo: 'ASSISTENTE TECNICO', dataAdmissao: '06/07/2026', apelido: 'LUANNA BEZERRA' },
+            { id: '5023', nome: 'MANOEL FRANCISCO DOS SANTOS', email: 'manoel.santos.telefonica@gmail.com', cargo: 'Técnico de serviço ao cliente.', dataAdmissao: '04/06/2017', apelido: 'MANOEL SANTOS' },
+            { id: '5004', nome: 'MARCELO AUGUSTO ARCIFA SAMPAIO', email: 'MARCELO.SAMPAIO@TELEFONICA.COM', cargo: 'TECNICO SERVICO AO CLIENTE', dataAdmissao: '17/04/2013', apelido: 'MARCELO SAMPAIO' },
+            { id: '4973', nome: 'MARCELO AUGUSTO FERREIRA', email: 'MARCELO.FERREIRA@TELEFONICA.COM', cargo: 'TECNICO SERVICO AO CLIENTE', dataAdmissao: '02/06/2026', apelido: 'MARCELO FERREIRA' },
+            { id: '5006', nome: 'VANDERSON DE JESUS OLIVEIRA', email: 'VANDERSON.OLIVEIRA@TELEFONICA.COM', cargo: 'TECNICO SERVICO AO CLIENTE', dataAdmissao: '17/07/2013', apelido: 'VANDERSON OLIVEIRA' }
+          ];
+
+      const reprovados = extraData?.candidatosReprovados && extraData.candidatosReprovados.length > 0
+        ? extraData.candidatosReprovados
+        : [
+            { id: '5003', nome: 'ALINE DE PAULA SANTOS', email: 'ALINEP.SANTOS@TELEFONICA.COM', cargo: 'TECNICO SERVICO AO CLIENTE', dataAdmissao: '12/09/2024', motivo: 'Colaboradora informou que passou em processo seletivo para outro cargo e irá trocar de base.' }
+          ];
+
       return {
-        title: 'EDITAL COM RELAÇÃO OFICIAL DE CANDIDATOS INSCRITOS',
-        category: 'Homologação de Candidaturas',
-        normativeCode: 'NR-5 - Item 5.5.3.2',
-        companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        title: 'RELATÓRIO DE APROVAÇÃO DE INSCRIÇÕES',
+        category: 'Homologação e Publicação de Candidaturas',
+        normativeCode: 'NR-5 · Subitem 5.5.2.4 e 5.5.3.2',
+        companyName: compNome,
+        cnpj: unitCnpj,
+        dateGenerated: c?.listaCandidatos || formattedDate || '07/10/2026',
         content: [
-          `A Comissão Eleitoral da empresa ${companyName}, no uso de suas atribuições regimentais, torna pública a lista oficial dos candidatos deferidos para a eleição da CIPA - Gestão 2026/2027.`,
-          `Todas as candidaturas foram validadas e cumpriram integralmente os requisitos de elegibilidade previstos na NR-5. Não houve impugnações no prazo legal de 24 horas.`,
-          `A votação terá início conforme calendário eleitoral publicado, mediante cédula e urna eletrônica auditada CIPA Expert com escrutínio secreto.`
+          `RELATÓRIO DE APROVAÇÃO DE INSCRIÇÕES`,
+          `DATA DE GERAÇÃO (Horário de Brasília - BRT) ${dataGeracao}`,
+          `GERADO POR: ${geradoPor}`,
+          `NOME DA CIPAA ${compNome} | CIPA ${unitName} ${gestaoAno}`,
+          `PERÍODO DE REALIZAÇÃO DA VOTAÇÃO (Horário de Brasília - BRT): ${dataEleicao}`,
+          `PERÍODO DA 1º PRORROGAÇÃO (Horário de Brasília - BRT): ${dataProrrogacao1}`,
+          `PERÍODO DA 2º PRORROGAÇÃO (Horário de Brasília - BRT): ${dataProrrogacao2}`,
+          `DESCRIÇÃO DA CIPAA: Descrição do ${compNome} | CIPA ${unitName} ${gestaoAno}`,
+          `REALIZADOR DA CIPAA ${compNome.toUpperCase()} CIPA - ${unitName.toUpperCase()}`,
+          `CNPJ DO REALIZADOR ${unitCnpj}`,
+          `INCLUSÃO DE PAUTAS DURANTE A VOTAÇÃO: NÃO`,
+          `VOTAÇÃO COM PESO NÃO`,
+          `VOTO SECRETO: SIM`,
+          `ACOMPANHAMENTO DE QUÓRUM: SIM`,
+          `CONVOCAÇÃO DE CIPAA: SIM`,
+          `VOTANTES HABILITADOS: ${votantesHabilitados}`,
+          `QUÓRUM MÍNIMO ${quorumMinimo}`,
+          `REALIZAÇÃO DE VIDEO CONFERÊNCIA INTEGRADA NÃO`,
+          `TÍTULO DA PAUTA: ${compNome} | CIPA ${unitName} ${gestaoAno}`,
+          `DESCRIÇÃO DA PAUTA: Descrição do ${compNome} | CIPA ${unitName} ${gestaoAno}`,
+          `ACOMPANHAMENTO DO RESULTADO DAS VOTAÇÕES: NÃO`,
+          `INÍCIO DO PERÍODO DE INSCRIÇÕES: ${inscricaoInicio}`,
+          `FIM DO PERÍODO DE INSCRIÇÕES: ${inscricaoFim}`,
+          `APROVADO POR: ${aprovadoPor}`,
+          `INSCRIÇÕES APROVADAS: ${aprovados.length}`,
+          `| ID | NOME | EMAIL | CARGO | DATA DE ADMISSÃO |`,
+          `|---|---|---|---|---|`,
+          ...aprovados.map(a => `| ${a.id} | ${a.nome} | ${a.email || '-'} | ${a.cargo} | ${a.dataAdmissao || '-'} |`),
+          `INSCRIÇÕES REPROVADAS: ${reprovados.length}`,
+          `| ID | NOME | EMAIL | CARGO | DATA DE ADMISSÃO | MOTIVO |`,
+          `|---|---|---|---|---|---|`,
+          ...reprovados.map(r => `| ${r.id} | ${r.nome} | ${r.email || '-'} | ${r.cargo} | ${r.dataAdmissao || '-'} | ${r.motivo || '-'} |`),
+          `CANDIDATOS CADASTRADOS NA VOTAÇÃO`,
+          ...aprovados.flatMap(a => [
+            `NOME DO CANDIDATO: ${a.nome}`,
+            `DESCRIÇÃO DO CANDIDATO: Apelido: ${a.apelido || a.nome.split(' ').slice(0, 2).join(' ')} | Cargo: ${a.cargo}`
+          ]),
+          `Gerado em ${c?.listaCandidatos || '07/10/2026'} por https://grtsdigital.com.br GRTS Digital`,
+          `Para verificação do certificado digital deste documento acesse: https://validar.iti.gov.br`
         ],
         signatories: [
-          'Coordenador da Comissão Eleitoral',
-          'Secretário da Comissão Eleitoral'
+          `${aprovadoPor} - Presidente da Comissão Eleitoral`,
+          `${compNome} - Representante Legal da Empresa`
         ]
       };
+    }
 
     case 'cedula_urna':
       return {

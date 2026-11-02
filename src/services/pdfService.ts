@@ -859,13 +859,163 @@ export class PdfService {
     doc.setLineWidth(0.3);
     doc.line(margin, 39, pageWidth - margin, 39);
 
-    // Conteúdo do Documento (Parágrafos)
+    // Conteúdo do Documento (Parágrafos e Tabelas Inteligentes)
     let currentY = 47;
-    doc.setFont('times', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(30, 41, 59);
 
     envelope.content.forEach((para) => {
+      // 1. Linha de Tabela Markdown
+      if (para.trim().startsWith('|')) {
+        // Se for linha separadora |---|---|..., ignora
+        if (!para.replace(/[\s\-|:]/g, '')) return;
+
+        if (currentY + 7 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+
+        const cells = para.split('|').map(c => c.trim()).filter(Boolean);
+        const isHeader = cells[0]?.toUpperCase() === 'ID';
+
+        if (isHeader) {
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin, currentY - 3.5, contentWidth, 6, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(30, 41, 59);
+        } else {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.setTextColor(51, 65, 85);
+        }
+
+        let colX = margin + 1;
+        const numCols = cells.length;
+        cells.forEach((cell, cIdx) => {
+          let colWidth = contentWidth / numCols;
+          if (numCols === 5) {
+            const widths = [15, 45, 52, 40, 22];
+            colWidth = widths[cIdx] || colWidth;
+          } else if (numCols === 6) {
+            const widths = [12, 35, 40, 30, 18, 39];
+            colWidth = widths[cIdx] || colWidth;
+          }
+          const cellLines = doc.splitTextToSize(cell, colWidth - 2);
+          doc.text(cellLines[0] || '', colX, currentY + 0.5);
+          colX += colWidth;
+        });
+
+        currentY += 5.5;
+        return;
+      }
+
+      // 2. Banners de Destaque
+      if (para.startsWith('INSCRIÇÕES APROVADAS:')) {
+        if (currentY + 10 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        doc.setFillColor(236, 253, 245);
+        doc.setDrawColor(167, 243, 208);
+        doc.roundedRect(margin, currentY - 3.5, contentWidth, 6.5, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(6, 95, 70);
+        doc.text(para, margin + 3, currentY + 0.8);
+        currentY += 8;
+        return;
+      }
+
+      if (para.startsWith('INSCRIÇÕES REPROVADAS:')) {
+        if (currentY + 10 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        doc.setFillColor(255, 241, 242);
+        doc.setDrawColor(254, 205, 211);
+        doc.roundedRect(margin, currentY - 3.5, contentWidth, 6.5, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(159, 18, 57);
+        doc.text(para, margin + 3, currentY + 0.8);
+        currentY += 8;
+        return;
+      }
+
+      if (para === 'CANDIDATOS CADASTRADOS NA VOTAÇÃO') {
+        if (currentY + 10 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(margin, currentY - 3.5, contentWidth, 6.5, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(para, margin + 3, currentY + 0.8);
+        currentY += 8;
+        return;
+      }
+
+      // 3. Parâmetros Chave: Valor
+      if (
+        para.includes(':') &&
+        (para.startsWith('VOTO') ||
+          para.startsWith('QUÓRUM') ||
+          para.startsWith('VOTANTES') ||
+          para.startsWith('PERÍODO') ||
+          para.startsWith('DATA') ||
+          para.startsWith('GERADO') ||
+          para.startsWith('APROVADO') ||
+          para.startsWith('NOME DA CIPA') ||
+          para.startsWith('REALIZADOR') ||
+          para.startsWith('CNPJ') ||
+          para.startsWith('INCLUSÃO') ||
+          para.startsWith('ACOMPANHAMENTO') ||
+          para.startsWith('CONVOCAÇÃO') ||
+          para.startsWith('REALIZAÇÃO') ||
+          para.startsWith('TÍTULO') ||
+          para.startsWith('DESCRIÇÃO') ||
+          para.startsWith('INÍCIO') ||
+          para.startsWith('FIM'))
+      ) {
+        if (currentY + 6 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        const [k, ...v] = para.split(':');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(k.trim() + ':', margin, currentY);
+
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(v.join(':').trim(), margin + 65, currentY);
+        currentY += 4.5;
+        return;
+      }
+
+      // 4. Candidatos na Votação (Nome e Descrição)
+      if (para.startsWith('NOME DO CANDIDATO:') || para.startsWith('DESCRIÇÃO DO CANDIDATO:')) {
+        if (currentY + 5 > pageHeight - 40) {
+          doc.addPage();
+          currentY = 25;
+        }
+        doc.setFont('helvetica', para.startsWith('NOME') ? 'bold' : 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(30, 41, 59);
+        doc.text(para, margin + 2, currentY);
+        currentY += 4.2;
+        return;
+      }
+
+      // 5. Parágrafo Padrão
+      doc.setFont('times', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+
       const lines = doc.splitTextToSize(para, contentWidth);
       if (currentY + lines.length * 5 > pageHeight - 45) {
         doc.addPage();
