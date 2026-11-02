@@ -1085,7 +1085,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       id: 'etapa-4',
       numero: 4,
       titulo: 'Constituição da Comissão Eleitoral (CE)',
-      subtitulo: 'Portaria paritária responsável por organizar e conduzir o pleito',
+      subtitulo: 'Ata paritária de definição de membros e regras do processo eleitoral',
       prazoLabel: 'Pelo menos 55 dias antes da posse',
       dataCalculada: datasPrincipais.comissaoEleitoral,
       referenciaNormativa: 'NR-5, subitem 5.5.2',
@@ -1094,7 +1094,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       impactoAuditoria: 'A realização de atos eleitorais sem constituição formal da CE configura ingerência indevida do empregador e anulação de votos.',
       acaoTipo: 'documento_edital' as const,
       docTipo: 'comissao_eleitoral',
-      botaoTexto: 'Ver Portaria',
+      botaoTexto: 'Ver Ata da CE',
       botaoIcone: 'signature' as const
     },
     {

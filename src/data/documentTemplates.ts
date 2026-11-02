@@ -28,6 +28,10 @@ export function generateCipaDocument(
     gestaoAno?: string;
     emailContato?: string;
     telefoneContato?: string;
+    comissaoPresidente?: string;
+    comissaoPresidenteRe?: string;
+    comissaoVice?: string;
+    comissaoViceRe?: string;
     cronogramaDatas?: {
       convocacao?: string;
       comunicadoSindicato?: string;
@@ -176,28 +180,73 @@ export function generateCipaDocument(
       };
     }
 
-    case 'comissao_eleitoral':
+    case 'comissao_eleitoral': {
+      const unitName = extraData?.unitName || 'Unidade SP Jundiaí Vila';
+      const unitCity = extraData?.unitCity || 'Jundiaí';
+      const unitState = extraData?.unitState || 'SP';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const unitAddress = extraData?.unitAddress || 'Avenida Fernando Arens, 470, Vila Arens II';
+      const unitCep = extraData?.unitCep || '13.202-570';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0577-84';
+      const presidenteNome = extraData?.comissaoPresidente || 'Luiz Alberto De Barros Junior';
+      const presidenteRe = extraData?.comissaoPresidenteRe || '161905';
+      const viceNome = extraData?.comissaoVice || 'Marciel Pereira Silva';
+      const viceRe = extraData?.comissaoViceRe || '3519920';
+      const dataReuniao = c?.comissaoEleitoral || formattedDate || '14/09/2026';
+      
+      const compNome = companyName || 'Telefônica Brasil S/A';
+
+      // Parsing data para dia, mês por extenso e ano: "Aos 14 dias do mês de setembro de 2026"
+      let diaExtenso = '14';
+      let mesExtenso = 'setembro';
+      let anoExtenso = '2026';
+      try {
+        const parts = dataReuniao.includes('/') ? dataReuniao.split('/') : null;
+        if (parts && parts.length === 3) {
+          diaExtenso = parts[0];
+          const mIdx = parseInt(parts[1], 10) - 1;
+          const monthsLower = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+          mesExtenso = monthsLower[mIdx] || 'setembro';
+          anoExtenso = parts[2];
+        }
+      } catch {}
+
       return {
-        title: 'PORTARIA DE CONSTITUIÇÃO DA COMISSÃO ELEITORAL DA CIPA',
+        title: 'ATA DE FORMAÇÃO DA COMISSÃO ELEITORAL',
         category: 'Comissão Eleitoral',
-        normativeCode: 'NR-5 - Item 5.5.2',
-        companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        normativeCode: 'NR-5 · Subitem 5.5.2',
+        companyName: compNome,
+        cnpj: unitCnpj,
+        dateGenerated: dataReuniao,
         content: [
-          `A empresa ${companyName}, no uso de suas prerrogativas legais e em cumprimento ao item 5.5.2 da NR-5, constitui formalmente a Comissão Eleitoral (CE) encarregada de organizar, conduzir e homologar o processo eleitoral da CIPA referente ao mandato 2026/2027.`,
-          `Ficam nomeados como membros titulares da Comissão Eleitoral:`,
-          `1. Carlos Alberto Mendes - Coordenador da Comissão Eleitoral (Representante dos Empregadores)`,
-          `2. Mariana Fonseca de Souza - Secretária da Comissão (Representante dos Empregados)`,
-          `3. Roberto Silveira Lima - Vogal e Auditor de Tecnologia Eleitoral`,
-          `Compete à Comissão Eleitoral zelar pelo sigilo do voto, publicar listas de inscritos, receber e deliberar sobre impugnações em até 24h, supervisionar a urna eletrônica auditada e lavrar a respectiva ata de apuração.`
+          `ATA DE FORMAÇÃO DA COMISSÃO ELEITORAL`,
+          `${unitName.toUpperCase()}, ${unitCity.toUpperCase()} - ${unitState.toUpperCase()} - GESTÃO ${gestaoAno}`,
+          `Aos ${diaExtenso} dias do mês de ${mesExtenso} de ${anoExtenso}, de forma virtual via TEAMS (ferramenta de comunicação digital) da empresa ${compNome} ${unitName}, CNPJ ${unitCnpj}, situada à ${unitAddress}, CEP ${unitCep}, ${unitCity} - ${unitState} - Gestão ${gestaoAno} - iniciou-se às 14:00 a reunião para formação da Comissão Eleitoral e definição das regras do processo.`,
+          `Foram definidos os seguintes membros para formarem esta comissão:`,
+          `• Presidente – ${presidenteNome} RE ${presidenteRe}`,
+          `• Vice presidente – ${viceNome} RE ${viceRe}`,
+          `Na ocasião ficaram também definidas as seguintes regras para os candidatos, as quais serão entregues por ocasião da inscrição.`,
+          `O que você pode fazer:`,
+          `• Apresentar seu plano de trabalho aos colegas, sempre com foco na prevenção de acidentes e doenças no trabalho.`,
+          `• Circular pelas áreas da empresa para divulgar sua candidatura, com bom senso e respeito ao ambiente de trabalho.`,
+          `• Usar o WhatsApp para divulgar sua candidatura e propostas, desde que respeite todas as demais regras.`,
+          `O que não pode:`,
+          `• Usar canais da empresa (como e-mail corporativo, Teams, Workplace ou murais) para pedir votos ou divulgar sua candidatura.`,
+          `• Oferecer brindes ou favores em troca de votos — nada de canetas, canecas, churrascos, festas, etc.`,
+          `• Fazer "boca de urna" ou forçar alguém a votar na sua frente.`,
+          `• Usar sua posição na empresa para pressionar ou ameaçar colegas.`,
+          `• Pedir prova de voto, como fotos ou prints de tela.`,
+          `• Interromper o trabalho (seu ou de colegas) para fazer campanha.`,
+          `Sem mais assuntos a serem tratados, a reunião deu-se por encerrada às 14:20. Lavrou-se por mim, Presidente da Comissão CIPA, ${presidenteNome}, esta Ata da Comissão Eleitoral.`,
+          `Anexos: Print – Reunião de Comissão Eleitoral`,
+          `***Este documento está classificado como USO INTERNO por ${compNome.toUpperCase()}.`
         ],
         signatories: [
-          'Representante Legal da Empresa',
-          'Coordenador da Comissão Eleitoral',
-          'Secretária da Comissão Eleitoral'
+          `${presidenteNome} - Presidente da Comissão Eleitoral`,
+          `${viceNome} - Vice-Presidente da CIPA`
         ]
       };
+    }
 
     case 'edital_inscricao':
       return {
