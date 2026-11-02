@@ -52,7 +52,9 @@ import {
   BookOpen,
   PenTool,
   Clock,
-  Mail
+  Mail,
+  QrCode,
+  ExternalLink
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
@@ -1008,6 +1010,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         unitState: currentFilial?.state,
         unitCity: currentFilial?.city,
         unitAddress: (currentFilial as any)?.address,
+        unitCep: (currentFilial as any)?.cep,
         cronogramaDatas: datasPrincipais
       }
     );
@@ -1391,7 +1394,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         unitName: currentFilial?.name,
         unitState: currentFilial?.state,
         unitCity: currentFilial?.city,
-        unitAddress: (currentFilial as any)?.address
+        unitAddress: (currentFilial as any)?.address,
+        unitCep: (currentFilial as any)?.cep
       }
     );
 
@@ -1437,7 +1441,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         unitName: currentFilial?.name,
         unitState: currentFilial?.state,
         unitCity: currentFilial?.city,
-        unitAddress: (currentFilial as any)?.address
+        unitAddress: (currentFilial as any)?.address,
+        unitCep: (currentFilial as any)?.cep
       }
     );
 
@@ -3191,10 +3196,90 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                 </span>
               </div>
 
-              <div className="space-y-3 pt-2 text-justify text-slate-700 leading-relaxed text-xs">
-                {activeEditalDoc.doc.content.map((p, idx) => (
-                  <p key={idx} className="indent-4">{p}</p>
-                ))}
+              <div className="space-y-2.5 pt-2 text-slate-700 leading-relaxed text-xs">
+                {activeEditalDoc.doc.content.map((p, idx) => {
+                  // Link de Acesso / URL da Eleição
+                  if (p.startsWith('http://') || p.startsWith('https://')) {
+                    return (
+                      <div key={idx} className="my-3 p-3 bg-emerald-50/80 border border-emerald-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-emerald-950">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+                            <ExternalLink className="w-4 h-4" />
+                          </div>
+                          <div className="truncate">
+                            <span className="text-[10px] uppercase font-bold text-emerald-700 block tracking-wider">Link Oficial de Inscrição / Votação</span>
+                            <a href={p} target="_blank" rel="noopener noreferrer" className="text-xs font-mono font-bold text-emerald-900 underline hover:text-emerald-700 truncate block">
+                              {p}
+                            </a>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(p);
+                            showToast('Link da eleição copiado para a área de transferência!');
+                          }}
+                          className="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-[11px] font-bold text-emerald-800 hover:bg-emerald-100/60 transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Copiar Link</span>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  // Scan me / QR Code Box
+                  if (p.toLowerCase().includes('scan me')) {
+                    return (
+                      <div key={idx} className="my-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-4 text-center">
+                        <div className="p-2.5 bg-white border border-slate-300 rounded-xl shadow-xs">
+                          <QrCode className="w-10 h-10 text-slate-900" />
+                        </div>
+                        <div className="text-left space-y-0.5">
+                          <span className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider block">QR Code Exclusivo</span>
+                          <strong className="text-xs font-bold text-slate-900 block">Scan me para Inscrição / Votação</strong>
+                          <span className="text-[11px] text-slate-500 block">Aponte a câmera do celular para abrir o link oficial</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Aviso de Segurança e Bloqueio Temporal
+                  if (p.startsWith('🔒')) {
+                    return (
+                      <div key={idx} className="my-3 p-3 bg-amber-50/80 border border-amber-300 rounded-2xl flex items-start gap-2.5 text-amber-950">
+                        <Lock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-[11px] font-medium leading-relaxed">
+                          {p.replace('🔒 ', '')}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Títulos e cabeçalhos de seção
+                  if (p === 'Você sabia o que cabe ao Cipeiro?' || p === 'COMISSÃO ELEITORAL:' || p.startsWith('Edital de Inscrições') || p.startsWith('Unidade ')) {
+                    return (
+                      <h4 key={idx} className={`font-bold text-slate-900 ${p.startsWith('Edital') ? 'text-sm text-center uppercase tracking-tight pb-1' : p.startsWith('Unidade') ? 'text-xs text-center text-slate-600 pb-2' : 'pt-2 text-xs uppercase text-slate-800'}`}>
+                        {p}
+                      </h4>
+                    );
+                  }
+
+                  // Bullet points
+                  if (p.startsWith('•') || p.startsWith('*')) {
+                    return (
+                      <div key={idx} className="flex items-start gap-2 pl-3 text-slate-700">
+                        <span className="text-emerald-600 font-bold leading-tight">•</span>
+                        <span className="leading-relaxed">{p.replace(/^[•*]\s*/, '')}</span>
+                      </div>
+                    );
+                  }
+
+                  // Parágrafos normais
+                  return (
+                    <p key={idx} className="indent-4 text-justify leading-relaxed">{p}</p>
+                  );
+                })}
               </div>
 
               {/* Signatários */}

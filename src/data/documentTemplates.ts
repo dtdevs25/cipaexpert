@@ -30,8 +30,12 @@ export function generateCipaDocument(
     telefoneContato?: string;
     comissaoPresidente?: string;
     comissaoPresidenteRe?: string;
+    comissaoPresidenteEmail?: string;
     comissaoVice?: string;
     comissaoViceRe?: string;
+    comissaoViceEmail?: string;
+    electionToken?: string;
+    eleicaoLink?: string;
     cronogramaDatas?: {
       convocacao?: string;
       comunicadoSindicato?: string;
@@ -248,25 +252,83 @@ export function generateCipaDocument(
       };
     }
 
-    case 'edital_inscricao':
+    case 'edital_inscricao': {
+      const unitName = extraData?.unitName || 'Unidade Jundiaí';
+      const unitState = extraData?.unitState || 'SP';
+      const gestaoAno = extraData?.gestaoAno || '2026/2027';
+      const unitAddress = extraData?.unitAddress || 'Avenida Fernando Arens, nº 470, Jundiaí - SP';
+      const unitCep = extraData?.unitCep || '13.202-570';
+      const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0577-84';
+      const compNome = companyName || 'Telefônica Brasil S/A';
+      const emailContato = extraData?.emailContato || 'cipa.br@telefonica.com ou pedro.lobeiro.ext@telefonica.com';
+      const telefoneContato = extraData?.telefoneContato || '19 99784-1065';
+      const presidenteNome = extraData?.comissaoPresidente || 'Luiz Alberto De Barros Junior';
+      const presidenteEmail = extraData?.comissaoPresidenteEmail || 'luiza.junior@telefonica.com';
+      const viceNome = extraData?.comissaoVice || 'Marciel Pereira Silva';
+      const viceEmail = extraData?.comissaoViceEmail || 'Marciel.Silva@telefonica.com';
+
+      // Cronograma
+      const c = extraData?.cronogramaDatas;
+      const periodoInscricoes = c?.periodoInscricoes || (c?.inscricaoInicio && c?.inscricaoFim ? `${c.inscricaoInicio} a ${c.inscricaoFim}` : '21/09/2026 a 05/10/2026');
+      const dataEleicao = c?.eleicao || '12/10/2026';
+      const dataEleicaoProrrogada = c?.eleicaoProrrogada || '15/10/2026';
+      const dataTreinamentoOnline = c?.treinamento || '26/10/2026 a 30/10/2026';
+      const dataTreinamentoPresencial = c?.treinamentoPresencial || '11/10/2026';
+
+      // Link e QR Code únicos e exclusivos para a votação / eleição
+      const electionToken = extraData?.electionToken || '2lsCc1wU4b3qgsXcjGJKVy6dUbqX0l';
+      const linkInscricao = extraData?.eleicaoLink || `https://assembleia.grtsdigital.com.br/${electionToken}/preInscricao`;
+
       return {
-        title: 'EDITAL DE ABERTURA DE INSCRIÇÃO DE CANDIDATOS À CIPA',
-        category: 'Inscrições',
-        normativeCode: 'NR-5 - Item 5.5.3',
-        companyName,
-        cnpj,
-        dateGenerated: formattedDate,
+        title: `Edital de Inscrições da CIPA ${gestaoAno}`,
+        category: 'Inscrições e Eleição',
+        normativeCode: 'NR-5 · Subitem 5.5.2.1',
+        companyName: compNome,
+        cnpj: unitCnpj,
+        dateGenerated: c?.editalInscricao || formattedDate || '21/09/2026',
         content: [
-          `A Comissão Eleitoral da empresa ${companyName} comunica a todos os colaboradores que encontram-se abertas as inscrições para candidatos a representantes dos empregados na CIPA - Gestão 2026/2027.`,
-          `1. Período de Inscrição: Duração de 15 (quinze) dias corridos a partir desta data, encerrando-se impreterivelmente às 18h00 do último dia útil do período.`,
-          `2. Como se inscrever: Pela plataforma digital CIPA Expert, informando matrícula, CPF, foto e mini-currículo de prevenção.`,
-          `3. Condições: Estar devidamente registrado como colaborador efetivo. É vedada qualquer discriminação ou impedimento unilateral por parte da liderança. O candidato inscrito goza de garantia provisória de emprego conforme artigo 10, II, "a" do ADCT e NR-5 item 5.4.12.`
+          `Edital de Inscrições da CIPA ${gestaoAno}`,
+          `Unidade ${unitName} - ${unitState}`,
+          `A renovação da CIPA da ${unitName} foi iniciada, assim, os colaboradores interessados em candidatar-se ao processo eleitoral, devem formalizar seu interesse através do link ou QR Code abaixo:`,
+          `${linkInscricao}`,
+          `Ou`,
+          `Scan me`,
+          `🔒 ATENÇÃO - SEGURANÇA E VALIDADE CRONOLÓGICA: O link e o QR Code acima são gerados de forma única e exclusiva para a eleição desta unidade. O acesso é sincronizado eletronicamente com o cronograma oficial e permanecerá bloqueado fora dos prazos, sendo liberado exclusivamente nos dias e horários estipulados para inscrição e votação.`,
+          `Período de Inscrição: ${periodoInscricoes} até às 17:00 – Impreterivelmente`,
+          `Data da Eleição: ${dataEleicao}*`,
+          `Sistema de Votação: On-line`,
+          `Período do Treinamento on-line: ${dataTreinamentoOnline}`,
+          `Período do Treinamento presencial: ${dataTreinamentoPresencial}`,
+          `*A data da eleição poderá ser prorrogada até o dia ${dataEleicaoProrrogada} caso não seja atingindo o número de votantes válidos necessários, conforme o disposto no item 5.5 da NR 5:`,
+          `• 1º dia: 50% dos empregados;`,
+          `• 2º dia: 1/3 dos empregados;`,
+          `• 3º dia: Qualquer valor da população do prédio.`,
+          `Participam do processo de inscrição e votação somente os colaboradores que se encontram lotados no CNPJ do referido prédio.`,
+          `Você sabia o que cabe ao Cipeiro?`,
+          `• Realizar treinamento(*) de 20 horas antes do início do mandato;`,
+          `• Participar das reuniões mensais, registrar e controlar as atas;`,
+          `• Identificar riscos inerentes ao trabalho;`,
+          `• Elaborar plano de trabalho e mapa de riscos que possibilitem ações preventivas voltadas à saúde e segurança;`,
+          `• Controlar e participar das definições de prevenção e avaliação das prioridades de ações de melhoria nos locais de trabalho;`,
+          `• A cada reunião, avaliar o cumprimento das metas fixadas no plano de trabalho e discutir ações para mitigação de riscos;`,
+          `• Entre outras atribuições inerentes a Cipeiro.`,
+          `Obs.: Processo não elegível para colaboradores em regime 100% Remoto.`,
+          `Em caso de dúvidas, entre em contato com ${emailContato}`,
+          `Telefone ${telefoneContato}`,
+          `COMISSÃO ELEITORAL:`,
+          `Presidente: ${presidenteNome} – ${presidenteEmail}`,
+          `Vice-presidente: ${viceNome} – ${viceEmail}`,
+          `${unitName}`,
+          `Endereço: ${unitAddress}`,
+          `CEP: ${unitCep}`,
+          `CNPJ: ${unitCnpj}`
         ],
         signatories: [
-          'Presidente da Comissão Eleitoral',
-          'Secretária da Comissão Eleitoral'
+          `${presidenteNome} - Presidente da Comissão Eleitoral`,
+          `${viceNome} - Vice-Presidente da CIPA`
         ]
       };
+    }
 
     case 'ata_eleicao':
       return {
