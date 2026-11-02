@@ -19,6 +19,66 @@ export interface GeneratedDocument {
   qrCodeDataUrl?: string;
 }
 
+export interface CipaTrainingWorkload {
+  totalHoras: number;
+  horasEad: number;
+  horasPresencial: number;
+  modalidade: string;
+  baseLegal: string;
+  observacao: string;
+}
+
+/**
+ * Retorna a carga horária normativa obrigatória do treinamento da CIPA
+ * com base no Grau de Risco (NR-05, subitem 5.7.4 e alíneas).
+ * - Grau 1: 8 horas (pode ser 100% EAD)
+ * - Grau 2: 12 horas (mínimo 4h presenciais)
+ * - Grau 3: 16 horas (mínimo 8h presenciais)
+ * - Grau 4: 20 horas (mínimo 8h presenciais)
+ */
+export function getCipaTrainingHours(grauDeRisco: number): CipaTrainingWorkload {
+  const gr = Number(grauDeRisco) || 3;
+  switch (gr) {
+    case 1:
+      return {
+        totalHoras: 8,
+        horasEad: 8,
+        horasPresencial: 0,
+        modalidade: 'Ensino a Distância (EAD) ou Presencial',
+        baseLegal: 'NR-05, subitem 5.7.4, alínea "a"',
+        observacao: 'Grau de Risco 1: Carga horária mínima de 8 horas, podendo ser realizada integralmente na modalidade EAD.'
+      };
+    case 2:
+      return {
+        totalHoras: 12,
+        horasEad: 8,
+        horasPresencial: 4,
+        modalidade: 'Semipresencial (8h EAD + 4h Presencial)',
+        baseLegal: 'NR-05, subitem 5.7.4, alínea "b" e 5.7.4.2',
+        observacao: 'Grau de Risco 2: Carga horária mínima de 12 horas, sendo no mínimo 4 horas presenciais.'
+      };
+    case 3:
+      return {
+        totalHoras: 16,
+        horasEad: 8,
+        horasPresencial: 8,
+        modalidade: 'Semipresencial (8h EAD + 8h Presencial)',
+        baseLegal: 'NR-05, subitem 5.7.4, alínea "c" e 5.7.4.2',
+        observacao: 'Grau de Risco 3: Carga horária mínima de 16 horas, sendo no mínimo 8 horas presenciais.'
+      };
+    case 4:
+    default:
+      return {
+        totalHoras: 20,
+        horasEad: 12,
+        horasPresencial: 8,
+        modalidade: 'Semipresencial (12h EAD + 8h Presencial)',
+        baseLegal: 'NR-05, subitem 5.7.4, alínea "d" e 5.7.4.2',
+        observacao: 'Grau de Risco 4: Carga horária mínima de 20 horas, sendo no mínimo 8 horas presenciais.'
+      };
+  }
+}
+
 export function generateCipaDocument(
   tipo: string,
   companyName: string = 'Indústrias Alfa Brasil S.A.',
@@ -125,6 +185,17 @@ export function generateCipaDocument(
       titulares?: string[];
       suplentes?: string[];
     };
+    grauDeRisco?: number;
+    cnaeCode?: string;
+    cnaeDesc?: string;
+    horasTreinamentoTotal?: number;
+    horasTreinamentoEad?: number;
+    horasTreinamentoPresencial?: number;
+    colaboradorTreinadoNome?: string;
+    colaboradorTreinadoMatricula?: string;
+    colaboradorTreinadoCargo?: string;
+    periodoTreinamento?: string;
+    dataConclusaoTreinamento?: string;
   }
 ): GeneratedDocument {
   const formattedDate = new Date(dataBase).toLocaleDateString('pt-BR');
@@ -184,8 +255,7 @@ export function generateCipaDocument(
             `Publicação inscritos: ${dataListaInscritos}`,
             `Eleição: ${dataEleicao}`,
             `Apuração dos votos: ${dataApuracao}`,
-            `Treinamento membros 20h: ${dataTreinamento}`,
-            `Treinamento presencial: ${dataTreinamentoPresencial}`,
+            `Treinamento dos membros da CIPA (${extraData?.horasTreinamentoTotal || getCipaTrainingHours(extraData?.grauDeRisco || 3).totalHoras}h): ${dataTreinamento}`,
             `Posse: ${dataPosse}`
           ],
           signatories: [
@@ -239,8 +309,7 @@ export function generateCipaDocument(
             `Publicação inscritos: ${dataListaInscritos}`,
             `Eleição: ${dataEleicao} *`,
             `Apuração dos votos: ${dataApuracao}`,
-            `Treinamento membros 20h: ${dataTreinamento}`,
-            `Treinamento presencial 4h: ${dataTreinamentoPresencial}`,
+            `Treinamento dos membros da CIPA (${extraData?.horasTreinamentoTotal || getCipaTrainingHours(extraData?.grauDeRisco || 3).totalHoras}h): ${dataTreinamento}`,
             `Posse: ${dataPosse}`,
             `* A data da eleição poderá ser prorrogada até o dia ${dataEleicaoProrrogada} caso não seja atingido o número de votantes válidos necessários, conforme o disposto no item 5.5 da NR 5: 1º dia: 50% dos empregados; 2º dia: 1/3 dos empregados; 3º dia: Qualquer valor da população do prédio.`,
             `Obs.: Processo não elegível para colaboradores em regime 100% Remoto.`,
@@ -923,30 +992,77 @@ export function generateCipaDocument(
         };
       }
 
-      case 'certificado_treinamento':
+      case 'certificado_treinamento': {
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const unitCity = extraData?.unitCity || 'São Paulo';
+        const unitState = extraData?.unitState || 'SP';
+        const unitAddress = extraData?.unitAddress || 'Av. Eng. Luís Carlos Berrini, 1376';
+        const unitCep = extraData?.unitCep || '04571-936';
+        const compNome = companyName || 'Telefônica Brasil S.A.';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+
+        // Grau de Risco e Carga Horária Normativa NR-05
+        const gr = extraData?.grauDeRisco || 3;
+        const defaultWorkload = getCipaTrainingHours(gr);
+        const horasTotal = extraData?.horasTreinamentoTotal || defaultWorkload.totalHoras;
+        const horasEad = extraData?.horasTreinamentoEad !== undefined ? extraData.horasTreinamentoEad : defaultWorkload.horasEad;
+        const horasPresencial = extraData?.horasTreinamentoPresencial !== undefined ? extraData.horasTreinamentoPresencial : defaultWorkload.horasPresencial;
+
+        const colaboradorNome = extraData?.colaboradorTreinadoNome || 
+          extraData?.candidatosAprovados?.[0]?.nome || 
+          'JOSILENE ALVES LIONTAS';
+        const colaboradorMatricula = extraData?.colaboradorTreinadoMatricula || 
+          extraData?.candidatosAprovados?.[0]?.matricula || 
+          '136064';
+
+        const c = extraData?.cronogramaDatas;
+        const periodoTreinamento = extraData?.periodoTreinamento || c?.treinamento || 'De 23/06/2025 a 27/06/2025';
+        const dataPresencial = extraData?.dataConclusaoTreinamento || c?.treinamentoPresencial || '08/07/2026';
+
         return {
-          title: 'CERTIFICADO DE TREINAMENTO OBRIGATÓRIO DA CIPA',
+          title: `CERTIFICADO DE TREINAMENTO DA CIPA (NR-05) - ${unitName}`,
           category: 'Capacitação e Treinamento',
-          normativeCode: 'NR-5 - Item 5.7 & Lei 14.457/2022',
-          companyName,
-          cnpj,
-          dateGenerated: formattedDate,
+          normativeCode: `NR-05 (Itens 5.7.1, 5.7.2, 5.7.4) e Lei nº 14.457/2022`,
+          companyName: compNome,
+          cnpj: unitCnpj,
+          dateGenerated: dataPresencial,
           content: [
-            `Certificamos que os membros eleitos e indicados da CIPA da empresa ${companyName} concluíram com aproveitamento satisfatório o Treinamento Obrigatório para Membros da CIPA, com carga horária compatível com o Grau de Risco da unidade.`,
-            `CONTEÚDO PROGRAMÁTICO OBRIGATÓRIO (NR-5 item 5.7):`,
-            `a) Estudo do ambiente, das condições de trabalho e dos riscos originados do processo produtivo;`,
-            `b) Metodologia de investigação e análise de acidentes e doenças relacionadas ao trabalho;`,
-            `c) Noções sobre acidentes e doenças relacionadas ao trabalho decorrentes da exposição aos riscos;`,
-            `d) Noções sobre inclusão de pessoas com deficiência e reabilitados nos processos de trabalho;`,
-            `e) PREVENÇÃO E COMBATE AO ASSÉDIO SEXUAL E A TODAS AS FORMAS DE VIOLÊNCIA NO TRABALHO (Módulo Obrigatório Lei nº 14.457/2022);`,
-            `f) Legislação trabalhista e previdenciária relativa à segurança e saúde no trabalho.`
+            `CERTIFICADO`,
+            `Certificamos que:`,
+            `NOME: ${colaboradorNome}`,
+            `CIDADE: ${unitCity} - ${unitState}`,
+            `MATRÍCULA: ${colaboradorMatricula}`,
+            `CARGA HORÁRIA PLATAFORMA EAD: ${horasEad}h`,
+            `CARGA HORÁRIA PRESENCIAL: ${horasPresencial}h`,
+            `CARGA HORÁRIA TOTAL: ${horasTotal}h`,
+            `PERÍODO PLATAFORMA EAD: ${periodoTreinamento}`,
+            `DATA PRESENCIAL / CONCLUSÃO: ${dataPresencial}`,
+            `Concluiu com êxito o treinamento da CIPA – COMISSÃO INTERNA DE PREVENÇÃO DE ACIDENTES E ASSÉDIO (NR-5) da empresa ${compNome}, com carga horária de ${horasEad}h realizadas na plataforma EAD e ${horasPresencial}h presencial realizado na ${unitAddress} – ${unitCep} | ${unitCity} - ${unitState}, em atendimento aos itens 5.7.2 e 5.7.4.2 da NR-05 – Portaria 3.214/78 do Ministério do Trabalho e Lei nº 14.457/2022.`,
+            `CONTEÚDO PROGRAMÁTICO – Plataforma EAD / Formação Teórica`,
+            `• Estudo do Ambiente, das condições de trabalho, inspeção de segurança, bem como os riscos originados do processo produtivo;`,
+            `• Noções sobre acidentes e doenças relacionadas ao trabalho decorrentes das condições de trabalho e da exposição aos riscos existentes no estabelecimento e suas medidas de prevenção;`,
+            `• Metodologia de investigação e análise de acidentes e doenças relacionadas ao trabalho;`,
+            `• Princípios gerais de higiene do trabalho e de medidas de prevenção dos riscos;`,
+            `• Noções sobre as legislações trabalhista e previdenciária relativas à segurança e saúde no trabalho;`,
+            `• Noções sobre a inclusão de pessoas com deficiência e reabilitados nos processos de trabalho;`,
+            `• Organização da CIPA e outros assuntos necessários ao exercício das atribuições da Comissão;`,
+            `CONTEÚDO PROGRAMÁTICO – Treinamento Presencial / Vivência Prática`,
+            `• Prevenção e combate ao assédio sexual e a outras formas de violência no trabalho (Lei nº 14.457/2022);`,
+            `• Atribuições e funcionamento das reuniões ordinárias;`,
+            `• Acidentes de trabalho: conceitos e comunicação (CAT);`,
+            `• Mapa de Riscos;`,
+            `• Inspeções;`,
+            `• Exercícios;`,
+            `• Sistema de Gestão de Saúde e Segurança do Trabalho (SGSST) – ISO 45.001.`
           ],
           signatories: [
-            'Instrutor Responsável / Engenheiro de Segurança',
-            'Diretoria da Empresa / Empregador',
-            'Presidente da CIPA'
+            'Responsável Técnico pelo Treinamento - Gerente de Segurança do Trabalho',
+            'Instrutor Responsável pelo Treinamento - Téc. de Segurança do Trabalho',
+            'Dir. Pessoas - Recursos Humanos',
+            `${colaboradorNome} - Assinatura do colaborador capacitado`
           ]
         };
+      }
 
       case 'calendario_reunioes':
         return {

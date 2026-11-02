@@ -5,7 +5,7 @@ import {
   calcularCronogramaEleitoral 
 } from '../../data/cnaeData';
 import { CnaeEntry, DimensionamentoResult, CronogramaItem, Candidato } from '../../types/cipa';
-import { generateCipaDocument, GeneratedDocument } from '../../data/documentTemplates';
+import { generateCipaDocument, GeneratedDocument, getCipaTrainingHours } from '../../data/documentTemplates';
 import { Company, CompanyUnit, AuthUser } from '../../types/auth';
 import { DEMO_COMPANIES } from '../../data/multiCompanyData';
 import { 
@@ -313,10 +313,9 @@ const STEP_CAPABILITIES: Record<string, {
   'etapa-7': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Relatório' },
   'etapa-8': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Cédula/Lista' },
   'etapa-9': { canEdit: false, canView: true, canDownload: true, canSign: true, canEmail: false, viewLabel: 'Ver Ata Eleição' },
-  'etapa-10': { canEdit: false, canView: true, canDownload: true, canSign: true, canEmail: false, viewLabel: 'Ver Ata Apuração' },
-  'etapa-11': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: false, viewLabel: 'Ver Treinamento' },
-  'etapa-12': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Ata de Posse' },
-  'etapa-13': { canEdit: true, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Calendário' }
+  'etapa-10': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Certificado' },
+  'etapa-11': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Ata de Posse' },
+  'etapa-12': { canEdit: true, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Calendário' }
 };
 
 export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
@@ -918,7 +917,19 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       quorumMinimo: Math.ceil((effectiveHeadcount || headcount || dimensionamento?.headcount || (currentFilial?.headcount || 88)) / 2),
       candidatosAprovados: aprovados.length > 0 ? aprovados : undefined,
       candidatosReprovados: reprovados.length > 0 ? reprovados : undefined,
-      apuracao: apuracaoFinal
+      apuracao: apuracaoFinal,
+      // Carga horária e dados dinâmicos do treinamento e certificado NR-05
+      grauDeRisco: Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3),
+      cnaeCode: cnaeEntry?.code || currentFilial?.cnaeCode,
+      cnaeDesc: cnaeEntry?.description || currentFilial?.cnaeDesc,
+      horasTreinamentoTotal: getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).totalHoras,
+      horasTreinamentoEad: getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).horasEad,
+      horasTreinamentoPresencial: getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).horasPresencial,
+      colaboradorTreinadoNome: aprovados[0]?.nome || (currentEmployees && currentEmployees[0]?.name) || 'JOSILENE ALVES LIONTAS',
+      colaboradorTreinadoMatricula: aprovados[0]?.matricula || (currentEmployees && currentEmployees[0]?.matricula) || '136064',
+      colaboradorTreinadoCargo: aprovados[0]?.cargo || (currentEmployees && currentEmployees[0]?.cargo) || 'Assistente Técnico',
+      periodoTreinamento: datasPrincipais.treinamento,
+      dataConclusaoTreinamento: datasPrincipais.treinamentoPresencial
     };
   };
 
@@ -1754,14 +1765,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     {
       id: 'etapa-10',
       numero: 10,
-      titulo: 'Treinamento Obrigatório dos Membros da CIPA (20h)',
-      subtitulo: 'Capacitação teórica conforme Grau de Risco e Lei nº 14.457/2022',
-      prazoLabel: 'Realizado antes da posse dos membros',
+      titulo: `Treinamento Obrigatório e Certificação da CIPA (${getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).totalHoras}h)`,
+      subtitulo: `Capacitação teórica e prática conforme Grau de Risco ${Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)} (${getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).totalHoras}h) e Lei nº 14.457/2022`,
+      prazoLabel: 'Realizado antes da posse dos membros (NR-5 item 5.7.1)',
       dataCalculada: datasPrincipais.treinamento,
-      referenciaNormativa: 'NR-5, item 5.7 e Lei Federal nº 14.457/2022',
-      baseLegalDetalhada: 'Item 5.7 da NR-05: Carga horária obrigatória de 8h a 20h. Obrigatoriedade de inclusão de temas sobre prevenção e combate ao assédio sexual e violência laboral.',
+      referenciaNormativa: 'NR-5, subitens 5.7.1, 5.7.2, 5.7.4 e Lei nº 14.457/2022',
+      baseLegalDetalhada: `Item 5.7.4 da NR-05: Carga horária mínima de ${getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).totalHoras}h para Grau de Risco ${Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)} (${getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).modalidade}). Obrigatoriedade de inclusão de temas sobre prevenção e combate ao assédio sexual e violência laboral (Lei 14.457/2022). O treinamento deve ser concluído antes da posse.`,
       porQueExiste: 'Capacita os eleitos e indicados antes de iniciarem suas atividades práticas de inspeção de risco, investigação de acidentes, mapa de risco e proteção à integridade física e psicológica no trabalho.',
-      impactoAuditoria: 'Posse de cipeiro sem certificado válido de treinamento constitui infração grave com embargo administrativo de atividades de risco.',
+      impactoAuditoria: 'Posse de cipeiro sem certificado válido de treinamento constitui infração grave com anulação da posse e embargo administrativo de atividades de risco.',
       acaoTipo: 'documento_edital' as const,
       docTipo: 'certificado_treinamento',
       botaoTexto: 'Ver Certificado',
@@ -1770,22 +1781,6 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     {
       id: 'etapa-11',
       numero: 11,
-      titulo: 'Treinamento Presencial da CIPA (4h)',
-      subtitulo: 'Instrução prática in loco sobre rotas de fuga, primeiros socorros e inspeção de extintores',
-      prazoLabel: 'Realizado na semana que antecede a posse',
-      dataCalculada: datasPrincipais.treinamentoPresencial || '15/12/2026',
-      referenciaNormativa: 'NR-5, item 5.7.4',
-      baseLegalDetalhada: 'Item 5.7.4 da NR-05: Parte prática e presencial do treinamento de segurança.',
-      porQueExiste: 'Permite vivência prática nas dependências da unidade.',
-      impactoAuditoria: 'A omissão da capacitação prática invalida a posse.',
-      acaoTipo: 'documento_edital' as const,
-      docTipo: 'certificado_treinamento',
-      botaoTexto: 'Ver Treinamento Presencial',
-      botaoIcone: 'award' as const
-    },
-    {
-      id: 'etapa-12',
-      numero: 12,
       titulo: 'Ata de Instalação e Posse da CIPA',
       subtitulo: 'Sessão solene de posse da comissão e designação da presidência',
       prazoLabel: '1º dia útil após término do mandato anterior',
@@ -1800,8 +1795,8 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       botaoIcone: 'signature' as const
     },
     {
-      id: 'etapa-13',
-      numero: 13,
+      id: 'etapa-12',
+      numero: 12,
       titulo: 'Envio ao Sindicato e Calendário Anual de Reuniões',
       subtitulo: 'Transmissão das atas ao sindicato e homologação de 12 reuniões',
       prazoLabel: 'Até 10 dias úteis após a posse',
@@ -2105,7 +2100,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   };
 
   // AÇÃO 5: DISPARAR EDITAL POR E-MAIL (AMPLA DIVULGAÇÃO NR-5)
-  const BROADCAST_STEPS = ['etapa-2', 'etapa-5', 'etapa-7', 'etapa-8', 'etapa-9', 'etapa-10'];
+  const BROADCAST_STEPS = ['etapa-2', 'etapa-5', 'etapa-7', 'etapa-8', 'etapa-9', 'etapa-10', 'etapa-11'];
 
   const handleOpenEmailBroadcast = (etapa: any) => {
     setBroadcastingStep(etapa);
@@ -2131,8 +2126,13 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       defaultSubject = `[ELEIÇÃO CIPA] Início da Votação / Urna Eletrônica CIPA - Gestão ${gestaoAno}`;
       defaultMsg = `Prezados colaboradores,\n\nEstá oficialmente aberta a votação para a eleição dos representantes dos empregados na CIPA - Gestão ${gestaoAno}, em conformidade com o subitem 5.5.3 da NR-5.\n\nO voto é secreto, seguro e direito de todo trabalhador. Acesse a plataforma CIPA Expert para registrar seu voto de forma rápida e auditada digitalmente.\n\nPeríodo de votação: ${custom?.date || etapa.dataCalculada}.`;
     } else if (etapa.id === 'etapa-10') {
-      defaultSubject = `[RESULTADO OFICIAL] Apuração das Eleições CIPA - Gestão ${gestaoAno}`;
-      defaultMsg = `Prezados colaboradores,\n\nConcluímos a apuração dos votos da Eleição da CIPA - Gestão ${gestaoAno}. Em estrito cumprimento ao subitem 5.5.4 da NR-5, publicamos o resultado oficial com os membros titulares e suplentes eleitos pelos trabalhadores.\n\nAgradecemos a participação de todos os colaboradores que exerceram seu direito de voto democrático na segurança e bem-estar de todos.`;
+      const cnaeRisco = Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3);
+      const trainingHrs = getCipaTrainingHours(cnaeRisco);
+      defaultSubject = `[CERTIFICAÇÃO CIPA] Conclusão do Treinamento Obrigatório da CIPA (${trainingHrs.totalHoras}h) - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores e membros da CIPA,\n\nComunicamos a conclusão com êxito do Treinamento Obrigatório para Membros da CIPA - Gestão ${gestaoAno}, com carga horária normativa de ${trainingHrs.totalHoras}h em conformidade com o subitem 5.7.4 da NR-05 e Lei Federal nº 14.457/2022.\n\nOs certificados oficiais individuais foram emitidos e disponibilizados para download e validação digital na plataforma CIPA Expert.\n\nPeríodo realizado: ${custom?.date || etapa.dataCalculada}.`;
+    } else if (etapa.id === 'etapa-11') {
+      defaultSubject = `[POSSE OFICIAL] Instalação e Posse dos Membros da CIPA - Gestão ${gestaoAno}`;
+      defaultMsg = `Prezados colaboradores,\n\nÉ com grande satisfação que comunicamos a realização da Sessão Solene de Instalação e Posse dos membros da CIPA da empresa ${currentCompany.razaoSocial}, estabelecimento ${currentFilial.name}, para a Gestão ${gestaoAno}, conforme subitem 5.5.5 da NR-05.\n\nA Ata Oficial de Instalação e Posse foi assinada pelas partes interessadas e homologada na plataforma CIPA Expert.`;
     } else {
       defaultSubject = `[COMUNICADO CIPA] ${custom?.title || etapa.titulo} - Gestão ${gestaoAno}`;
       defaultMsg = `Prezados colaboradores,\n\nComunicamos a realização da etapa "${custom?.title || etapa.titulo}" do processo eleitoral da CIPA da empresa ${currentCompany.razaoSocial}, estabelecimento ${currentFilial.name}, em conformidade com a Norma Regulamentadora nº 05 (NR-5).\n\nData oficial prevista: ${custom?.date || etapa.dataCalculada}.\n${custom?.obs ? `\nObservações: ${custom.obs}\n` : ''}\nPara mais detalhes e acompanhamento do processo, acesse o portal CIPA Expert.`;
@@ -3257,7 +3257,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-600/60 text-emerald-100 px-2 py-0.5 rounded-md">
-                          Etapa {selectedNormativeStep.numero.toString().padStart(2, '0')} de 13
+                          Etapa {selectedNormativeStep.numero.toString().padStart(2, '0')} de 12
                         </span>
                         <span className="text-xs text-emerald-300 font-semibold">
                           {selectedNormativeStep.referenciaNormativa}
@@ -3350,7 +3350,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                        Etapa {editingStep.numero} de 13 · {editingStep.referenciaNormativa}
+                        Etapa {editingStep.numero} de 12 · {editingStep.referenciaNormativa}
                       </span>
                       <h3 className="text-sm font-bold text-slate-900 leading-tight">
                         Editar Parâmetros da Etapa
@@ -3401,6 +3401,79 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       placeholder="Instruções específicas para esta etapa (serão incluídas no documento oficial)..."
                     />
                   </div>
+
+                  {editingStep.docTipo === 'certificado_treinamento' && (
+                    <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl space-y-2.5">
+                      <div className="flex items-center gap-2 text-amber-950 font-extrabold text-[11px] uppercase tracking-wider">
+                        <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>Preenchimento Rápido do Certificado (NR-05)</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-0.5">Nome do Colaborador</label>
+                          <input
+                            type="text"
+                            defaultValue={editStepCustomText.match(/NOME: ([^\n\r]+)/)?.[1] || 'JOSILENE ALVES LIONTAS'}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) {
+                                setEditStepCustomText(prev => prev.replace(/NOME: [^\n\r]+/, `NOME: ${val}`));
+                              }
+                            }}
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            placeholder="Nome do colaborador"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-0.5">Matrícula</label>
+                          <input
+                            type="text"
+                            defaultValue={editStepCustomText.match(/MATRÍCULA: ([^\n\r]+)/)?.[1] || '136064'}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) {
+                                setEditStepCustomText(prev => prev.replace(/MATRÍCULA: [^\n\r]+/, `MATRÍCULA: ${val}`));
+                              }
+                            }}
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-mono font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            placeholder="Matrícula"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-0.5">Carga Horária Total</label>
+                          <input
+                            type="text"
+                            defaultValue={editStepCustomText.match(/CARGA HORÁRIA TOTAL: ([^\n\r]+)/)?.[1] || `${getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).totalHoras}h`}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) {
+                                const finalH = val.endsWith('h') ? val : `${val}h`;
+                                setEditStepCustomText(prev => prev.replace(/CARGA HORÁRIA TOTAL: [^\n\r]+/, `CARGA HORÁRIA TOTAL: ${finalH}`));
+                              }
+                            }}
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-mono font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-700 block mb-0.5">Cidade - UF</label>
+                          <input
+                            type="text"
+                            defaultValue={editStepCustomText.match(/CIDADE: ([^\n\r]+)/)?.[1] || `${currentFilial?.city || 'São Paulo'} - ${currentFilial?.state || 'SP'}`}
+                            onChange={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) {
+                                setEditStepCustomText(prev => prev.replace(/CIDADE: [^\n\r]+/, `CIDADE: ${val}`));
+                              }
+                            }}
+                            className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-amber-800 block">
+                        O texto completo do certificado abaixo é 100% editável para qualquer adaptação.
+                      </span>
+                    </div>
+                  )}
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
@@ -3481,7 +3554,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-blue-500/30 text-blue-200 px-2 py-0.5 rounded-md border border-blue-400/20">
-                          Etapa {broadcastingStep.numero.toString().padStart(2, '0')} de 13
+                          Etapa {broadcastingStep.numero.toString().padStart(2, '0')} de 12
                         </span>
                         <span className="text-xs text-blue-300 font-semibold">
                           {broadcastingStep.referenciaNormativa}
@@ -3746,8 +3819,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Publicação inscritos</span><strong>{datasPrincipais.listaCandidatos || '09/11/2026'}</strong></div>
                     <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Eleição</span><strong className="text-emerald-800">{datasPrincipais.eleicao || '16/11/2026'}</strong></div>
                     <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Apuração dos votos</span><strong>{datasPrincipais.apuracao || '23/11/2026'}</strong></div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Treinamento membros 20h</span><strong>{datasPrincipais.treinamento || '26/11/2026 a 30/11/2026'}</strong></div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Treinamento presencial</span><strong>08/12/2026</strong></div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-100"><span>Treinamento obrigatório dos membros ({getCipaTrainingHours(Number(cnaeEntry?.grauDeRisco || currentFilial?.grauDeRisco || 3)).totalHoras}h)</span><strong>{datasPrincipais.treinamento || '26/11/2026 a 30/11/2026'}</strong></div>
                     <div className="flex justify-between py-0.5"><span>Posse</span><strong>{datasPrincipais.posse || '21/12/2026'}</strong></div>
                   </div>
                 </div>
@@ -3838,13 +3910,30 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                   </p>
                 </div>
               </div>
-              <button 
-                type="button"
-                onClick={() => setActiveEditalDoc(null)} 
-                className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-200 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const step = etapasNormativas.find((e: any) => e.id === activeEditalDoc.stepId);
+                      if (step) {
+                        setActiveEditalDoc(null);
+                        handleEditStep(step);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+                    title="Editar documento oficial"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editar</span>
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setActiveEditalDoc(null)} 
+                    className="text-slate-400 hover:text-slate-700 cursor-pointer p-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
             </div>
 
             {/* Conteúdo do Edital */}
@@ -3925,6 +4014,45 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     );
                   }
 
+                  // Elementos Visuais do Certificado Oficial
+                  if (p === 'CERTIFICADO') {
+                    return (
+                      <div key={idx} className="my-3 text-center">
+                        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-emerald-800 via-teal-900 to-emerald-800 text-white shadow-md border-2 border-emerald-400">
+                          <Award className="w-5 h-5 text-amber-300" />
+                          <span className="font-serif tracking-widest text-base font-black uppercase">CERTIFICADO</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (p === 'Certificamos que:') {
+                    return (
+                      <div key={idx} className="text-center font-serif italic text-slate-600 text-sm my-2">
+                        Certificamos que:
+                      </div>
+                    );
+                  }
+
+                  if (p.startsWith('NOME:')) {
+                    const nome = p.replace('NOME:', '').trim();
+                    return (
+                      <div key={idx} className="text-center py-2.5 my-2 bg-emerald-50/70 border-y-2 border-emerald-300 rounded-lg">
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-800 block mb-0.5">Membro da CIPA Capacitado(a)</span>
+                        <h2 className="text-lg font-black text-slate-950 font-serif uppercase">{nome}</h2>
+                      </div>
+                    );
+                  }
+
+                  if (p.startsWith('CONTEÚDO PROGRAMÁTICO')) {
+                    return (
+                      <div key={idx} className="mt-4 mb-2 p-2.5 bg-emerald-50/90 border border-emerald-300 rounded-xl text-emerald-950 font-extrabold text-xs uppercase tracking-wider flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span>{p}</span>
+                      </div>
+                    );
+                  }
+
                   // Títulos e cabeçalhos de seção
                   if (p === 'Você sabia o que cabe ao Cipeiro?' || p === 'COMISSÃO ELEITORAL:' || p.startsWith('Edital de Inscrições') || p.startsWith('Unidade ')) {
                     return (
@@ -3952,7 +4080,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
               </div>
 
               {/* Signatários */}
-              <div className="pt-8 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-8 text-center text-xs">
+              <div className={`pt-8 border-t border-slate-100 grid grid-cols-1 ${activeEditalDoc.doc.signatories.length >= 4 ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2'} gap-6 text-center text-xs`}>
                 {activeEditalDoc.doc.signatories.map((sig, i) => {
                   const parts = typeof sig === 'string' ? sig.split(' - ') : [sig];
                   const name = parts[0]?.trim() || sig;
