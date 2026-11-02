@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   CNAE_DATABASE, 
   calcularDimensionamentoNR5, 
@@ -221,6 +221,102 @@ const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-25', name: 'Bruno César Figueiredo', matricula: 'CLT-1870', cpf: '567.123.890-46', cargo: 'Operador de Corte a Laser', setor: 'Corte Térmico', email: 'bruno.figueiredo@empresa.com.br', dataAdmissao: '2022-08-22' }
 ];
 
+interface ProcessConfig {
+  cipaMode: 'ja_existe' | 'primeira_cipa';
+  dataUltimaPosse: string;
+  dataPrevisaoPosse: string;
+  completedSteps: Record<string, boolean>;
+}
+
+const getDefaultProcessConfig = (companyId?: string, unitId?: string): ProcessConfig => {
+  if (companyId === 'comp-telefonica') {
+    return {
+      cipaMode: 'ja_existe',
+      dataUltimaPosse: '2025-12-21',
+      dataPrevisaoPosse: '2026-12-21',
+      completedSteps: {
+        'etapa-1': true,
+        'etapa-2': true,
+        'etapa-3': true,
+        'etapa-4': true,
+        'etapa-5': true,
+        'etapa-6': true,
+        'etapa-7': true,
+        'etapa-8': true
+      }
+    };
+  }
+  if (companyId === 'emp-1') {
+    if (unitId?.includes('betim')) {
+      return {
+        cipaMode: 'ja_existe',
+        dataUltimaPosse: '2025-08-10',
+        dataPrevisaoPosse: '2026-08-10',
+        completedSteps: { 'etapa-1': true }
+      };
+    }
+    if (unitId?.includes('cajamar')) {
+      return {
+        cipaMode: 'ja_existe',
+        dataUltimaPosse: '2025-11-25',
+        dataPrevisaoPosse: '2026-11-25',
+        completedSteps: { 'etapa-1': true }
+      };
+    }
+    return {
+      cipaMode: 'ja_existe',
+      dataUltimaPosse: '2025-05-15',
+      dataPrevisaoPosse: '2026-05-15',
+      completedSteps: { 'etapa-1': true, 'etapa-2': true, 'etapa-3': true }
+    };
+  }
+  if (companyId === 'emp-2') {
+    return {
+      cipaMode: 'ja_existe',
+      dataUltimaPosse: '2025-08-30',
+      dataPrevisaoPosse: '2026-08-30',
+      completedSteps: { 'etapa-1': true, 'etapa-2': true }
+    };
+  }
+  if (companyId === 'emp-3') {
+    return {
+      cipaMode: 'ja_existe',
+      dataUltimaPosse: '2025-10-10',
+      dataPrevisaoPosse: '2026-10-10',
+      completedSteps: { 'etapa-1': true }
+    };
+  }
+  return {
+    cipaMode: 'ja_existe',
+    dataUltimaPosse: '2025-10-15',
+    dataPrevisaoPosse: '2026-10-15',
+    completedSteps: { 'etapa-1': true }
+  };
+};
+
+const STEP_CAPABILITIES: Record<string, {
+  canEdit: boolean;
+  canView: boolean;
+  canDownload: boolean;
+  canSign: boolean;
+  canEmail: boolean;
+  viewLabel: string;
+}> = {
+  'etapa-1': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: false, viewLabel: 'Ver Laudo' },
+  'etapa-2': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Edital' },
+  'etapa-3': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Carta' },
+  'etapa-4': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: false, viewLabel: 'Ver Ata da CE' },
+  'etapa-5': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Edital' },
+  'etapa-6': { canEdit: false, canView: true, canDownload: false, canSign: false, canEmail: false, viewLabel: 'Ver Candidatos' },
+  'etapa-7': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Relatório' },
+  'etapa-8': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Cédula/Lista' },
+  'etapa-9': { canEdit: false, canView: true, canDownload: true, canSign: true, canEmail: false, viewLabel: 'Ver Ata Eleição' },
+  'etapa-10': { canEdit: false, canView: true, canDownload: true, canSign: true, canEmail: false, viewLabel: 'Ver Ata Apuração' },
+  'etapa-11': { canEdit: false, canView: true, canDownload: true, canSign: false, canEmail: false, viewLabel: 'Ver Treinamento' },
+  'etapa-12': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Ata de Posse' },
+  'etapa-13': { canEdit: true, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Calendário' }
+};
+
 export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   onOpenDocument,
   onOpenSignatureModal,
@@ -376,10 +472,18 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     return calcularDimensionamentoNR5(cnaeEntry, headcount);
   }, [cnaeEntry, headcount]);
 
-  // Histórico da CIPA
-  const [cipaMode, setCipaMode] = useState<'ja_existe' | 'primeira_cipa'>('ja_existe');
-  const [dataUltimaPosse, setDataUltimaPosse] = useState<string>('2025-10-15');
-  const [dataPrevisaoPosse, setDataPrevisaoPosse] = useState<string>('2026-11-20');
+  // Histórico da CIPA e Processo Eleitoral com Escopo por Empresa e Filial
+  const processScopeKey = useMemo(() => {
+    return `${currentCompany?.id || 'emp'}_${currentFilial?.id || 'unit'}`;
+  }, [currentCompany?.id, currentFilial?.id]);
+
+  const initialProcessConfig = useMemo(() => {
+    return getDefaultProcessConfig(currentCompany?.id, currentFilial?.id);
+  }, [currentCompany?.id, currentFilial?.id]);
+
+  const [cipaMode, setCipaMode] = useState<'ja_existe' | 'primeira_cipa'>(initialProcessConfig.cipaMode);
+  const [dataUltimaPosse, setDataUltimaPosse] = useState<string>(initialProcessConfig.dataUltimaPosse);
+  const [dataPrevisaoPosse, setDataPrevisaoPosse] = useState<string>(initialProcessConfig.dataPrevisaoPosse);
 
   // Término do Mandato
   const mandateEndDate = useMemo(() => {
@@ -774,21 +878,22 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     };
 
     return {
+      logoUrl: (currentFilial as any)?.logoUrl || currentCompany?.logoUrl,
       sindicatoSigla,
       sindicatoNome,
       sindicatoEmail,
       cronogramaDatas: datasPrincipais,
-      unitName: currentFilial?.name || 'Unidade Jundiaí',
+      unitName: currentFilial?.name || (currentCompany?.units?.[0]?.name) || 'Unidade Principal',
       unitState: currentFilial?.state || 'SP',
-      unitCity: currentFilial?.city || 'Jundiaí',
-      unitAddress: (currentFilial as any)?.address || 'Avenida Fernando Arens, 470, Vila Arens II, Jundiaí - SP',
-      unitCep: (currentFilial as any)?.cep || '13.202-570',
-      unitCnpj: currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '02.558.157/0577-84',
+      unitCity: currentFilial?.city || 'São Paulo',
+      unitAddress: (currentFilial as any)?.address || currentCompany?.enderecoCompleto || 'Endereço da Unidade',
+      unitCep: (currentFilial as any)?.cep || '00000-000',
+      unitCnpj: currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00',
       gestaoAno: '2026/2027',
-      geradoPor: (currentCompany as any)?.responsavelTecnico || 'Pedro Lobeiro',
-      aprovadoPor: (currentCompany as any)?.responsavelTecnico || 'Pedro Lobeiro',
-      votantesHabilitados: effectiveHeadcount || headcount || dimensionamento?.headcount || 88,
-      quorumMinimo: Math.ceil((effectiveHeadcount || headcount || dimensionamento?.headcount || 88) / 2),
+      geradoPor: (currentCompany as any)?.responsavelAdmin || currentUser?.name || 'Comissão Eleitoral',
+      aprovadoPor: (currentCompany as any)?.responsavelAdmin || currentUser?.name || 'Diretoria / SESMT',
+      votantesHabilitados: effectiveHeadcount || headcount || dimensionamento?.headcount || (currentFilial?.headcount || 88),
+      quorumMinimo: Math.ceil((effectiveHeadcount || headcount || dimensionamento?.headcount || (currentFilial?.headcount || 88)) / 2),
       candidatosAprovados: aprovados.length > 0 ? aprovados : undefined,
       candidatosReprovados: reprovados.length > 0 ? reprovados : undefined,
       apuracao: apuracaoFinal
@@ -825,21 +930,16 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     return dbDimensionamentosCount > 0 || (effectiveHeadcount > 0 && !!dimensionamento);
   }, [dbDimensionamentosCount, effectiveHeadcount, dimensionamento]);
 
-  // Etapas concluídas (Etapa 1 de dimensionamento já nasce concluída)
-  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({
-    'etapa-1': true,
-    'etapa-2': false,
-    'etapa-3': false,
-    'etapa-4': false,
-    'etapa-5': false,
-    'etapa-6': false,
-    'etapa-7': false,
-    'etapa-8': false,
-    'etapa-9': false,
-    'etapa-10': false,
-    'etapa-11': false,
-    'etapa-12': false,
-    'etapa-13': false,
+  // Etapas concluídas com escopo por empresa/filial
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem(`cipa_process_${processScopeKey}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.completedSteps) return parsed.completedSteps;
+      }
+    } catch {}
+    return initialProcessConfig.completedSteps;
   });
 
   // Modal com explicação da fundamentação legal da NR-5 para a etapa selecionada
@@ -890,12 +990,58 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
     dispatchCount?: number;
   }>>(() => {
     try {
-      const saved = localStorage.getItem('cipa_step_customizations');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+      const raw = localStorage.getItem(`cipa_process_${processScopeKey}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.stepCustomizations) return parsed.stepCustomizations;
+      }
+    } catch {}
+    return {};
   });
+
+  // Carregamento reativo e persistência do processo eleitoral para a empresa/filial ativa
+  const activeScopeRef = useRef<string>(processScopeKey);
+
+  useEffect(() => {
+    activeScopeRef.current = processScopeKey;
+    try {
+      const raw = localStorage.getItem(`cipa_process_${processScopeKey}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.dataUltimaPosse) setDataUltimaPosse(parsed.dataUltimaPosse);
+        if (parsed.dataPrevisaoPosse) setDataPrevisaoPosse(parsed.dataPrevisaoPosse);
+        if (parsed.cipaMode) setCipaMode(parsed.cipaMode);
+        if (parsed.completedSteps) setCompletedSteps(parsed.completedSteps);
+        if (parsed.stepCustomizations) setStepCustomizations(parsed.stepCustomizations);
+        if (parsed.manualApuracaoData) setManualApuracaoData(parsed.manualApuracaoData);
+        return;
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar processo da empresa:', e);
+    }
+
+    const def = getDefaultProcessConfig(currentCompany?.id, currentFilial?.id);
+    setDataUltimaPosse(def.dataUltimaPosse);
+    setDataPrevisaoPosse(def.dataPrevisaoPosse);
+    setCipaMode(def.cipaMode);
+    setCompletedSteps(def.completedSteps);
+    setStepCustomizations({});
+  }, [processScopeKey]);
+
+  useEffect(() => {
+    if (activeScopeRef.current !== processScopeKey) return;
+    try {
+      const payload = {
+        dataUltimaPosse,
+        dataPrevisaoPosse,
+        cipaMode,
+        completedSteps,
+        stepCustomizations,
+        manualApuracaoData
+      };
+      localStorage.setItem(`cipa_process_${processScopeKey}`, JSON.stringify(payload));
+    } catch {}
+  }, [processScopeKey, dataUltimaPosse, dataPrevisaoPosse, cipaMode, completedSteps, stepCustomizations, manualApuracaoData]);
 
   // Modal de edição de etapa
   const [editingStep, setEditingStep] = useState<any | null>(null);
@@ -2803,6 +2949,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                       const isDone = !!completedSteps[etapa.id] || isSigned;
                       const env = getStepEnvelope(etapa);
                       const isSent = !!env && !isSigned;
+                      const caps = STEP_CAPABILITIES[etapa.id] || {
+                        canEdit: false,
+                        canView: true,
+                        canDownload: true,
+                        canSign: false,
+                        canEmail: false,
+                        viewLabel: 'Visualizar'
+                      };
 
                       return (
                         <tr key={etapa.id} className="hover:bg-slate-50/80 transition-colors">
@@ -2886,13 +3040,13 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                           </td>
                           <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="inline-flex items-center gap-1.5 justify-end">
-                              {/* 1. EDITAR (Oculto no Passo 1 de Dimensionamento) */}
-                              {etapa.id !== 'etapa-1' && (
+                              {/* 1. EDITAR (Apenas etapas com edição de texto permitida: 2, 3, 4, 5, 12, 13) */}
+                              {caps.canEdit && (
                                 <button
                                   type="button"
                                   onClick={() => handleEditStep(etapa)}
                                   className="group inline-flex items-center h-8 rounded-xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 hover:border-amber-300 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                  title="Editar etapa e prazos"
+                                  title="Editar texto e prazos da etapa"
                                 >
                                   <Pencil className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-amber-600" />
                                   <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
@@ -2962,34 +3116,38 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 </button>
                               )}
 
-                              {/* 2. VISUALIZAR */}
-                              <button
-                                type="button"
-                                onClick={() => handleViewStep(etapa)}
-                                className="group inline-flex items-center h-8 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                title="Visualizar documento oficial gerado"
-                              >
-                                <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
-                                <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
-                                  Visualizar
-                                </span>
-                              </button>
+                              {/* 2. VISUALIZAR (Com rótulo contextual e específico de cada fase) */}
+                              {caps.canView && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewStep(etapa)}
+                                  className="group inline-flex items-center h-8 rounded-xl bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 border border-blue-200 hover:border-blue-300 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title={`Visualizar documento oficial (${caps.viewLabel})`}
+                                >
+                                  <Eye className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-blue-600" />
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[120px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
+                                    {caps.viewLabel}
+                                  </span>
+                                </button>
+                              )}
 
-                              {/* 3. BAIXAR */}
-                              <button
-                                type="button"
-                                onClick={() => handleDownloadStepPdf(etapa)}
-                                className="group inline-flex items-center h-8 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border border-slate-300 hover:border-slate-400 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
-                                title="Baixar documento em PDF oficial"
-                              >
-                                <Download className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-slate-700" />
-                                <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
-                                  Baixar
-                                </span>
-                              </button>
+                              {/* 3. BAIXAR PDF (Apenas etapas com documentos oficiais - oculta na etapa 6 operacional) */}
+                              {caps.canDownload && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadStepPdf(etapa)}
+                                  className="group inline-flex items-center h-8 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border border-slate-300 hover:border-slate-400 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0"
+                                  title="Baixar documento em PDF oficial"
+                                >
+                                  <Download className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-slate-700" />
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[100px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
+                                    Baixar
+                                  </span>
+                                </button>
+                              )}
 
-                              {/* 4. ASSINAR / ASSINADO (Oculto no Passo 1 de Dimensionamento) */}
-                              {etapa.id !== 'etapa-1' && (
+                              {/* 4. ASSINAR / ASSINADO (Apenas etapas que exigem coleta formal de assinaturas) */}
+                              {caps.canSign && (
                                 isSigned ? (
                                   <button
                                     type="button"
@@ -3030,7 +3188,7 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                               )}
 
                               {/* 5. DISPARAR EDITAL POR E-MAIL (Ampla divulgação NR-5 a todos os trabalhadores) */}
-                              {BROADCAST_STEPS.includes(etapa.id) && (
+                              {caps.canEmail && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEmailBroadcast(etapa)}

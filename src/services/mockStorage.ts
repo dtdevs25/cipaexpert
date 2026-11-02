@@ -366,7 +366,19 @@ export const MockStorageService = {
 
   // Empresas
   getCompanies(): Company[] {
-    return safeGet<Company[]>(STORAGE_KEYS.COMPANIES, INITIAL_COMPANIES);
+    const stored = safeGet<Company[]>(STORAGE_KEYS.COMPANIES, INITIAL_COMPANIES);
+    // Assegura que novas empresas padrão (ex: Telefônica) apareçam mesmo se o usuário já tiver dados no storage
+    let updated = false;
+    INITIAL_COMPANIES.forEach(initComp => {
+      if (!stored.some(c => c.id === initComp.id)) {
+        stored.push(initComp);
+        updated = true;
+      }
+    });
+    if (updated) {
+      safeSet(STORAGE_KEYS.COMPANIES, stored);
+    }
+    return stored;
   },
   saveCompany(company: Company): void {
     const list = this.getCompanies();

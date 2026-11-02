@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check, Users, Calendar } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2, FileText, Shield, ExternalLink, QrCode, Lock, Check, Users, Calendar, Building2 } from 'lucide-react';
 import { GeneratedDocument } from '../data/documentTemplates';
 
 interface DocumentViewerModalProps {
@@ -122,19 +122,74 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             </span>
           </div>
 
-          {/* Institutional Header */}
-          <div className="border-b-2 border-slate-900 pb-6 text-center space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              REPÚBLICA FEDERATIVA DO BRASIL · MINISTÉRIO DO TRABALHO E EMPREGO
+          {/* Institutional Executive Letterhead com Logo e Identidade Corporativa */}
+          <div className="pb-5 border-b-2 border-slate-900/80">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 text-center sm:text-left">
+              {/* Logo da Empresa */}
+              <div className="flex items-center gap-3.5 shrink-0">
+                {docData.logoUrl ? (
+                  <div className="h-14 max-w-[160px] flex items-center justify-center p-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                    <img 
+                      src={docData.logoUrl} 
+                      alt={docData.companyName} 
+                      className="max-h-12 max-w-full object-contain" 
+                    />
+                  </div>
+                ) : (
+                  <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white flex flex-col items-center justify-center font-bold shadow-xs ring-1 ring-emerald-500/30 shrink-0">
+                    <Building2 className="w-5 h-5 text-emerald-100" />
+                    <span className="text-[10px] font-black tracking-wider uppercase mt-0.5">
+                      {docData.companyName ? docData.companyName.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase() || 'CIPA' : 'CIPA'}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="space-y-0.5">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-800 flex items-center justify-center sm:justify-start gap-1">
+                    <Shield className="w-3 h-3 text-emerald-600 shrink-0" />
+                    <span>MTE · Norma Regulamentadora NR-05</span>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-black text-slate-950 tracking-tight leading-snug">
+                    {docData.companyName}
+                  </h2>
+                  <p className="text-xs text-slate-600 font-medium">
+                    {docData.unitName ? <span className="font-semibold text-slate-800">{docData.unitName} · </span> : ''}
+                    {docData.unitAddress || (docData.unitCity ? `${docData.unitCity} - ${docData.unitState || 'BR'}` : '')}
+                  </p>
+                  <p className="text-[11px] font-mono text-slate-500">
+                    CNPJ: <strong>{docData.cnpj}</strong> · Gestão CIPA {docData.gestaoAno || '2026/2027'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Selo CIPA Oficial à Direita */}
+              <div className="shrink-0 flex flex-col items-center sm:items-end justify-center">
+                <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs font-black tracking-wide uppercase flex items-center gap-1.5 shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                  <span>CIPA Gestão {docData.gestaoAno || '2026/2027'}</span>
+                </div>
+                <span className="text-[9.5px] font-mono text-slate-400 mt-1">
+                  Comissão Interna de Prevenção e Assédio
+                </span>
+                <span className="text-[9px] text-slate-400 font-mono">
+                  Base Legal: {docData.normativeCode}
+                </span>
+              </div>
             </div>
-            <h1 className="text-lg font-bold text-slate-950 uppercase tracking-tight">
-              {docData.title}
-            </h1>
-            <div className="text-xs text-slate-600 flex flex-wrap justify-center gap-x-4 gap-y-1">
-              <span><strong>Empresa:</strong> {docData.companyName}</span>
-              <span><strong>CNPJ:</strong> {docData.cnpj}</span>
-              <span><strong>Base Legal:</strong> {docData.normativeCode}</span>
-              <span><strong>Data de Emissão:</strong> {docData.dateGenerated}</span>
+
+            {/* Linha Divisória de Destaque Esmeralda */}
+            <div className="w-full h-1 bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-700 rounded-full mt-4 mb-4"></div>
+
+            {/* Faixa Título do Documento */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-lg py-2.5 px-4 text-center shadow-2xs">
+              <h1 className="text-base sm:text-lg font-black text-slate-950 uppercase tracking-tight">
+                {docData.title}
+              </h1>
+              <div className="text-[10.5px] text-slate-500 font-mono mt-0.5 flex items-center justify-center gap-3">
+                <span>Data de Emissão: {docData.dateGenerated}</span>
+                <span>·</span>
+                <span>Categoria: {docData.category}</span>
+              </div>
             </div>
           </div>
 
@@ -143,7 +198,26 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             {(() => {
               const blocks: React.ReactNode[] = [];
               let i = 0;
-              const content = docData.content;
+              
+              // Deduplicação dos parágrafos de abertura que repetem o cabeçalho/título
+              const normalizedTitle = docData.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const normalizedCompany = docData.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+              let startIndex = 0;
+              for (let idx = 0; idx < Math.min(4, docData.content.length); idx++) {
+                const p = docData.content[idx].trim();
+                const pNorm = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+                const isRepeatTitle = pNorm.length > 5 && (normalizedTitle.includes(pNorm) || pNorm.includes(normalizedTitle));
+                const isRepeatCipa = p.toLowerCase().startsWith('cipa') && (p.toLowerCase().includes('comissão') || p.toLowerCase().includes('comissao') || p.toLowerCase().includes('gestão'));
+                const isRepeatUnitGestao = p.toLowerCase().includes('gestão 2026') || p.toLowerCase().includes('gestao 2026');
+                const isRepeatCompanyCnpj = pNorm.includes(normalizedCompany) && p.toLowerCase().includes('cnpj:');
+
+                if (isRepeatTitle || isRepeatCipa || (isRepeatUnitGestao && p.length < 70) || isRepeatCompanyCnpj) {
+                  startIndex = idx + 1;
+                } else {
+                  break;
+                }
+              }
+              const content = docData.content.slice(startIndex);
 
               while (i < content.length) {
                 const paragraph = content[i];

@@ -820,7 +820,7 @@ export class PdfService {
    * 2. O Certificado de Autenticidade e Trilha de Assinaturas Digitais com fé pública
    * Em todas as páginas é aplicada uma linha única de autenticação criptográfica válida pela legislação.
    */
-  static downloadEnvelopePdf(envelope: SignatureEnvelope): void {
+  static async downloadEnvelopePdf(envelope: SignatureEnvelope): Promise<void> {
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -836,33 +836,114 @@ export class PdfService {
     const timestampDoc = envelope.updatedAt || envelope.createdAt || new Date().toLocaleString('pt-BR');
 
     // =========================================================================
-    // PÁGINA 1: DOCUMENTO ORIGINAL FORMATADO
+    // PÁGINA 1: DOCUMENTO ORIGINAL FORMATADO COM TIMBRADO CORPORATIVO
     // =========================================================================
 
-    // Cabeçalho Institucional
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 110, 120);
-    doc.text('REPÚBLICA FEDERATIVA DO BRASIL · MINISTÉRIO DO TRABALHO E EMPREGO', pageWidth / 2, 22, { align: 'center' });
+    const compName = envelope.companyName || 'Empresa';
+    const compCnpj = envelope.cnpj || '00.000.000/0001-00';
+    const docNormative = envelope.normativeCode || 'NR-05 · MTE';
+    const logoUrl = (envelope as any).logoUrl;
 
-    doc.setFontSize(13);
-    doc.setTextColor(15, 23, 42); // Slate-900
-    doc.text(envelope.title.toUpperCase(), pageWidth / 2, 29, { align: 'center' });
+    // Tentar carregar logo
+    let logoImg = null;
+    if (logoUrl) {
+      try {
+        logoImg = await loadImgData(logoUrl);
+      } catch {}
+    }
+
+    if (logoImg) {
+      doc.addImage(logoImg.img, logoImg.format, margin, 15, 26, 13);
+    } else {
+      // Insígnia Corporativa Vetorial
+      doc.setFillColor(6, 95, 70);
+      doc.roundedRect(margin, 15, 18, 13, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      const initials = compName.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').split(/\s+/).filter(Boolean).slice(0, 3).map(w => w[0]).join('').toUpperCase() || 'CIPA';
+      doc.text(initials, margin + 9, 23.5, { align: 'center' });
+    }
+
+    // Informações da Empresa no Cabeçalho
+    const headerTextX = margin + 22;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(6, 95, 70);
+    doc.text('MTE · MINISTÉRIO DO TRABALHO E EMPREGO · NORMA REGULAMENTADORA NR-05', headerTextX, 18);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(compName, headerTextX, 22.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(70, 80, 90);
-    doc.text(`Empresa: ${envelope.companyName}   |   CNPJ: ${envelope.cnpj}   |   Norma: ${envelope.normativeCode || 'NR-5'}`, pageWidth / 2, 35, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    const unitInfo = [(envelope as any).unitName, (envelope as any).unitAddress].filter(Boolean).join(' · ');
+    if (unitInfo) {
+      doc.text(unitInfo, headerTextX, 26.5);
+    }
+    doc.text(`CNPJ: ${compCnpj}   |   Gestão CIPA: ${(envelope as any).gestaoAno || '2026/2027'}   |   Base: ${docNormative}`, headerTextX, unitInfo ? 30 : 27);
 
-    // Linha divisória sutil
-    doc.setDrawColor(200, 210, 220);
+    // Selo CIPA no canto superior direito
+    doc.setFillColor(236, 253, 245);
+    doc.roundedRect(pageWidth - margin - 35, 15, 35, 11, 2, 2, 'F');
+    doc.setDrawColor(167, 243, 208);
     doc.setLineWidth(0.3);
-    doc.line(margin, 39, pageWidth - margin, 39);
+    doc.roundedRect(pageWidth - margin - 35, 15, 35, 11, 2, 2, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(6, 95, 70);
+    doc.text(`CIPA ${(envelope as any).gestaoAno || '2026/2027'}`, pageWidth - margin - 17.5, 20, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Validade MTE / NR-05', pageWidth - margin - 17.5, 24, { align: 'center' });
+
+    // Linha divisória verde
+    doc.setDrawColor(5, 150, 105);
+    doc.setLineWidth(0.6);
+    doc.line(margin, 34, pageWidth - margin, 34);
+
+    // Faixa Título do Documento
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, 36, contentWidth, 8, 1, 1, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(margin, 36, contentWidth, 8, 1, 1, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(envelope.title.toUpperCase(), pageWidth / 2, 41.5, { align: 'center' });
+
+    // Deduplicação dos parágrafos de abertura que repetem o cabeçalho/título
+    const normalizedTitle = envelope.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedCompany = compName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let startIndex = 0;
+    for (let idx = 0; idx < Math.min(4, envelope.content.length); idx++) {
+      const p = envelope.content[idx].trim();
+      const pNorm = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const isRepeatTitle = pNorm.length > 5 && (normalizedTitle.includes(pNorm) || pNorm.includes(normalizedTitle));
+      const isRepeatCipa = p.toLowerCase().startsWith('cipa') && (p.toLowerCase().includes('comissão') || p.toLowerCase().includes('comissao') || p.toLowerCase().includes('gestão'));
+      const isRepeatUnitGestao = p.toLowerCase().includes('gestão 2026') || p.toLowerCase().includes('gestao 2026');
+      const isRepeatCompanyCnpj = pNorm.includes(normalizedCompany) && p.toLowerCase().includes('cnpj:');
+
+      if (isRepeatTitle || isRepeatCipa || (isRepeatUnitGestao && p.length < 70) || isRepeatCompanyCnpj) {
+        startIndex = idx + 1;
+      } else {
+        break;
+      }
+    }
+    const filteredContent = envelope.content.slice(startIndex);
 
     // Conteúdo do Documento (Parágrafos e Tabelas Inteligentes)
-    let currentY = 47;
+    let currentY = 49;
 
-    envelope.content.forEach((para) => {
+    filteredContent.forEach((para) => {
       // 1. Linha de Tabela Markdown
       if (para.trim().startsWith('|')) {
         // Se for linha separadora |---|---|..., ignora

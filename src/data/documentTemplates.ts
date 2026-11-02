@@ -7,6 +7,13 @@ export interface GeneratedDocument {
   dateGenerated: string;
   content: string[];
   signatories: string[];
+  logoUrl?: string;
+  unitName?: string;
+  unitAddress?: string;
+  unitCity?: string;
+  unitState?: string;
+  unitCep?: string;
+  gestaoAno?: string;
 }
 
 export function generateCipaDocument(
@@ -16,6 +23,7 @@ export function generateCipaDocument(
   dataBase: string = '2026-10-15',
   membrosCount: number = 8,
   extraData?: { 
+    logoUrl?: string;
     sindicatoSigla?: string;
     sindicatoNome?: string; 
     sindicatoEmail?: string;
@@ -118,7 +126,8 @@ export function generateCipaDocument(
   const formattedDate = new Date(dataBase).toLocaleDateString('pt-BR');
   const c = extraData?.cronogramaDatas;
 
-  switch (tipo) {
+  const buildDoc = (): GeneratedDocument => {
+    switch (tipo) {
     case 'comunicado_sindicato': {
       const unitName = extraData?.unitName || 'Unidade Marquês';
       const unitCity = extraData?.unitCity || 'São Paulo';
@@ -210,9 +219,6 @@ export function generateCipaDocument(
         cnpj: unitCnpj,
         dateGenerated: dataConvocacao,
         content: [
-          `CIPA · Comissão Interna de Prevenção de Acidentes e Assédio`,
-          `${unitName} - Gestão ${gestaoAno}`,
-          `Edital de Convocação da CIPA - ${unitName} - ${unitState}`,
           `Começou a renovação da CIPA da ${unitName} e os colaboradores interessados poderão se candidatar ao processo eleitoral, formalizando seu interesse conforme as seguintes orientações:`,
           `• A renovação da CIPA segue as determinações da Norma NR-05 e Lei 14.457/2022;`,
           `• A eleição ocorrerá de forma virtual;`,
@@ -283,8 +289,6 @@ export function generateCipaDocument(
         cnpj: unitCnpj,
         dateGenerated: dataReuniao,
         content: [
-          `ATA DE FORMAÇÃO DA COMISSÃO ELEITORAL`,
-          `${unitName.toUpperCase()}, ${unitCity.toUpperCase()} - ${unitState.toUpperCase()} - GESTÃO ${gestaoAno}`,
           `Aos ${diaExtenso} dias do mês de ${mesExtenso} de ${anoExtenso}, de forma virtual via TEAMS (ferramenta de comunicação digital) da empresa ${compNome} ${unitName}, CNPJ ${unitCnpj}, situada à ${unitAddress}, CEP ${unitCep}, ${unitCity} - ${unitState} - Gestão ${gestaoAno} - iniciou-se às 14:00 a reunião para formação da Comissão Eleitoral e definição das regras do processo.`,
           `Foram definidos os seguintes membros para formarem esta comissão:`,
           `• Presidente – ${presidenteNome} RE ${presidenteRe}`,
@@ -347,8 +351,6 @@ export function generateCipaDocument(
         cnpj: unitCnpj,
         dateGenerated: c?.editalInscricao || formattedDate || '21/09/2026',
         content: [
-          `Edital de Inscrições da CIPA ${gestaoAno}`,
-          `Unidade ${unitName} - ${unitState}`,
           `A renovação da CIPA da ${unitName} foi iniciada, assim, os colaboradores interessados em candidatar-se ao processo eleitoral, devem formalizar seu interesse através do link ou QR Code abaixo:`,
           `${linkInscricao}`,
           `Ou`,
@@ -641,30 +643,16 @@ export function generateCipaDocument(
         cnpj: unitCnpj,
         dateGenerated: c?.listaCandidatos || formattedDate || '07/10/2026',
         content: [
-          `RELATÓRIO DE APROVAÇÃO DE INSCRIÇÕES`,
-          `DATA DE GERAÇÃO (Horário de Brasília - BRT) ${dataGeracao}`,
-          `GERADO POR: ${geradoPor}`,
-          `NOME DA CIPAA ${compNome} | CIPA ${unitName} ${gestaoAno}`,
-          `PERÍODO DE REALIZAÇÃO DA VOTAÇÃO (Horário de Brasília - BRT): ${dataEleicao}`,
-          `PERÍODO DA 1º PRORROGAÇÃO (Horário de Brasília - BRT): ${dataProrrogacao1}`,
-          `PERÍODO DA 2º PRORROGAÇÃO (Horário de Brasília - BRT): ${dataProrrogacao2}`,
-          `DESCRIÇÃO DA CIPAA: Descrição do ${compNome} | CIPA ${unitName} ${gestaoAno}`,
-          `REALIZADOR DA CIPAA ${compNome.toUpperCase()} CIPA - ${unitName.toUpperCase()}`,
-          `CNPJ DO REALIZADOR ${unitCnpj}`,
-          `INCLUSÃO DE PAUTAS DURANTE A VOTAÇÃO: NÃO`,
-          `VOTAÇÃO COM PESO NÃO`,
-          `VOTO SECRETO: SIM`,
-          `ACOMPANHAMENTO DE QUÓRUM: SIM`,
-          `CONVOCAÇÃO DE CIPAA: SIM`,
-          `VOTANTES HABILITADOS: ${votantesHabilitados}`,
-          `QUÓRUM MÍNIMO ${quorumMinimo}`,
-          `REALIZAÇÃO DE VIDEO CONFERÊNCIA INTEGRADA NÃO`,
-          `TÍTULO DA PAUTA: ${compNome} | CIPA ${unitName} ${gestaoAno}`,
-          `DESCRIÇÃO DA PAUTA: Descrição do ${compNome} | CIPA ${unitName} ${gestaoAno}`,
-          `ACOMPANHAMENTO DO RESULTADO DAS VOTAÇÕES: NÃO`,
-          `INÍCIO DO PERÍODO DE INSCRIÇÕES: ${inscricaoInicio}`,
-          `FIM DO PERÍODO DE INSCRIÇÕES: ${inscricaoFim}`,
-          `APROVADO POR: ${aprovadoPor}`,
+          `DATA DE GERAÇÃO: ${dataGeracao}`,
+          `GERADO POR: ${geradoPor} | APROVADO POR: ${aprovadoPor}`,
+          `PROCESSO ELEITORAL: CIPA ${unitName} - Gestão ${gestaoAno}`,
+          `PERÍODO DE REALIZAÇÃO DA VOTAÇÃO: ${dataEleicao}`,
+          `PERÍODO DA 1º PRORROGAÇÃO: ${dataProrrogacao1}`,
+          `PERÍODO DA 2º PRORROGAÇÃO: ${dataProrrogacao2}`,
+          `VOTANTES HABILITADOS: ${votantesHabilitados} colaboradores`,
+          `QUÓRUM MÍNIMO REGULAMENTAR: ${quorumMinimo} votos (50% + 1)`,
+          `VOTO SECRETO: SIM | SISTEMA DE VOTAÇÃO: ELETRÔNICA AUDITADA`,
+          `PERÍODO DE INSCRIÇÕES: ${inscricaoInicio} até ${inscricaoFim}`,
           `INSCRIÇÕES APROVADAS: ${aprovados.length}`,
           `| ID | NOME | EMAIL | CARGO | DATA DE ADMISSÃO |`,
           `|---|---|---|---|---|`,
@@ -723,11 +711,8 @@ export function generateCipaDocument(
         cnpj: unitCnpj,
         dateGenerated: dataEleicao,
         content: [
-          `Votação da CIPA (on-line)`,
-          `${unitName}`,
-          `Gestão ${gestaoAno}`,
           `Chegou o momento de votar no seu representante da CIPA!`,
-          `A votação será registrada de forma online e é exclusiva para colaboradores lotados no CNPJ ${unitCnpj}`,
+          `A votação será registrada de forma online e é exclusiva para colaboradores lotados no CNPJ ${unitCnpj}.`,
           `O link para votação será encaminhado diretamente pela plataforma virtual, atente-se ao remetente Assembleias Virtuais.`,
           `Relembre quem são os candidatos da CIPA:`,
           `| RE | Foto | Nome | E-mail | Admissão | Cargo |`,
@@ -821,5 +806,18 @@ export function generateCipaDocument(
           'Membros Participantes'
         ]
       };
-  }
+    }
+  };
+
+  const rawDoc = buildDoc();
+  return {
+    ...rawDoc,
+    logoUrl: extraData?.logoUrl,
+    unitName: extraData?.unitName,
+    unitAddress: extraData?.unitAddress,
+    unitCity: extraData?.unitCity,
+    unitState: extraData?.unitState,
+    unitCep: extraData?.unitCep,
+    gestaoAno: extraData?.gestaoAno || '2026/2027'
+  };
 }

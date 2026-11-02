@@ -119,6 +119,63 @@ export const INITIAL_COMPANIES: Company[] = [
         gestorName: 'Clarisse Moura'
       }
     ]
+  },
+  {
+    id: 'comp-telefonica',
+    razaoSocial: 'Telefônica Brasil S.A.',
+    nomeFantasia: 'Telefônica / Vivo',
+    cnpj: '02.558.157/0577-84',
+    logoUrl: undefined,
+    cnaeCode: '6110-8/01',
+    cnaeDesc: 'Serviços de telefonia fixa comutada - STFC e telecomunicações',
+    enderecoCompleto: 'Avenida Fernando Arens, 470, Vila Arens II, Jundiaí - SP, CEP 13.202-570',
+    modulosContratados: {
+      dimensionamento: true,
+      eleicao: true,
+      gestao: true,
+    },
+    responsavelAdmin: 'Luiz Alberto De Barros Junior',
+    units: [
+      {
+        id: 'unit-tel-jundiai',
+        name: 'Unidade SP Jundiaí Vila',
+        cnpj: '02.558.157/0577-84',
+        city: 'Jundiaí',
+        state: 'SP',
+        headcount: 88,
+        grauDeRisco: 2,
+        cnaeCode: '6110-8/01',
+        cnaeDesc: 'Serviços de telecomunicações',
+        cipaAtiva: true,
+        gestorName: 'Pedro Lobeiro'
+      },
+      {
+        id: 'unit-tel-marques',
+        name: 'Unidade Marquês de São Vicente',
+        cnpj: '02.558.157/0773-86',
+        city: 'São Paulo',
+        state: 'SP',
+        headcount: 140,
+        grauDeRisco: 2,
+        cnaeCode: '6110-8/01',
+        cnaeDesc: 'Serviços de telecomunicações',
+        cipaAtiva: true,
+        gestorName: 'Cesar Bueno'
+      },
+      {
+        id: 'unit-tel-piracicaba',
+        name: 'Unidade Piracicaba',
+        cnpj: '02.558.157/0593-02',
+        city: 'Piracicaba',
+        state: 'SP',
+        headcount: 65,
+        grauDeRisco: 2,
+        cnaeCode: '6110-8/01',
+        cnaeDesc: 'Serviços de telecomunicações',
+        cipaAtiva: true,
+        gestorName: 'Luiz Alberto De Barros Junior'
+      }
+    ]
   }
 ];
 
