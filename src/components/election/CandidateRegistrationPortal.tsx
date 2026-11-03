@@ -18,7 +18,9 @@ import {
   Printer,
   BadgeAlert,
   Sparkles,
-  Info
+  Info,
+  Camera,
+  Upload
 } from 'lucide-react';
 import { Company, CompanyUnit } from '../../types/auth';
 import { Candidato } from '../../types/cipa';
@@ -29,6 +31,7 @@ import {
   ValidationResult
 } from '../../data/employeeData';
 import { INITIAL_COMPANIES } from '../../data/multiCompanyData';
+import { ElectionService } from '../../services/electionService';
 
 interface CandidateRegistrationPortalProps {
   company?: Company;
@@ -73,6 +76,19 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
   const [urnaNumero, setUrnaNumero] = useState('');
   const [propostas, setPropostas] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFotoUrl(reader.result as string);
+        setPhotoError(null);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Form Step 3: Aceite de Regras
   const [hasAgreedRules, setHasAgreedRules] = useState(false);
@@ -119,6 +135,9 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
       setUrnaNome(result.employee.apelido || result.employee.name.split(' ')[0] + ' ' + (result.employee.name.split(' ')[1] || ''));
       setUrnaNumero(String(Math.floor(10 + Math.random() * 89)));
       setPropostas('Compromisso com a prevenção ativa de acidentes, ergonomia nos postos de trabalho e combate permanente a todas as formas de assédio (Lei 14.457/2022).');
+      if (result.employee.fotoUrl) {
+        setFotoUrl(result.employee.fotoUrl);
+      }
       setCurrentStep(2);
     }
   };
@@ -127,11 +146,14 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
   const handleSelectQuickTest = (emp: EmployeeRecord) => {
     setInputRe(emp.matricula);
     setInputName(emp.name);
+    if (emp.fotoUrl) {
+      setFotoUrl(emp.fotoUrl);
+    }
     setValidationResult(null);
   };
 
   // Conclui e homologa a candidatura
-  const handleFinalizeRegistration = () => {
+  const handleFinalizeRegistration = async () => {
     if (!validationResult?.employee) return;
 
     const emp = validationResult.employee;
@@ -140,6 +162,20 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
     const formattedTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const fullTimestamp = `${formattedDate} às ${formattedTime} (BRT)`;
     const proto = `CIPA-INSC-2026-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // Registra candidatura com foto obrigatória e gravação de logs
+    await ElectionService.registerCandidato(unit.id, {
+      matricula: emp.matricula,
+      nome: emp.name,
+      apelidoUrna: urnaNome.trim() || emp.apelido || emp.name,
+      numeroUrna: urnaNumero || '10',
+      cargo: emp.cargo,
+      setor: emp.setor,
+      email: emp.email,
+      dataAdmissao: emp.dataAdmissao,
+      fotoUrl: fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
+      propostas: propostas.trim()
+    });
 
     const newCandidate: Candidato = {
       id: emp.matricula || `cand-${Date.now()}`,
@@ -506,6 +542,60 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
                     Estas propostas serão exibidas aos eleitores durante o período de votação.
                   </span>
                 </div>
+
+                {/* FOTO DO CANDIDATO (ESTRITAMENTE OBRIGATÓRIA CONFORME REGRA 2) */}
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-emerald-600" />
+                      Foto Oficial do Candidato para a Urna Eletrônica: *
+                    </label>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-mono border border-amber-200">
+                      Obrigatória conforme Edital
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="w-24 h-24 rounded-2xl bg-slate-200 border-2 border-dashed border-slate-400 flex items-center justify-center overflow-hidden shrink-0 relative shadow-inner">
+                      {fotoUrl ? (
+                        <img src={fotoUrl} alt="Foto de Urna" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-center p-2">
+                          <UserCheck className="w-8 h-8 text-slate-400 mx-auto" />
+                          <span className="text-[9px] text-slate-500 block mt-1">Sem foto</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 flex-1 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                        <label className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-xl cursor-pointer transition-colors inline-flex items-center gap-1.5 shadow-xs text-xs">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Fazer Upload da Foto</span>
+                          <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                        </label>
+                        {fotoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setFotoUrl('')}
+                            className="px-2.5 py-1.5 bg-white border border-slate-300 text-slate-600 hover:text-rose-600 rounded-xl text-xs transition-colors cursor-pointer"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Envie uma foto frontal com boa nitidez. Esta foto é obrigatória e aparecerá na cédula da cabine de votação.
+                      </p>
+                      {photoError && (
+                        <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>{photoError}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-t border-slate-200">
@@ -520,7 +610,14 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
 
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(3)}
+                  onClick={() => {
+                    if (!fotoUrl.trim()) {
+                      setPhotoError('A foto do candidato é estritamente obrigatória para conclusão da inscrição.');
+                      return;
+                    }
+                    setPhotoError(null);
+                    setCurrentStep(3);
+                  }}
                   disabled={!urnaNome.trim() || !propostas.trim()}
                   className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-extrabold rounded-xl text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md"
                 >

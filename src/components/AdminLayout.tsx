@@ -468,7 +468,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               onOpenDocument={onOpenDocument}
               companyName={activeCompany.razaoSocial}
               cnpj={activeCompany.cnpj}
-              totalEleitoresAptos={activeUnit?.headcount || 145}
+              totalEleitoresAptos={activeUnit?.headcount || 88}
+              activeCompany={activeCompany}
+              activeUnit={activeUnit}
+              currentUser={currentUser}
+              modulosContratados={activeCompany.modulosContratados}
+              onNavigateTab={setActiveTab}
             />
           )}
 
