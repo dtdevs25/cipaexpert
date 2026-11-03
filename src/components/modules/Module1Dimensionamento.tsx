@@ -63,6 +63,8 @@ import {
 } from 'lucide-react';
 import { useCipa } from '../../context/CipaContext';
 import { DimensionamentoHistoryModal } from './dimensionamento/DimensionamentoHistoryModal';
+import { CipaMeetingSchedulerModal } from './calendario/CipaMeetingSchedulerModal';
+import { ScheduledMeeting } from '../../utils/businessDays';
 import { ApiService } from '../../services/apiService';
 import { PdfService } from '../../services/pdfService';
 import { QrCodeService } from '../../services/qrCodeService';
@@ -315,7 +317,7 @@ const STEP_CAPABILITIES: Record<string, {
   'etapa-9': { canEdit: false, canView: true, canDownload: true, canSign: true, canEmail: false, viewLabel: 'Ver Ata Eleição' },
   'etapa-10': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Certificado' },
   'etapa-11': { canEdit: true, canView: true, canDownload: true, canSign: true, canEmail: true, viewLabel: 'Ver Ata de Posse' },
-  'etapa-12': { canEdit: true, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Ver Calendário' }
+  'etapa-12': { canEdit: true, canView: true, canDownload: true, canSign: false, canEmail: true, viewLabel: 'Programar / Ver Calendário' }
 };
 
 export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
@@ -554,6 +556,15 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const hasModuloEleicao = overrideEleicaoModulo !== null 
     ? overrideEleicaoModulo 
     : Boolean(currentCompany?.modulosContratados?.eleicao);
+
+  const hasModuloGestao = modulosContratados?.gestao !== undefined
+    ? Boolean(modulosContratados.gestao)
+    : Boolean(currentCompany?.modulosContratados?.gestao);
+
+  // Estado para Programação e Calendário de Reuniões Anuais (Etapa 12)
+  const [isMeetingSchedulerModalOpen, setIsMeetingSchedulerModalOpen] = useState(false);
+  const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>([]);
+  const [diaUtilEscolhido, setDiaUtilEscolhido] = useState<number>(5);
 
   const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
   const [isManualCandidateModalOpen, setIsManualCandidateModalOpen] = useState(false);
@@ -929,7 +940,13 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
       colaboradorTreinadoMatricula: aprovados[0]?.matricula || (currentEmployees && currentEmployees[0]?.matricula) || '136064',
       colaboradorTreinadoCargo: aprovados[0]?.cargo || (currentEmployees && currentEmployees[0]?.cargo) || 'Assistente Técnico',
       periodoTreinamento: datasPrincipais.treinamento,
-      dataConclusaoTreinamento: datasPrincipais.treinamentoPresencial
+      dataConclusaoTreinamento: datasPrincipais.treinamentoPresencial,
+      // Dados para o Calendário de Reuniões Anuais (Etapa 12)
+      diaUtilEscolhido,
+      reunioesAgendadas: scheduledMeetings.length === 12 ? scheduledMeetings : undefined,
+      presidenteCipaNome: 'Rosangela Aparecida Santos Marcelino',
+      vicePresidenteCipaNome: 'Luis Carlos Gomes Da Silva',
+      secretarioCipaNome: 'Sidney Vida Barbalho Felipe De Souza'
     };
   };
 
@@ -1910,6 +1927,11 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
   const handleViewStep = (etapa: any) => {
     if (etapa.id === 'etapa-6') {
       setIsCandidateModalOpen(true);
+      return;
+    }
+
+    if (etapa.id === 'etapa-12') {
+      setIsMeetingSchedulerModalOpen(true);
       return;
     }
 
@@ -3033,6 +3055,15 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                 >
                                   {etapa.numero}. {etapa.titulo}
                                 </button>
+                              ) : etapa.id === 'etapa-12' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsMeetingSchedulerModalOpen(true)}
+                                  className="text-left font-bold text-emerald-950 hover:text-emerald-700 hover:underline cursor-pointer transition-colors"
+                                  title="Clique para programar as 12 reuniões ordinárias pelo dia útil e vincular ao Módulo de Gestão"
+                                >
+                                  {etapa.numero}. {etapa.titulo}
+                                </button>
                               ) : (
                                 <strong className="text-slate-900 font-bold">
                                   {etapa.numero}. {etapa.titulo}
@@ -3134,6 +3165,21 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                                   )}
                                   <span className="max-w-0 opacity-0 group-hover:max-w-[150px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
                                     {hasModuloEleicao ? 'Eleição Online' : 'Lançar Urna Física'}
+                                  </span>
+                                </button>
+                              )}
+
+                              {/* BOTÃO ESPECIAL PARA ETAPA 12: PROGRAMAR 12 REUNIÕES ORDINÁRIAS */}
+                              {etapa.id === 'etapa-12' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsMeetingSchedulerModalOpen(true)}
+                                  className="group inline-flex items-center h-8 rounded-xl active:scale-95 px-2.5 transition-all duration-200 ease-out cursor-pointer shadow-2xs overflow-hidden shrink-0 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                  title="Programar 12 reuniões ordinárias mensais da CIPA pelo dia útil e vincular ao Módulo de Gestão"
+                                >
+                                  <Calendar className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-105 text-emerald-700" />
+                                  <span className="max-w-0 opacity-0 group-hover:max-w-[150px] group-hover:opacity-100 overflow-hidden whitespace-nowrap pl-0 group-hover:pl-1.5 text-[11px] font-bold transition-all duration-200 ease-out">
+                                    Programar Reuniões
                                   </span>
                                 </button>
                               )}
@@ -5737,6 +5783,38 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
         companyName={currentCompany.nomeFantasia || currentCompany.razaoSocial}
         unitName={currentFilial.name}
         onPrintDimensionamento={handleDownloadPdfDimensionamento}
+      />
+
+      {/* Modal de Programação e Calendário de Reuniões Anuais (Etapa 12 - NR-5) */}
+      <CipaMeetingSchedulerModal
+        isOpen={isMeetingSchedulerModalOpen}
+        onClose={() => setIsMeetingSchedulerModalOpen(false)}
+        posseDate={datasPrincipais.posse}
+        companyName={currentCompany?.razaoSocial || propCompanyName || 'Empresa'}
+        cnpj={currentFilial?.cnpj || currentCompany?.cnpj || propCnpj || '00.000.000/0001-00'}
+        unitName={currentFilial?.name || (currentCompany?.units?.[0]?.name) || 'Unidade Principal'}
+        unitAddress={(currentFilial as any)?.address || currentCompany?.enderecoCompleto || 'Endereço da Unidade'}
+        unitCity={currentFilial?.city || 'São Paulo'}
+        unitState={currentFilial?.state || 'SP'}
+        hasModuloGestao={hasModuloGestao}
+        sindicatoNome={sindicatoNome}
+        sindicatoSigla={sindicatoSigla}
+        onNavigateToGestao={onNavigateTab ? () => onNavigateTab('gestao') : undefined}
+        onViewDocument={(doc) => {
+          if (onOpenDocument) {
+            onOpenDocument(doc);
+          } else {
+            setActiveEditalDoc({ stepId: 'etapa-12', doc });
+          }
+        }}
+        onSaveSchedule={(newSchedule, newDiaUtil) => {
+          setScheduledMeetings(newSchedule);
+          setDiaUtilEscolhido(newDiaUtil);
+          showToast(`Programação das 12 reuniões ordinárias (${newDiaUtil}º dia útil) salva com sucesso!`);
+        }}
+        initialDiaUtil={diaUtilEscolhido}
+        initialSchedule={scheduledMeetings.length === 12 ? scheduledMeetings : undefined}
+        logoUrl={(currentFilial as any)?.logoUrl || currentCompany?.logoUrl}
       />
 
     </div>

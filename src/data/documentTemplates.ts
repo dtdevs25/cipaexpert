@@ -1,3 +1,5 @@
+import { generate12MeetingsSchedule, ScheduledMeeting } from '../utils/businessDays';
+
 export interface GeneratedDocument {
   title: string;
   category: string;
@@ -196,6 +198,13 @@ export function generateCipaDocument(
     colaboradorTreinadoCargo?: string;
     periodoTreinamento?: string;
     dataConclusaoTreinamento?: string;
+    diaUtilEscolhido?: number | string;
+    horarioPadrao?: string;
+    localPadrao?: string;
+    reunioesAgendadas?: ScheduledMeeting[];
+    presidenteCipaNome?: string;
+    vicePresidenteCipaNome?: string;
+    secretarioCipaNome?: string;
   }
 ): GeneratedDocument {
   const formattedDate = new Date(dataBase).toLocaleDateString('pt-BR');
@@ -1064,25 +1073,70 @@ export function generateCipaDocument(
         };
       }
 
-      case 'calendario_reunioes':
+      case 'calendario_reunioes': {
+        const c = extraData?.cronogramaDatas;
+        const unitName = extraData?.unitName || 'Unidade Principal';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const unitAddress = extraData?.unitAddress || 'Endereço da Unidade';
+        const unitCity = extraData?.unitCity || 'São Paulo';
+        const unitState = extraData?.unitState || 'SP';
+        const compNome = companyName || 'Telefônica Brasil S/A';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const sindicato = extraData?.sindicatoNome ? `${extraData.sindicatoNome} (${extraData?.sindicatoSigla || 'Sindicato'})` : 'Sindicato dos Trabalhadores';
+        const diaUtilNum = Number(extraData?.diaUtilEscolhido || 5);
+        const horarioDef = extraData?.horarioPadrao || '10:00 às 11:30';
+        const localDef = extraData?.localPadrao || `${unitName} - Sala de Treinamentos e Reuniões`;
+        const dataPosse = c?.posse || '17/07/2026';
+
+        // Recupera ou gera as 12 reuniões ordinárias
+        const reunioes: ScheduledMeeting[] = (extraData?.reunioesAgendadas && Array.isArray(extraData.reunioesAgendadas) && extraData.reunioesAgendadas.length === 12)
+          ? extraData.reunioesAgendadas
+          : generate12MeetingsSchedule(dataPosse, diaUtilNum, horarioDef, localDef);
+
+        const presCipa = extraData?.presidenteCipaNome || 'Rosangela Aparecida Santos Marcelino';
+        const vicePresCipa = extraData?.vicePresidenteCipaNome || 'Luis Carlos Gomes Da Silva';
+        const secCipa = extraData?.secretarioCipaNome || 'Sidney Vida Barbalho Felipe De Souza';
+
+        const reunioesRows = reunioes.map(r => 
+          `| ${r.numero}ª | ${r.mesAno} | ${r.dataFormatada} | ${r.diaSemana} | ${r.horario} | ${r.isSipat ? '★ SIPAT - ' : ''}${r.pauta} | ${r.local} |`
+        );
+
         return {
-          title: 'CALENDÁRIO ANUAL DE REUNIÕES ORDINÁRIAS DA CIPA',
-          category: 'Planejamento Anual',
-          normativeCode: 'NR-5 - Item 5.6.1',
-          companyName,
-          cnpj,
+          title: `CALENDÁRIO ANUAL DE REUNIÕES ORDINÁRIAS DA CIPA - GESTÃO ${gestaoAno}`,
+          category: 'Planejamento e Gestão Anual',
+          normativeCode: 'NR-05 · Subitem 5.6.1, 5.8.1 e Lei Federal nº 14.457/2022',
+          companyName: compNome,
+          cnpj: unitCnpj,
           dateGenerated: formattedDate,
           content: [
-            `Fica estabelecido o Calendário Anual de Reuniões Ordinárias da CIPA da empresa ${companyName} para o mandato 2026/2027.`,
-            `As reuniões ordinárias serão realizadas mensalmente em dia e horário preestabelecidos durante o expediente normal de trabalho da empresa, com lavratura obrigatória de ata e envio para assinatura eletrônica de todos os presentes.`,
-            `A pauta de todas as reuniões contemplará o acompanhamento das ações preventivas e do canal de denúncias previsto pela Lei 14.457/2022.`
+            `CALENDÁRIO OFICIAL DE REUNIÕES ORDINÁRIAS DA CIPA - GESTÃO ${gestaoAno}`,
+            `EMPRESA: ${compNome} | CNPJ: ${unitCnpj}`,
+            `ESTABELECIMENTO: ${unitName} - ${unitAddress} - ${unitCity}/${unitState}`,
+            `REGISTRO E HOMOLOGAÇÃO NORMATIVA:`,
+            `Em estrito cumprimento ao subitem 5.6.1 da Norma Regulamentadora nº 05 (Portaria MTP nº 4.219/2022 e Portaria GM nº 3.214/1978), a Comissão Interna de Prevenção de Acidentes e Assédio (CIPA) desta unidade homologa formalmente o Cronograma Anual de Reuniões Ordinárias da Gestão ${gestaoAno}.`,
+            `REGRA GERAL DE PERIODICIDADE E HORÁRIO:`,
+            `As reuniões ordinárias mensais realizar-se-ão impreterivelmente no ${diaUtilNum}º DIA ÚTIL de cada mês, durante o expediente normal de trabalho da empresa (NR-05 subitem 5.6.2), com participação obrigatória e paritária dos membros representantes do empregador e dos empregados.`,
+            `CRONOGRAMA DAS 12 REUNIÕES ORDINÁRIAS MENSAIS:`,
+            `| Reunião | Mês / Ano | Data Oficial | Dia da Semana | Horário | Pauta Principal e Foco Preventivo | Local / Sala |`,
+            `| :---: | :---: | :---: | :---: | :---: | :--- | :--- |`,
+            ...reunioesRows,
+            `PAUTA PERMANENTE - COMBATE AO ASSÉDIO SEXUAL E MORAL (LEI Nº 14.457/2022):`,
+            `Nos termos da Lei Federal nº 14.457/2022, todas as 12 reuniões ordinárias da CIPA contemplarão, em caráter mandatório, pauta específica dedicada ao acompanhamento de denúncias, promoção de palestras e ações preventivas de acolhimento e combate à violência e ao assédio no ambiente laboral.`,
+            `SEMANA INTERNA DE PREVENÇÃO DE ACIDENTES E ASSÉDIO (SIPAT):`,
+            `A SIPAT do mandato ${gestaoAno} está fixada no mês assinalado com estrela (★) no cronograma acima, sendo responsabilidade da comissão e do SESMT estruturar a grade de palestras técnicas, dinâmicas de segurança e campanhas educativas.`,
+            `REUNIÕES EXTRAORDINÁRIAS (NR-05, SUBITEM 5.6.4):`,
+            `Caso ocorra acidente de trabalho grave ou fatal, ou risco iminente tecnicamente fundamentado, será convocada Reunião Extraordinária no prazo máximo de 48 (quarenta e oito) horas.`,
+            `TRANSMISSÃO AO SINDICATO DA CATEGORIA (NR-05, SUBITEM 5.8.1):`,
+            `O presente calendário é remetido formalmente ao Sindicato dos Trabalhadores (${sindicato}) no prazo de até 10 (dez) dias úteis contados da posse solene da CIPA, permanecendo arquivado pelo prazo mínimo de 5 (cinco) anos à disposição da Auditoria Fiscal do Trabalho.`
           ],
           signatories: [
-            'Presidente da CIPA',
-            'Vice-Presidente da CIPA',
-            'Secretário(a) da CIPA'
+            `${presCipa} - Presidente da CIPA (Representante do Empregador)`,
+            `${vicePresCipa} - Vice-Presidente da CIPA (Representante dos Empregados)`,
+            `${secCipa} - Secretário(a) da CIPA`,
+            `${compNome} - Representante Legal da Empresa`
           ]
         };
+      }
 
       default:
         return {

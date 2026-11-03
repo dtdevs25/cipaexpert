@@ -79,58 +79,84 @@ export const Module3GestaoCIPA: React.FC<Module3GestaoCIPAProps> = ({
   ]);
 
   // Calendar of Meetings with Reminders
-  const [calendario, setCalendario] = useState<ReuniaoCalendario[]>([
-    {
-      id: 'cal-1',
-      titulo: '1ª Reunião Ordinária da CIPA',
-      data: '2026-10-05',
-      tipo: 'ordinaria',
-      horario: '14:00',
-      local: 'Sala de Treinamentos A',
-      concluida: true,
-      lembreteAtivo: true
-    },
-    {
-      id: 'cal-2',
-      titulo: '2ª Reunião Ordinária da CIPA',
-      data: '2026-11-04',
-      tipo: 'ordinaria',
-      horario: '14:00',
-      local: 'Sala de Reuniões',
-      concluida: false,
-      lembreteAtivo: true
-    },
-    {
-      id: 'cal-3',
-      titulo: '3ª Reunião Ordinária da CIPA',
-      data: '2026-12-02',
-      tipo: 'ordinaria',
-      horario: '14:00',
-      local: 'Sala de Treinamentos A',
-      concluida: false,
-      lembreteAtivo: true
-    },
-    {
-      id: 'cal-sipat',
-      titulo: 'SIPAT 2026 - Semana Interna de Prevenção de Acidentes e Assédio',
-      data: '2026-12-14',
-      tipo: 'sipat',
-      horario: '08:00 às 17:00',
-      local: 'Auditório Principal',
-      concluida: false,
-      lembreteAtivo: true
-    },
-    {
-      id: 'cal-4',
-      titulo: '4ª Reunião Ordinária da CIPA',
-      data: '2027-01-08',
-      tipo: 'ordinaria',
-      horario: '14:00',
-      local: 'Sala de Reuniões',
-      concluida: false,
-      lembreteAtivo: false
+  const [calendario, setCalendario] = useState<ReuniaoCalendario[]>(() => {
+    try {
+      const saved = localStorage.getItem('cipa_expert_reunioes_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // fallback
     }
-  ]);
+    return [
+      {
+        id: 'cal-1',
+        titulo: '1ª Reunião Ordinária da CIPA',
+        data: '2026-10-05',
+        tipo: 'ordinaria',
+        horario: '14:00',
+        local: 'Sala de Treinamentos A',
+        concluida: true,
+        lembreteAtivo: true
+      },
+      {
+        id: 'cal-2',
+        titulo: '2ª Reunião Ordinária da CIPA',
+        data: '2026-11-04',
+        tipo: 'ordinaria',
+        horario: '14:00',
+        local: 'Sala de Reuniões',
+        concluida: false,
+        lembreteAtivo: true
+      },
+      {
+        id: 'cal-3',
+        titulo: '3ª Reunião Ordinária da CIPA',
+        data: '2026-12-02',
+        tipo: 'ordinaria',
+        horario: '14:00',
+        local: 'Sala de Treinamentos A',
+        concluida: false,
+        lembreteAtivo: true
+      },
+      {
+        id: 'cal-sipat',
+        titulo: 'SIPAT 2026 - Semana Interna de Prevenção de Acidentes e Assédio',
+        data: '2026-12-14',
+        tipo: 'sipat',
+        horario: '08:00 às 17:00',
+        local: 'Auditório Principal',
+        concluida: false,
+        lembreteAtivo: true
+      },
+      {
+        id: 'cal-4',
+        titulo: '4ª Reunião Ordinária da CIPA',
+        data: '2027-01-08',
+        tipo: 'ordinaria',
+        horario: '14:00',
+        local: 'Sala de Reuniões',
+        concluida: false,
+        lembreteAtivo: false
+      }
+    ];
+  });
+
+  // Listener para sincronização automática com o Calendário Eleitoral (Módulo 1)
+  React.useEffect(() => {
+    const handleReunioesUpdated = (e: any) => {
+      if (e?.detail?.meetings && Array.isArray(e.detail.meetings)) {
+        setCalendario(e.detail.meetings);
+      }
+    };
+    window.addEventListener('cipa_reunioes_updated', handleReunioesUpdated);
+    return () => {
+      window.removeEventListener('cipa_reunioes_updated', handleReunioesUpdated);
+    };
+  }, []);
 
   // 5W2H Action Plans
   const [planosAcao, setPlanosAcao] = useState<PlanoAcao5W2H[]>([
@@ -478,12 +504,19 @@ export const Module3GestaoCIPA: React.FC<Module3GestaoCIPAProps> = ({
         <div className="space-y-6">
           <div className="bg-white rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col">
             <div className="bg-gradient-to-r from-emerald-100/90 via-emerald-50 to-emerald-100/80 px-5 py-3.5 border-b border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-sm font-extrabold text-slate-900">
-                Calendário Anual de Reuniões Obrigatórias da CIPA
-              </h3>
-              <span className="text-xs font-mono font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200">
-                12 Reuniões Anuais + SIPAT
-              </span>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  Calendário Anual de Reuniões Obrigatórias da CIPA
+                </h3>
+                <p className="text-[11px] text-emerald-800 font-medium">
+                  Programação oficial em conformidade com o subitem 5.6.1 da NR-05 e Lei nº 14.457/2022
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  {calendario.length} Reuniões Registradas
+                </span>
+              </div>
             </div>
 
             <div className="p-5 sm:p-6 divide-y divide-slate-100">
