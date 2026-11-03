@@ -14,6 +14,7 @@ import { ApiService } from './services/apiService';
 import { SignatureService } from './services/signatureService';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { CandidateRegistrationPortal } from './components/election/CandidateRegistrationPortal';
+import { PublicVotingPortal } from './components/election/PublicVotingPortal';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'login' | 'admin'>('landing');
@@ -41,6 +42,37 @@ export default function App() {
 
   // Password reset via token link state
   const [resetToken, setResetToken] = useState<string | null>(null);
+
+  // Detecção de acesso público pelo link/QR code da Urna de Votação Oficial
+  const [publicVotingParams, setPublicVotingParams] = useState<{
+    companyId: string;
+    unitId: string;
+    token?: string;
+  } | null>(() => {
+    try {
+      const pathname = window.location.pathname;
+      const urlParams = new URLSearchParams(window.location.search);
+      if (pathname.includes('/eleicao/') && (pathname.includes('/votar') || pathname.includes('/urna'))) {
+        const parts = pathname.split('/').filter(Boolean);
+        const eleicaoIdx = parts.indexOf('eleicao');
+        if (eleicaoIdx >= 0 && parts.length > eleicaoIdx + 2) {
+          return {
+            companyId: parts[eleicaoIdx + 1],
+            unitId: parts[eleicaoIdx + 2],
+            token: urlParams.get('token') || undefined
+          };
+        }
+      }
+      if (urlParams.get('votar') || urlParams.get('urna') || urlParams.get('eleicaoVotar')) {
+        return {
+          companyId: urlParams.get('company') || 'comp-telefonica',
+          unitId: urlParams.get('unit') || 'unit-tel-jundiai',
+          token: urlParams.get('votar') || urlParams.get('urna') || urlParams.get('token') || undefined
+        };
+      }
+    } catch {}
+    return null;
+  });
 
   // Detecção de acesso público pelo link/QR code de inscrição de candidatos
   const [publicInscricaoParams, setPublicInscricaoParams] = useState<{
@@ -188,7 +220,21 @@ export default function App() {
 
       {/* Main View Area */}
       <main className="flex-1">
-        {publicInscricaoParams ? (
+        {publicVotingParams ? (
+          <div className="min-h-screen bg-slate-950 flex flex-col">
+            <PublicVotingPortal
+              company={INITIAL_COMPANIES.find(c => c.id === publicVotingParams.companyId) || INITIAL_COMPANIES[0]}
+              unit={INITIAL_COMPANIES.find(c => c.id === publicVotingParams.companyId)?.units.find(u => u.id === publicVotingParams.unitId)}
+              token={publicVotingParams.token}
+              isStandalonePage={true}
+              onClose={() => {
+                setPublicVotingParams(null);
+                window.history.replaceState({}, '', '/');
+                handleNavigate('landing');
+              }}
+            />
+          </div>
+        ) : publicInscricaoParams ? (
           <div className="min-h-screen bg-slate-100 py-6 px-4 flex flex-col items-center justify-center">
             <CandidateRegistrationPortal
               company={INITIAL_COMPANIES.find(c => c.id === publicInscricaoParams.companyId) || INITIAL_COMPANIES[0]}

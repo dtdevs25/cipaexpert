@@ -146,26 +146,6 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
             )}
 
             <button
-              type="button"
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-50 active:scale-95 text-slate-700 hover:text-emerald-900 border border-slate-300 hover:border-emerald-300 font-bold text-xs shadow-2xs transition-all cursor-pointer"
-              title="Imprimir documento oficial ou salvar como PDF"
-            >
-              <Printer className="w-3.5 h-3.5 text-emerald-700" />
-              <span className="hidden sm:inline">Imprimir / PDF</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownloadTxt}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 active:scale-95 text-slate-700 border border-slate-300 font-bold text-xs shadow-2xs transition-all cursor-pointer"
-              title="Baixar via de texto TXT"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">TXT</span>
-            </button>
-
-            <button
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer ml-1"
               title="Fechar (X)"
