@@ -71,6 +71,8 @@ import { QrCodeService } from '../../services/qrCodeService';
 import { SignatureService, SignatureEnvelope, computeSha256 } from '../../services/signatureService';
 import { NewEnvelopeModal, InitialEnvelopeData } from '../admin/NewEnvelopeModal';
 import { CandidateRegistrationPortal } from '../election/CandidateRegistrationPortal';
+import { RichTextEditor } from '../common/RichTextEditor';
+import { RichTextRenderer } from '../common/RichTextRenderer';
 
 // Formatação com a primeira letra maiúscula (Title Case)
 function formatCapitalizeName(text?: string): string {
@@ -3522,20 +3524,14 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                   )}
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-800">
-                        Texto / Conteúdo Oficial do Documento
-                      </label>
-                      <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-semibold">
-                        Personalizável
-                      </span>
-                    </div>
-                    <textarea
-                      rows={7}
+                    <RichTextEditor
+                      label="Texto / Conteúdo Oficial do Documento (Edital / Ata / Convocação)"
                       value={editStepCustomText}
-                      onChange={(e) => setEditStepCustomText(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono text-[11px] focus:ring-2 focus:ring-amber-500 focus:outline-none leading-relaxed"
+                      onChange={(val) => setEditStepCustomText(val)}
                       placeholder="Texto oficial do edital (padrão NR-5 já preenchido, edite livremente se desejar)..."
+                      minHeight="220px"
+                      allowMediaUpload={true}
+                      helperText="Personalizável: links, formatação, caracteres especiais e mídias"
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
                       Você pode alterar o texto livremente. A visualização, download em PDF e assinaturas refletirão esse conteúdo.
@@ -3675,22 +3671,16 @@ export const Module1Dimensionamento: React.FC<Module1DimensionamentoProps> = ({
                     />
                   </div>
 
-                  {/* Texto Oficial */}
+                  {/* Texto Oficial com RichTextEditor */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="font-bold text-slate-800 block text-xs">
-                        Corpo do Comunicado Oficial (Texto Formatado)
-                      </label>
-                      <span className="text-[10px] text-slate-400">
-                        Personalize as diretrizes caso necessário
-                      </span>
-                    </div>
-                    <textarea
-                      rows={6}
+                    <RichTextEditor
+                      label="Corpo do Comunicado Oficial (Texto Formatado, Links e Mídia)"
                       value={broadcastMessage}
-                      onChange={(e) => setBroadcastMessage(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none text-xs leading-relaxed"
-                      placeholder="Texto do edital ou comunicado..."
+                      onChange={(val) => setBroadcastMessage(val)}
+                      placeholder="Texto do edital ou comunicado... Você pode formatar o texto, inserir links clicáveis, mídias e caracteres especiais."
+                      minHeight="170px"
+                      allowMediaUpload={true}
+                      helperText="Mensagem com suporte a links clicáveis e mídias"
                     />
                   </div>
 

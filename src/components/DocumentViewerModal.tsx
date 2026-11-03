@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { GeneratedDocument } from '../data/documentTemplates';
 import { QrCodeService } from '../services/qrCodeService';
+import { RichTextRenderer } from './common/RichTextRenderer';
 
 interface DocumentViewerModalProps {
   document: GeneratedDocument | null;
@@ -689,11 +690,11 @@ ${isSigned ? `STATUS: ASSINADO DIGITALMENTE (MP 2.200-2/2001)\nHASH: ${signature
                   continue;
                 }
 
-                // 13. Parágrafo Padrão
+                // 13. Parágrafo Padrão (com suporte a RichText, links clicáveis, imagens e caracteres especiais)
                 blocks.push(
-                  <p key={i} className="text-justify text-slate-700 indent-8 leading-relaxed">
-                    {paragraph}
-                  </p>
+                  <div key={i} className="text-justify text-slate-700 leading-relaxed">
+                    <RichTextRenderer content={paragraph} className="text-justify" />
+                  </div>
                 );
                 i++;
               }

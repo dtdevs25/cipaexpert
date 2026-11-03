@@ -32,6 +32,7 @@ import {
 } from '../../data/employeeData';
 import { INITIAL_COMPANIES } from '../../data/multiCompanyData';
 import { ElectionService } from '../../services/electionService';
+import { RichTextEditor } from '../common/RichTextEditor';
 
 interface CandidateRegistrationPortalProps {
   company?: Company;
@@ -528,18 +529,17 @@ export const CandidateRegistrationPortal: React.FC<CandidateRegistrationPortalPr
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 block">
-                    Proposta de Trabalho na CIPA (Foco em prevenção, saúde e segurança): *
-                  </label>
-                  <textarea
-                    rows={3}
+                  <RichTextEditor
+                    label="Proposta de Trabalho na CIPA (Foco em prevenção, saúde e segurança): *"
                     value={propostas}
-                    onChange={(e) => setPropostas(e.target.value)}
-                    placeholder="Descreva suas motivações e propostas para a gestão da CIPA..."
-                    className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900"
+                    onChange={(val) => setPropostas(val)}
+                    placeholder="Descreva suas motivações e propostas para a gestão da CIPA... Você pode usar formatação rica, tópicos, links para vídeos ou documentos e fotos."
+                    minHeight="140px"
+                    allowMediaUpload={true}
+                    helperText="Formatação livre: negrito, links clicáveis, mídias e caracteres especiais"
                   />
-                  <span className="text-[10px] text-slate-500">
-                    Estas propostas serão exibidas aos eleitores durante o período de votação.
+                  <span className="text-[10px] text-slate-500 block">
+                    Estas propostas serão exibidas aos eleitores durante o período de votação na urna eletrônica.
                   </span>
                 </div>
 

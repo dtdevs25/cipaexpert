@@ -723,3 +723,4 @@ export class ElectionService {
     localStorage.setItem(`${STORAGE_KEYS.AUDIT_LOGS}_${unitId}`, JSON.stringify(logs.slice(0, 150)));
   }
 }
+

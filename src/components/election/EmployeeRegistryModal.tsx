@@ -320,3 +320,4 @@ export const EmployeeRegistryModal: React.FC<EmployeeRegistryModalProps> = ({
     </div>
   );
 };
+

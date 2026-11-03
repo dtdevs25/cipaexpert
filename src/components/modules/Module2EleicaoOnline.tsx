@@ -12,6 +12,8 @@ import {
 } from '../../services/electionService';
 import { EmployeeRegistryModal } from '../election/EmployeeRegistryModal';
 import { CandidateRegistrationPortal } from '../election/CandidateRegistrationPortal';
+import { RichTextRenderer } from '../common/RichTextRenderer';
+import { RichTextEditor } from '../common/RichTextEditor';
 import { 
   Vote, 
   ShieldCheck, 
@@ -612,9 +614,9 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
                         <p className="text-xs text-slate-500">
                           {c.cargo} · {c.setor} · RE: {c.matricula}
                         </p>
-                        <p className="text-[11px] text-slate-600 italic line-clamp-1">
-                          "{c.propostas}"
-                        </p>
+                        <div className="text-[11px] text-slate-600 line-clamp-2 mt-0.5">
+                          <RichTextRenderer content={c.propostas} className="text-[11px]" allowImages={false} />
+                        </div>
                       </div>
                     </div>
 
@@ -1128,8 +1130,8 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
                   </div>
                 </div>
 
-                <div className="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 line-clamp-2 italic">
-                  "{cand.propostas}"
+                <div className="text-[11px] text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100 max-h-32 overflow-y-auto">
+                  <RichTextRenderer content={cand.propostas} className="text-[11px]" allowImages={true} />
                 </div>
 
                 {cand.status === 'pendente_confirmacao' && (
@@ -1346,9 +1348,9 @@ export const Module2EleicaoOnline: React.FC<Module2EleicaoOnlineProps> = ({
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 truncate">{cand.cargo} · {cand.setor}</p>
-                        <p className="text-[10px] text-slate-600 italic line-clamp-1 mt-1">
-                          "{cand.propostas}"
-                        </p>
+                        <div className="text-[10px] text-slate-600 line-clamp-2 mt-1">
+                          <RichTextRenderer content={cand.propostas} className="text-[10px]" allowImages={false} />
+                        </div>
                       </div>
                     </div>
                   ))}
