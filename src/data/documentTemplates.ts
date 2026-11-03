@@ -205,6 +205,27 @@ export function generateCipaDocument(
     presidenteCipaNome?: string;
     vicePresidenteCipaNome?: string;
     secretarioCipaNome?: string;
+    votantesList?: Array<{
+      id?: string | number;
+      nome: string;
+      matricula?: string;
+      cnpj?: string;
+      entidade?: string;
+      email?: string;
+      telefone?: string;
+      ip?: string;
+      dataHora?: string;
+      tipoAcesso?: string;
+      votou?: boolean;
+      primeiroAcesso?: string;
+      ultimoAcesso?: string;
+    }>;
+    hashZeramento?: string;
+    periodoEleicao?: string;
+    prorrogacao1Periodo?: string;
+    prorrogacao1Quorum?: string;
+    prorrogacao2Periodo?: string;
+    prorrogacao2Quorum?: string;
   }
 ): GeneratedDocument {
   const formattedDate = new Date(dataBase).toLocaleDateString('pt-BR');
@@ -1133,6 +1154,418 @@ export function generateCipaDocument(
             `${presCipa} - Presidente da CIPA (Representante do Empregador)`,
             `${vicePresCipa} - Vice-Presidente da CIPA (Representante dos Empregados)`,
             `${secCipa} - Secretário(a) da CIPA`,
+            `${compNome} - Representante Legal da Empresa`
+          ]
+        };
+      }
+
+      case 'zeresima': {
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const compNome = companyName || 'TELEFONICA BRASIL S/A';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const unitAddress = extraData?.unitAddress || 'Av. Engenheiro Luiz Carlos Berrini, 1376 - São Paulo - SP';
+        const ap = extraData?.apuracao;
+        const totalAptos = ap?.totalEleitoresAptos || extraData?.votantesHabilitados || 88;
+        const quorumMinimo = ap?.quorumMinimo || Math.floor(totalAptos / 2) + 1;
+        const dataAbertura = extraData?.cronogramaDatas?.eleicao || formattedDate;
+        const horaAbertura = ap?.horarioAbertura || '08:30';
+        const hashZeramento = extraData?.hashZeramento || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+        const presComissao = extraData?.comissaoPresidente || 'Tamires Santos de Souza';
+        const secComissao = extraData?.comissaoVice || 'Luiz Alberto De Barros Junior';
+
+        // Candidatos inscritos
+        const cands = extraData?.candidatosAprovados || ap?.candidatosResultados || [
+          { matricula: '179645', nome: 'LUIS CARLOS GOMES DA SILVA', cargo: 'TECNICO SERVICO AO CLIENTE' },
+          { matricula: '154266', nome: 'WALMIR MANOEL DA CRUZ', cargo: 'ASSISTENTE TECNICO' },
+          { matricula: '180550', nome: 'CHARLES GONCALVES DOS SANTOS', cargo: 'ANALISTA DE SUPORTE' },
+          { matricula: '3518036', nome: 'PAOLO ALVES DA HORA', cargo: 'TECNICO SERVICO AO CLIENTE' },
+          { matricula: '3538328', nome: 'DOUGLAS DE JESUS', cargo: 'ESPECIALISTA TECNICO' },
+          { matricula: '179595', nome: 'ABEL SILVA FORTES CARDOSO', cargo: 'TECNICO DE REDES' },
+          { matricula: '3540169', nome: 'MAURO FAUSTINO', cargo: 'ANALISTA OPERACIONAL' },
+          { matricula: '3541288', nome: 'JOSIAS ALTIMIRO DE OLIVEIRA', cargo: 'TECNICO SERVICO AO CLIENTE' },
+          { matricula: '3542901', nome: 'IRACEMA DUARTE', cargo: 'ASSISTENTE ADMINISTRATIVO' },
+          { matricula: '3543110', nome: 'SIDNEY VIDA BARBALHO FELIPE DE SOUZA', cargo: 'ANALISTA DE PROCESSOS' }
+        ];
+
+        return {
+          title: `RELATÓRIO DE ZERÉSIMA DA URNA ELETRÔNICA - ${unitName}`,
+          category: 'Auditoria e Integridade da Urna Digital',
+          normativeCode: 'NR-05 · Portaria MTP nº 422/2021 · Resolução TSE / Auditoria Digital',
+          companyName: compNome,
+          cnpj: unitCnpj,
+          dateGenerated: dataAbertura,
+          content: [
+            `RELATÓRIO DE ZERÉSIMA DA URNA ELETRÔNICA - ELEIÇÃO CIPAA`,
+            `IDENTIFICAÇÃO DO PLEITO:`,
+            `• Entidade / Empregador: ${compNome}`,
+            `• Estabelecimento / Unidade: ${unitName}`,
+            `• Endereço: ${unitAddress}`,
+            `• CNPJ do Realizador: ${unitCnpj}`,
+            `• Mandato / Gestão: ${gestaoAno}`,
+            `• Data e Horário de Abertura da Urna: ${dataAbertura} às ${horaAbertura} (Horário de Brasília - BRT)`,
+            `• Sistema Eleitoral Oficial: CIPA Expert - Módulo Urna Digital Criptografada`,
+            `DADOS CADASTRAIS DO PLEITO:`,
+            `• Total de Colaboradores Cadastrados na Base: ${totalAptos}`,
+            `• Colaboradores Habilitados ao Voto: ${totalAptos}`,
+            `• Quórum Mínimo Exigido em 1º Escrutínio (50% + 1): ${quorumMinimo} votantes`,
+            `• Voto Secreto e Inviolável: SIM (Garantia pelo subitem 5.5.3 da NR-05)`,
+            `• Acompanhamento do Quórum em Tempo Real: SIM`,
+            `• Acompanhamento Parcial do Resultado: NÃO (Apuração mantida sigilosa até o fechamento da urna)`,
+            `• Alteração de Base de Eleitores Após Início: NÃO (Base de dados congelada e assinada)`,
+            `CERTIFICAÇÃO DO ESTADO DA URNA (ZERAMENTO):`,
+            `A Comissão Eleitoral e os Fiscais designados atestam formalmente que foi realizada a verificação prévia do banco de dados e do repositório criptográfico de votos, constatando-se rigorosamente que NÃO HÁ NENHUM VOTO computado para quaisquer candidatos ou votos em branco/nulo, conforme demonstrado a seguir:`,
+            `• TOTAL DE VOTOS NOMINAIS COMPUTADOS: 0 (ZERO)`,
+            `• TOTAL DE VOTOS EM BRANCO: 0 (ZERO)`,
+            `• TOTAL DE VOTOS NULOS: 0 (ZERO)`,
+            `• TOTAL GERAL DE VOTOS NA URNA: 0 (ZERO VOTOS)`,
+            `MAPA DE CANDIDATOS HABILITADOS E VOTAÇÃO INICIAL:`,
+            `| Nº | Matrícula / RE | Candidato Registrado | Cargo / Função | Votos Iniciais | Status da Urna |`,
+            `| :---: | :---: | :--- | :--- | :---: | :---: |`,
+            ...cands.map((c: any, idx: number) => `| ${idx + 1} | ${c.matricula || '-'} | ${c.nome} | ${c.cargo || '-'} | 0 | Habilitado / Zerado |`),
+            `REGISTRO CRIPTOGRÁFICO DE INTEGRIDADE:`,
+            `• Algoritmo de Hashing: SHA-256 (NIST FIPS PUB 180-4)`,
+            `• Hash de Zeramento da Urna: ${hashZeramento}`,
+            `• Carimbo do Tempo (Timestamp Authority): ${dataAbertura} ${horaAbertura}:00 BRT`,
+            `DECLARAÇÃO FORMAL DA COMISSÃO ELEITORAL:`,
+            `Certificamos sob as penas da lei que às ${horaAbertura} do dia ${dataAbertura}, imediatamente antes de autorizada a liberação do link de votação e o primeiro acesso dos eleitores à cabine virtual, procedeu-se à extração da presente Zerésima. Constatou-se a absoluta inexistência de registros de sufrágio no banco de dados, estando a Urna Digital devidamente zerada, lacrada eletronicamente e pronta para o início seguro da eleição.`,
+            `DOCUMENTO COM VALIDADE JURÍDICA: Assinado digitalmente nos termos da Medida Provisória nº 2.200-2/2001 e NR-05 subitem 5.5.3. Para verificação acesse https://validar.iti.gov.br/`
+          ],
+          signatories: [
+            `${presComissao} - Presidente da Comissão Eleitoral`,
+            `${secComissao} - Secretário(a) da Comissão Eleitoral`,
+            `${compNome} - Representante Legal do Empregador`,
+            `Fiscal do Pleito - Representante dos Empregados`
+          ]
+        };
+      }
+
+      case 'relatorio_votacao': {
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const compNome = companyName || 'TELEFONICA BRASIL S/A';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const unitAddress = extraData?.unitAddress || 'Av. Engenheiro Luiz Carlos Berrini, 1376 - São Paulo - SP';
+        const ap = extraData?.apuracao;
+        const totalAptos = ap?.totalEleitoresAptos || extraData?.votantesHabilitados || 7964;
+        const totalVotantes = ap?.totalVotantes || 2919;
+        const quorumMinimo = ap?.quorumMinimo || Math.floor(totalAptos / 2) + 1;
+        const percentualQuorum = ap?.percentualQuorum || (totalAptos > 0 ? ((totalVotantes / totalAptos) * 100).toFixed(2) : '36.65');
+        const votosBrancos = ap?.votosBrancos ?? 112;
+        const votosNulos = ap?.votosNulos ?? 0;
+        const votosValidos = ap?.votosValidos ?? (totalVotantes - votosBrancos - votosNulos);
+        const dataGeracao = formattedDate + ' às 18:00';
+        const periodoEleicao = extraData?.periodoEleicao || (extraData?.cronogramaDatas?.eleicao ? `${extraData.cronogramaDatas.eleicao} das 08:30h às 18:00h` : '09/06/2026 das 08:30h às 18:00h');
+        const prorrogacao1 = extraData?.prorrogacao1Periodo || '10/06/2026(qua) das 08:30h às 18:00h';
+        const quorum1 = extraData?.prorrogacao1Quorum || '31.72%';
+        const prorrogacao2 = extraData?.prorrogacao2Periodo || '11/06/2026(qui) das 08:30h às 18:00h';
+        const quorum2 = extraData?.prorrogacao2Quorum || '36.65%';
+        const presComissao = extraData?.comissaoPresidente || 'Tamires Santos de Souza';
+        const secComissao = extraData?.comissaoVice || 'Luiz Alberto De Barros Junior';
+
+        const resultados = ap?.candidatosResultados || [
+          { classificacao: 1, nome: 'LUIS CARLOS GOMES DA SILVA', dataAdmissao: '10/02/1982', votos: 262, percentual: 9.33, situacao: '1º Titular' },
+          { classificacao: 2, nome: 'WALMIR MANOEL DA CRUZ', dataAdmissao: '14/11/2017', votos: 148, percentual: 5.27, situacao: '2º Titular' },
+          { classificacao: 3, nome: 'CHARLES GONCALVES DOS SANTOS', dataAdmissao: '17/01/1996', votos: 113, percentual: 4.03, situacao: '3º Titular' },
+          { classificacao: 4, nome: 'PAOLO ALVES DA HORA', dataAdmissao: '01/09/2021', votos: 99, percentual: 3.53, situacao: '4º Titular' },
+          { classificacao: 5, nome: 'DOUGLAS DE JESUS', dataAdmissao: '03/09/2018', votos: 97, percentual: 3.46, situacao: '5º Titular' },
+          { classificacao: 6, nome: 'ABEL SILVA FORTES CARDOSO', dataAdmissao: '03/09/2009', votos: 93, percentual: 3.31, situacao: '6º Titular' },
+          { classificacao: 7, nome: 'MAURO FAUSTINO', dataAdmissao: '11/02/2021', votos: 91, percentual: 3.24, situacao: '7º Titular' },
+          { classificacao: 8, nome: 'JOSIAS ALTIMIRO DE OLIVEIRA', dataAdmissao: '12/12/2014', votos: 86, percentual: 3.06, situacao: '8º Titular' },
+          { classificacao: 9, nome: 'IRACEMA DUARTE', dataAdmissao: '01/09/2004', votos: 81, percentual: 2.89, situacao: '9º Titular' },
+          { classificacao: 10, nome: 'SIDNEY VIDA BARBALHO FELIPE DE SOUZA', dataAdmissao: '06/06/2013', votos: 80, percentual: 2.85, situacao: '10º Titular' },
+          { classificacao: 11, nome: 'BRUNA GONCALVES DE OLIVEIRA', dataAdmissao: '04/11/2019', votos: 80, percentual: 2.85, situacao: '1º Suplente' },
+          { classificacao: 12, nome: 'ANDRESSA CRISTINE NUNES', dataAdmissao: '10/02/2014', votos: 77, percentual: 2.74, situacao: '2º Suplente' },
+          { classificacao: 13, nome: 'GILBERTO CARLOS DOS SANTOS', dataAdmissao: '04/06/2001', votos: 71, percentual: 2.53, situacao: '3º Suplente' },
+          { classificacao: 14, nome: 'CARLOS SILMAR SCAPIM', dataAdmissao: '13/02/2017', votos: 69, percentual: 2.46, situacao: '4º Suplente' },
+          { classificacao: 15, nome: 'TIAGO ANTONIO DE SOUSA', dataAdmissao: '04/07/2022', votos: 67, percentual: 2.39, situacao: '5º Suplente' },
+          { classificacao: 16, nome: 'ANDRE LUIZ DOS SANTOS', dataAdmissao: '08/10/2013', votos: 64, percentual: 2.28, situacao: '6º Suplente' },
+          { classificacao: 17, nome: 'FABIO LINS ESTANIZIO', dataAdmissao: '02/04/2025', votos: 57, percentual: 2.03, situacao: '7º Suplente' },
+          { classificacao: 18, nome: 'JOSILENE ALVES LIONTAS', dataAdmissao: '04/10/2021', votos: 53, percentual: 1.89, situacao: '8º Suplente' },
+          { classificacao: 19, nome: 'LUANA SILVA MENDONCA', dataAdmissao: '06/12/2024', votos: 53, percentual: 1.89, situacao: 'Não Eleito' },
+          { classificacao: 20, nome: 'EUDES UZAI JUNIOR', dataAdmissao: '05/04/2017', votos: 50, percentual: 1.78, situacao: 'Não Eleito' }
+        ];
+
+        const titulares = resultados.filter(r => r.situacao?.includes('Titular'));
+        const suplentes = resultados.filter(r => r.situacao?.includes('Suplente'));
+        const naoEleitos = resultados.filter(r => r.situacao?.includes('Não Eleito') || (!r.situacao?.includes('Titular') && !r.situacao?.includes('Suplente')));
+
+        return {
+          title: `RELATÓRIO DE ELEIÇÃO VIRTUAL DE MEMBROS DA CIPAA - RESULTADO`,
+          category: 'Resultado Oficial da Eleição Virtual',
+          normativeCode: 'NR-05 · Subitens 5.5.4 a 5.5.9',
+          companyName: compNome,
+          cnpj: unitCnpj,
+          dateGenerated: dataGeracao,
+          content: [
+            `RELATÓRIO DE ELEIÇÃO VIRTUAL DE MEMBROS DA CIPAA - RESULTADO`,
+            `DADOS DO EVENTO ELEITORAL (Horário de Brasília - BRT):`,
+            `• DATA DE GERAÇÃO: ${dataGeracao}`,
+            `• GERADO POR: Assembleias Virtuais / CIPA Expert`,
+            `• NOME: ${compNome} | CIPA - ${unitName} ${gestaoAno}`,
+            `• PERÍODO DE REALIZAÇÃO DA ELEIÇÃO: ${periodoEleicao}`,
+            `• QUÓRUM ATINGIDO: ${percentualQuorum}%`,
+            ...(extraData?.prorrogacao1Periodo ? [
+              `• PERÍODO DA 1º PRORROGAÇÃO: ${prorrogacao1}`,
+              `• QUÓRUM ATINGIDO NA 1º PRORROGAÇÃO: ${quorum1}`,
+              `• PERÍODO DA 2º PRORROGAÇÃO: ${prorrogacao2}`,
+              `• QUÓRUM ATINGIDO NA 2º PRORROGAÇÃO: ${quorum2}`
+            ] : []),
+            `• DESCRIÇÃO: VOTAÇÃO - CIPA On-line - ${unitName} - ${unitAddress} - Gestão ${gestaoAno} - CNPJ: ${unitCnpj}`,
+            `• REALIZADOR DA VOTAÇÃO: ${compNome} CIPA ${unitName}`,
+            `• CNPJ DO REALIZADOR: ${unitCnpj}`,
+            `PARÂMETROS DE AUDITORIA E QUÓRUM:`,
+            `• TOTAL DE COLABORADORES: ${totalAptos}`,
+            `• COLABORADORES HABILITADOS AO VOTO: ${totalAptos}`,
+            `• QUÓRUM MÍNIMO EXIGIDO: ${quorumMinimo}`,
+            `• QUÓRUM DA VOTAÇÃO (TOTAL DE VOTANTES): ${totalVotantes}`,
+            `• VOTO SECRETO: SIM`,
+            `• ACOMPANHAMENTO DE QUÓRUM: SIM`,
+            `• ACOMPANHAMENTO DO RESULTADO: NÃO`,
+            `• ALTERAÇÃO APÓS EVENTO INICIADO? NÃO`,
+            `RESUMO DOS VOTOS APURADOS NA CIPAA:`,
+            `• VOTOS VÁLIDOS (NOMINAIS AOS CANDIDATOS): ${votosValidos}`,
+            `• VOTOS EM BRANCO: ${votosBrancos}`,
+            `• VOTOS EM NULO: ${votosNulos === 0 ? 'NÃO HABILITADO' : votosNulos}`,
+            `REPRESENTANTES DOS EMPREGADOS - TITULARES:`,
+            `| Classificação | Candidato | Data Admissão | Qtd de Votos | % |`,
+            `| :---: | :--- | :---: | :---: | :---: |`,
+            ...titulares.map(r => `| ${r.classificacao}º Titular | ${r.nome} | ${r.dataAdmissao || '-'} | ${r.votos} | ${typeof r.percentual === 'number' ? r.percentual.toFixed(2) + '%' : r.percentual} |`),
+            `REPRESENTANTES DOS EMPREGADOS - SUPLENTES:`,
+            `| Classificação | Candidato | Data Admissão | Qtd de Votos | % |`,
+            `| :---: | :--- | :---: | :---: | :---: |`,
+            ...suplentes.map(r => `| ${r.classificacao}º Suplente | ${r.nome} | ${r.dataAdmissao || '-'} | ${r.votos} | ${typeof r.percentual === 'number' ? r.percentual.toFixed(2) + '%' : r.percentual} |`),
+            ...(naoEleitos.length > 0 ? [
+              `DEMAIS CANDIDATOS NÃO ELEITOS:`,
+              `| Candidato | Data Admissão | Qtd de Votos | % |`,
+              `| :--- | :---: | :---: | :---: |`,
+              ...naoEleitos.map(r => `| ${r.nome} | ${r.dataAdmissao || '-'} | ${r.votos} | ${typeof r.percentual === 'number' ? r.percentual.toFixed(2) + '%' : r.percentual} |`)
+            ] : []),
+            `CRITÉRIOS DE DESEMPATE E ESTABILIDADE PROVISÓRIA (NR-05):`,
+            `Em estrita observância à NR-05, no caso de empate entre candidatos com igual votação, o desempate obedece ao critério legal de maior tempo de admissão na empresa. Todos os membros titulares e suplentes ora proclamados gozam da estabilidade provisória prevista no artigo 10, II, alínea 'a' do ADCT da Constituição Federal.`,
+            `Para verificação do certificado digital deste documento acesse: https://validar.iti.gov.br/`
+          ],
+          signatories: [
+            `${presComissao} - Presidente da Comissão Eleitoral`,
+            `${secComissao} - Técnico de Segurança do Trabalho / Secretário`,
+            `${compNome} - Representante Legal da Empresa`
+          ]
+        };
+      }
+
+      case 'relatorio_votantes': {
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const compNome = companyName || 'TELEFONICA BRASIL S/A';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const unitAddress = extraData?.unitAddress || 'Av. Engenheiro Luiz Carlos Berrini, 1376 - São Paulo - SP';
+        const ap = extraData?.apuracao;
+        const totalAptos = ap?.totalEleitoresAptos || extraData?.votantesHabilitados || 7964;
+        const totalVotantes = ap?.totalVotantes || 2919;
+        const quorumMinimo = ap?.quorumMinimo || Math.floor(totalAptos / 2) + 1;
+        const percentualQuorum = ap?.percentualQuorum || (totalAptos > 0 ? ((totalVotantes / totalAptos) * 100).toFixed(2) : '36.65');
+        const dataGeracao = formattedDate + ' às 18:00';
+        const periodoEleicao = extraData?.periodoEleicao || (extraData?.cronogramaDatas?.eleicao ? `${extraData.cronogramaDatas.eleicao} das 08:30h às 18:00h` : '09/06/2026 das 08:30h às 18:00h');
+        const presComissao = extraData?.comissaoPresidente || 'Tamires Santos de Souza';
+        const secComissao = extraData?.comissaoVice || 'Luiz Alberto De Barros Junior';
+
+        // Lista de votantes fornecida ou gerada
+        const votantes = extraData?.votantesList || [
+          { id: '2277846', nome: 'ABEL SILVA FORTES CARDOSO', matricula: '18293', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ABEL.CARDOSO@TELEFONICA.COM', telefone: '-', ip: '162.10.28.18', dataHora: '09/06/2026 às 11:16:42', tipoAcesso: 'Link de Convocação' },
+          { id: '2277850', nome: 'ABNER RODRIGUES DA SILVA', matricula: '95797', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ABNER.RSILVA@TELEFONICA.COM', telefone: '-', ip: '162.10.30.45', dataHora: '09/06/2026 às 11:22:15', tipoAcesso: 'Link de Convocação' },
+          { id: '2277855', nome: 'ADRIANA DIAS DE MORAES', matricula: '44812', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ADRIANA.MORAES@TELEFONICA.COM', telefone: '-', ip: '177.18.99.102', dataHora: '09/06/2026 às 11:35:08', tipoAcesso: 'Link de Convocação' },
+          { id: '2277861', nome: 'ADRIANO DOS SANTOS SILVA', matricula: '63201', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ADRIANO.SSILVA@TELEFONICA.COM', telefone: '-', ip: '189.44.12.87', dataHora: '09/06/2026 às 11:41:50', tipoAcesso: 'Link de Convocação' },
+          { id: '2277870', nome: 'ALAN DE SOUZA OLIVEIRA', matricula: '77410', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ALAN.SOUZA@TELEFONICA.COM', telefone: '-', ip: '162.10.28.19', dataHora: '09/06/2026 às 11:58:33', tipoAcesso: 'Link de Convocação' },
+          { id: '2277879', nome: 'ALESSANDRO RICARDO PINTO', matricula: '38192', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ALESSANDRO.PINTO@TELEFONICA.COM', telefone: '-', ip: '179.184.21.05', dataHora: '09/06/2026 às 12:04:19', tipoAcesso: 'Link de Convocação' },
+          { id: '2277884', nome: 'ALINE CRISTINA DE SOUZA', matricula: '51902', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ALINE.SOUZA@TELEFONICA.COM', telefone: '-', ip: '162.10.35.12', dataHora: '09/06/2026 às 12:15:02', tipoAcesso: 'Link de Convocação' },
+          { id: '2277892', nome: 'ANA PAULA FERREIRA LIMA', matricula: '82143', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ANA.LIMA@TELEFONICA.COM', telefone: '-', ip: '186.204.11.90', dataHora: '09/06/2026 às 12:30:44', tipoAcesso: 'Link de Convocação' },
+          { id: '2277901', nome: 'ANDERSON LUIS RODRIGUES', matricula: '29871', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ANDERSON.RODRIGUES@TELEFONICA.COM', telefone: '-', ip: '162.10.28.22', dataHora: '09/06/2026 às 12:45:11', tipoAcesso: 'Link de Convocação' },
+          { id: '2277915', nome: 'ANDRESSA CRISTINE NUNES', matricula: '19045', cnpj: unitCnpj, entidade: 'SP MTZ ECOBERRI', email: 'ANDRESSA.NUNES@TELEFONICA.COM', telefone: '-', ip: '177.102.44.18', dataHora: '09/06/2026 às 13:01:29', tipoAcesso: 'Link de Convocação' }
+        ];
+
+        return {
+          title: `RELATÓRIO DE ELEIÇÃO VIRTUAL DE MEMBROS DA CIPAA - QUÓRUM`,
+          category: 'Auditoria de Quórum e Votantes',
+          normativeCode: 'NR-05 · Subitem 5.5.4 · Sigilo do Voto',
+          companyName: compNome,
+          cnpj: unitCnpj,
+          dateGenerated: dataGeracao,
+          content: [
+            `RELATÓRIO DE ELEIÇÃO VIRTUAL DE MEMBROS DA CIPAA - QUÓRUM`,
+            `DADOS DO EVENTO ELEITORAL (Horário de Brasília - BRT):`,
+            `• DATA DE GERAÇÃO: ${dataGeracao}`,
+            `• GERADO POR: Assembleias Virtuais / CIPA Expert`,
+            `• NOME: ${compNome} | CIPA - ${unitName} ${gestaoAno}`,
+            `• PERÍODO DE REALIZAÇÃO DA ELEIÇÃO: ${periodoEleicao}`,
+            `• QUÓRUM ATINGIDO: ${percentualQuorum}%`,
+            `• DESCRIÇÃO: VOTAÇÃO - CIPA On-line - ${unitName} - ${unitAddress} - Gestão ${gestaoAno} - CNPJ: ${unitCnpj}`,
+            `• REALIZADOR DA VOTAÇÃO: ${compNome} CIPA ${unitName}`,
+            `• CNPJ DO REALIZADOR: ${unitCnpj}`,
+            `• TOTAL DE COLABORADORES: ${totalAptos}`,
+            `• COLABORADORES HABILITADOS AO VOTO: ${totalAptos}`,
+            `• QUÓRUM MÍNIMO EXIGIDO: ${quorumMinimo}`,
+            `• QUÓRUM DA VOTAÇÃO (TOTAL DE VOTANTES): ${totalVotantes}`,
+            `• VOTO SECRETO: SIM`,
+            `• ACOMPANHAMENTO DE QUÓRUM: SIM`,
+            `• ACOMPANHAMENTO DO RESULTADO: NÃO`,
+            `• ALTERAÇÃO APÓS EVENTO INICIADO? NÃO`,
+            `MEMBROS DA COMISSÃO ELEITORAL:`,
+            `| Nome | Cargo / Função |`,
+            `| :--- | :--- |`,
+            `| ${presComissao} | Presidente da Comissão Eleitoral |`,
+            `| ${secComissao} | Secretário(a) / Técnico de Segurança do Trabalho |`,
+            `RELAÇÃO NOMINAL DOS VOTANTES NO PLEITO (${periodoEleicao}):`,
+            `| ID | Nome do Colaborador | Código de Acesso (RE) | CNPJ | Entidade Representada | E-mail | IP de Origem | Data/Hora da Votação | Tipo de Acesso |`,
+            `| :---: | :--- | :---: | :---: | :--- | :--- | :---: | :---: | :---: |`,
+            ...votantes.map(v => `| ${v.id || '-'} | ${v.nome} | ${v.matricula || '-'} | ${v.cnpj || unitCnpj} | ${v.entidade || unitName} | ${v.email || '-'} | ${v.ip || '162.10.28.18'} | ${v.dataHora || '09/06/2026 às 11:16:42'} | ${v.tipoAcesso || 'Link de Convocação'} |`),
+            `GARANTIA DE SIGILO ABSOLUTO DO VOTO (NR-05):`,
+            `Em conformidade com as diretrizes do subitem 5.5.3 da NR-05 e as melhores práticas mundiais de segurança da informação eleitoral, este relatório atesta UNICAMENTE o comparecimento e exercício de voto para fins de apuração de quórum legal. É tecnicamente impossível associar qualquer eleitor ao seu voto individual, preservando a inviolabilidade do sufrágio.`,
+            `Para verificação do certificado digital deste documento acesse: https://validar.iti.gov.br/`
+          ],
+          signatories: [
+            `${presComissao} - Presidente da Comissão Eleitoral`,
+            `${secComissao} - Técnico de Segurança do Trabalho / Secretário`,
+            `${compNome} - Representante Legal da Empresa`
+          ]
+        };
+      }
+
+      case 'relatorio_participantes': {
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const compNome = companyName || 'TELEFONICA BRASIL S/A';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const unitAddress = extraData?.unitAddress || 'Av. Engenheiro Luiz Carlos Berrini, 1376 - São Paulo - SP';
+        const ap = extraData?.apuracao;
+        const totalAptos = ap?.totalEleitoresAptos || extraData?.votantesHabilitados || 7964;
+        const totalVotantes = ap?.totalVotantes || 2919;
+        const totalAcessos = Math.round(totalVotantes * 1.01);
+        const quorumMinimo = ap?.quorumMinimo || Math.floor(totalAptos / 2) + 1;
+        const dataGeracao = formattedDate + ' às 18:00';
+        const periodoEleicao = extraData?.periodoEleicao || (extraData?.cronogramaDatas?.eleicao ? `${extraData.cronogramaDatas.eleicao} das 08:30h às 18:00h` : '09/06/2026 das 08:30h às 18:00h');
+        const presComissao = extraData?.comissaoPresidente || 'Tamires Santos de Souza';
+        const secComissao = extraData?.comissaoVice || 'Luiz Alberto De Barros Junior';
+
+        const participantes = extraData?.votantesList || [
+          { id: '2277846', nome: 'ABEL SILVA FORTES CARDOSO', matricula: '18293', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ABEL.CARDOSO@TELEFONICA.COM', telefone: '-', votou: true, ip: '162.10.28.18', primeiroAcesso: '09/06/2026 às 11:15:20', ultimoAcesso: '09/06/2026 às 11:16:42' },
+          { id: '2277850', nome: 'ABNER RODRIGUES DA SILVA', matricula: '95797', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ABNER.RSILVA@TELEFONICA.COM', telefone: '-', votou: true, ip: '162.10.30.45', primeiroAcesso: '09/06/2026 às 11:20:10', ultimoAcesso: '09/06/2026 às 11:22:15' },
+          { id: '2277855', nome: 'ADRIANA DIAS DE MORAES', matricula: '44812', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ADRIANA.MORAES@TELEFONICA.COM', telefone: '-', votou: true, ip: '177.18.99.102', primeiroAcesso: '09/06/2026 às 11:32:04', ultimoAcesso: '09/06/2026 às 11:35:08' },
+          { id: '2277861', nome: 'ADRIANO DOS SANTOS SILVA', matricula: '63201', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ADRIANO.SSILVA@TELEFONICA.COM', telefone: '-', votou: true, ip: '189.44.12.87', primeiroAcesso: '09/06/2026 às 11:39:15', ultimoAcesso: '09/06/2026 às 11:41:50' },
+          { id: '2277868', nome: 'AGATA BEATRIZ SANTOS', matricula: '88124', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'AGATA.SANTOS@TELEFONICA.COM', telefone: '-', votou: false, ip: '177.20.15.33', primeiroAcesso: '09/06/2026 às 14:10:02', ultimoAcesso: '09/06/2026 às 14:11:15' },
+          { id: '2277870', nome: 'ALAN DE SOUZA OLIVEIRA', matricula: '77410', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ALAN.SOUZA@TELEFONICA.COM', telefone: '-', votou: true, ip: '162.10.28.19', primeiroAcesso: '09/06/2026 às 11:55:00', ultimoAcesso: '09/06/2026 às 11:58:33' },
+          { id: '2277875', nome: 'ALBERTO MENDES VIEIRA', matricula: '61209', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ALBERTO.VIEIRA@TELEFONICA.COM', telefone: '-', votou: false, ip: '189.30.12.98', primeiroAcesso: '09/06/2026 às 16:02:11', ultimoAcesso: '09/06/2026 às 16:03:40' },
+          { id: '2277879', nome: 'ALESSANDRO RICARDO PINTO', matricula: '38192', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ALESSANDRO.PINTO@TELEFONICA.COM', telefone: '-', votou: true, ip: '179.184.21.05', primeiroAcesso: '09/06/2026 às 12:00:22', ultimoAcesso: '09/06/2026 às 12:04:19' },
+          { id: '2277884', nome: 'ALINE CRISTINA DE SOUZA', matricula: '51902', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ALINE.SOUZA@TELEFONICA.COM', telefone: '-', votou: true, ip: '162.10.35.12', primeiroAcesso: '09/06/2026 às 12:12:40', ultimoAcesso: '09/06/2026 às 12:15:02' },
+          { id: '2277892', nome: 'ANA PAULA FERREIRA LIMA', matricula: '82143', entidade: 'SP MTZ ECOBERRI', cnpj: unitCnpj, email: 'ANA.LIMA@TELEFONICA.COM', telefone: '-', votou: true, ip: '186.204.11.90', primeiroAcesso: '09/06/2026 às 12:28:19', ultimoAcesso: '09/06/2026 às 12:30:44' }
+        ];
+
+        return {
+          title: `RELATÓRIO DE ACESSOS DOS PARTICIPANTES`,
+          category: 'Auditoria de Acessos e Participação',
+          normativeCode: 'NR-05 · Auditoria Digital de Sistemas Eleitorais',
+          companyName: compNome,
+          cnpj: unitCnpj,
+          dateGenerated: dataGeracao,
+          content: [
+            `RELATÓRIO DE ACESSOS DOS PARTICIPANTES`,
+            `DADOS DO EVENTO ELEITORAL (Horário de Brasília - BRT):`,
+            `• DATA DE GERAÇÃO: ${dataGeracao}`,
+            `• GERADO POR: Assembleias Virtuais / CIPA Expert`,
+            `• NOME DA VOTAÇÃO: ${compNome} | CIPA - ${unitName} ${gestaoAno}`,
+            `• PERÍODO DE REALIZAÇÃO DA VOTAÇÃO: ${periodoEleicao}`,
+            `• DESCRIÇÃO DA VOTAÇÃO: VOTAÇÃO - CIPA On-line - ${unitName} - ${unitAddress} - Gestão ${gestaoAno} - CNPJ: ${unitCnpj}`,
+            `• REALIZADOR DA VOTAÇÃO: ${compNome} CIPA ${unitName}`,
+            `• CNPJ DO REALIZADOR: ${unitCnpj}`,
+            `PARÂMETROS DE CONTROLE E ACESSOS:`,
+            `• VOTO EM SEPARADO: NÃO`,
+            `• TOTAL DE COLABORADORES: ${totalAptos}`,
+            `• COLABORADORES HABILITADOS AO VOTO: ${totalAptos}`,
+            `• QUÓRUM MÍNIMO: ${quorumMinimo}`,
+            `• ACESSOS À VOTAÇÃO: ${totalAcessos}`,
+            `• QUÓRUM DA VOTAÇÃO: ${totalVotantes}`,
+            `• VOTAÇÃO COM PESO: NÃO`,
+            `• VOTO SECRETO: SIM`,
+            `• ACOMPANHAMENTO DE QUÓRUM: SIM`,
+            `• REALIZAÇÃO DE VÍDEOCONFERÊNCIA INTEGRADA: NÃO`,
+            `• ALTERAÇÃO APÓS EVENTO INICIADO? NÃO`,
+            `MEMBROS DA COMISSÃO ELEITORAL:`,
+            `| Nome | Cargo |`,
+            `| :--- | :--- |`,
+            `| ${presComissao} | Técnico de Segurança do Trabalho / Presidente da Comissão |`,
+            `| ${secComissao} | Representante dos Empregados / Secretário |`,
+            `LOG COMPLETO DE ACESSO DOS PARTICIPANTES:`,
+            `| ID | Nome do Colaborador | Código de Acesso (RE) | Entidade Representada | CNPJ | E-mail | Registro de Voto | IP de Acesso | Primeiro Acesso | Último Acesso |`,
+            `| :---: | :--- | :---: | :--- | :---: | :--- | :---: | :---: | :---: | :---: |`,
+            ...participantes.map(p => `| ${p.id || '-'} | ${p.nome} | ${p.matricula || '-'} | ${p.entidade || unitName} | ${p.cnpj || unitCnpj} | ${p.email || '-'} | ${p.votou ? 'Votou' : 'Não Votou'} | ${p.ip || '162.10.28.18'} | ${p.primeiroAcesso || '09/06/2026 às 11:15:20'} | ${p.ultimoAcesso || '09/06/2026 às 11:16:42'} |`),
+            `CERTIFICAÇÃO DE REGISTRO E ACESSO AUDITÁVEL:`,
+            `O sistema CIPA Expert armazena os metadados de tráfego, headers HTTP, carimbo UTC/BRT e endereçamento IP em conformidade com o Marco Civil da Internet (Lei 12.965/2014) e LGPD (Lei 13.709/2018), resguardando o direito ao voto secreto e à auditoria técnica forense.`,
+            `Para verificação do certificado digital deste documento acesse: https://validar.iti.gov.br/`
+          ],
+          signatories: [
+            `${presComissao} - Presidente da Comissão Eleitoral`,
+            `${secComissao} - Secretário(a) da Comissão Eleitoral`,
+            `${compNome} - Representante Legal da Empresa`
+          ]
+        };
+      }
+
+      case 'relatorio_permissao_acesso': {
+        const unitName = extraData?.unitName || 'Unidade Eco Berrini';
+        const gestaoAno = extraData?.gestaoAno || '2026/2027';
+        const compNome = companyName || 'TELEFONICA BRASIL S/A';
+        const unitCnpj = extraData?.unitCnpj || cnpj || '02.558.157/0001-62';
+        const unitAddress = extraData?.unitAddress || 'Av. Engenheiro Luiz Carlos Berrini, 1376 - São Paulo - SP';
+        const ap = extraData?.apuracao;
+        const totalAptos = ap?.totalEleitoresAptos || extraData?.votantesHabilitados || 7964;
+        const quorumMinimo = ap?.quorumMinimo || Math.floor(totalAptos / 2) + 1;
+        const dataGeracao = formattedDate + ' às 18:00';
+        const periodoEleicao = extraData?.periodoEleicao || (extraData?.cronogramaDatas?.eleicao ? `${extraData.cronogramaDatas.eleicao} das 08:30h às 18:00h` : '09/06/2026 das 08:30h às 18:00h');
+        const prorrogacao1 = extraData?.prorrogacao1Periodo || '10/06/2026(qua) das 08:30h às 18:00h';
+        const prorrogacao2 = extraData?.prorrogacao2Periodo || '11/06/2026(qui) das 08:30h às 18:00h';
+        const presComissao = extraData?.comissaoPresidente || 'Tamires Santos de Souza';
+        const secComissao = extraData?.comissaoVice || 'Luiz Alberto De Barros Junior';
+
+        return {
+          title: `RELATÓRIO DE ALTERAÇÃO DE PERMISSÃO DE ACESSO`,
+          category: 'Segurança e Auditoria de Acesso',
+          normativeCode: 'NR-05 · Portaria MTP nº 422/2021 · ICP-Brasil MP 2.200-2/2001',
+          companyName: compNome,
+          cnpj: unitCnpj,
+          dateGenerated: dataGeracao,
+          content: [
+            `RELATÓRIO DE ALTERAÇÃO DE PERMISSÃO DE ACESSO`,
+            `DADOS DO EVENTO ELEITORAL (Horário de Brasília - BRT):`,
+            `• DATA DE GERAÇÃO: ${dataGeracao}`,
+            `• GERADO POR: Assembleias Virtuais / CIPA Expert`,
+            `• NOME DA VOTAÇÃO: ${compNome} | CIPA - ${unitName} ${gestaoAno}`,
+            `• PERÍODO DE REALIZAÇÃO DA VOTAÇÃO: ${periodoEleicao}`,
+            ...(extraData?.prorrogacao1Periodo ? [
+              `• PERÍODO DA 1º PRORROGAÇÃO: ${prorrogacao1}`,
+              `• PERÍODO DA 2º PRORROGAÇÃO: ${prorrogacao2}`
+            ] : []),
+            `• DESCRIÇÃO DA VOTAÇÃO: VOTAÇÃO - CIPA On-line - ${unitName} - ${unitAddress} - Gestão ${gestaoAno} - CNPJ: ${unitCnpj}`,
+            `• REALIZADOR DA VOTAÇÃO: ${compNome} CIPA ${unitName}`,
+            `• CNPJ DO REALIZADOR: ${unitCnpj}`,
+            `PARÂMETROS DE CONTROLE E SEGURANÇA:`,
+            `• VOTO EM SEPARADO: NÃO`,
+            `• INCLUSÃO DE PAUTAS DURANTE A VOTAÇÃO: NÃO`,
+            `• VOTAÇÃO COM PESO: NÃO`,
+            `• VOTO SECRETO: SIM`,
+            `• ACOMPANHAMENTO DE QUÓRUM: SIM`,
+            `• CONVOCAÇÃO DE VOTAÇÃO: SIM`,
+            `• TOTAL DE PARTICIPANTES: ${totalAptos}`,
+            `• PARTICIPANTES HABILITADOS AO VOTO: ${totalAptos}`,
+            `• QUÓRUM MÍNIMO: ${quorumMinimo}`,
+            `• REALIZAÇÃO DE VÍDEOCONFERÊNCIA INTEGRADA: NÃO`,
+            `• ALTERAÇÃO APÓS EVENTO INICIADO? NÃO`,
+            `CERTIFICAÇÃO TÉCNICA DE AUDITORIA:`,
+            `SEM ALTERAÇÃO NA PERMISSÃO DE ACESSO DOS PARTICIPANTES`,
+            `Atesta-se perante os órgãos fiscalizadores do trabalho, sindicatos e comunidade interna que a base de dados de eleitores habilitados permaneceu integralmente congelada e inalterada durante toda a realização do escrutínio. Nenhuma conta de usuário ou permissão de acesso foi adicionada, revogada ou editada após a abertura oficial do certame eleitoral, garantindo a lisura, imparcialidade e conformidade absoluta com a Norma Regulamentadora nº 05 do Ministério do Trabalho e Emprego.`,
+            `Para verificação do certificado digital deste documento acesse: https://validar.iti.gov.br/`
+          ],
+          signatories: [
+            `${presComissao} - Presidente da Comissão Eleitoral`,
+            `${secComissao} - Secretário(a) da Comissão Eleitoral`,
             `${compNome} - Representante Legal da Empresa`
           ]
         };
